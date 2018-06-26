@@ -1,7 +1,7 @@
 include("network.jl")
 
 function init_layer(i, layerSizes, f)
-	 bias = Matrix{Float64}(layerSizes[i+1], 1)
+	 bias = Vector{Float64}(layerSizes[i+1])
          weights = Matrix{Float64}(layerSizes[i + 1], layerSizes[i])
 
 	 # first read in weights
@@ -20,7 +20,7 @@ function init_layer(i, layerSizes, f)
 	 for r = 1: layerSizes[i+1]
 	 	line = readline(f)
 		record = split(line, ",")
-		bias[r,1] = parse(Float64, record[1])
+		bias[r] = parse(Float64, record[1])
 	 end
 	 
          return Layer(bias, weights)
@@ -55,5 +55,5 @@ function read_nnet(fname)
 		 layers[i] = curr_layer
 	end
 	
-	return Network(layers, layerSizes)
+	return Network(layers)
 end
