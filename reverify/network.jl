@@ -4,5 +4,5 @@ type Layer
 end
 
 type Network
-    layers::Vector{Layer} # layers includes input & output layer
+    layers::Vector{Layer} # layers includes output layer
 end
