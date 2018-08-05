@@ -15,7 +15,6 @@ function init_layer(i, layerSizes, f)
 			token = record[c]
 		end
 	 end
-	 
 	 # now read in bias
 	 for r = 1: layerSizes[i+1]
 	 	line = readline(f)
@@ -27,7 +26,7 @@ function init_layer(i, layerSizes, f)
 end
 	
 function read_nnet(fname)
-        f = open(fname)
+    f = open(fname)
 	
 	line = readline(f)
         while contains(line, "//") #skip comments
@@ -36,7 +35,6 @@ function read_nnet(fname)
 
 	record = split(line, ",")
         nLayers = parse(Int64, record[1])
-
         record = split(readline(f), ",")
         layerSizes = Vector{Int64}(nLayers + 1)
         for i = 1: nLayers + 1
