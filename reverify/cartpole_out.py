@@ -66,7 +66,7 @@ def weights_to_txt(weights, f):
     n_cols = shape[1]
     weights = np.reshape(weights, (n_cols, n_rows))
     for r in range(0,n_cols):
-            for c in range(0,n_rows - 1):
+            for c in range(0, n_rows - 1):
                     f.write(str(weights[r,c])+", ")
             f.write(str(weights[r,c])+"\n")
 
@@ -80,7 +80,7 @@ Convert trained cartpole nnet into a txt file that is compatible with the read_n
 def cartpole_nnet_to_txt():
     layers = train_cartpole_nnet()
     f = open("cartpole_nnet.txt", "w+")
-    f.write("3\n")
+    f.write("4\n")
     f.write("4, 16, 16, 16, 2\n")
     for i in range(5):
         f.write("0\n")

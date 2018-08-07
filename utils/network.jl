@@ -1,6 +1,6 @@
 type Layer
-    bias::Vector{Float64}
     weights::Matrix{Float64}
+    bias::Vector{Float64}
 end
 
 type Network
