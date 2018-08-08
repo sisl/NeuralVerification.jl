@@ -1,4 +1,4 @@
-include("network.jl")
+include("problem.jl")
 
 using JuMP
 using MathProgBase
@@ -72,4 +72,10 @@ function compute_output(nnet::Network, input::Vector{Float64})
 		curr_value = (layers[i].weights * curr_value) + layers[i].bias
 	end
 	return curr_value # would another name be better?
+end
+
+function add_constraints(model::Model, x::Array{Variable}, constraints::Constraints)
+	@constraint(model, constraints.A *x .== constraints.b)
+	@constraint(model, x .<= constraints.upper)
+	@constraint(model, x .>= constraints.lower)
 end
