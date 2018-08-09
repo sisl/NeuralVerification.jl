@@ -63,3 +63,13 @@ function read_nnet(fname)
 	return Network(layers)
 
 end
+
+function compute_output(nnet::Network, input::Vector{Float64})
+	curr_value = input
+	layers = nnet.layers
+
+	for i = 1:length(layers) # layers does not include input layer (which has no weights/biases)
+		curr_value = (layers[i].weights * curr_value) + layers[i].bias
+	end
+	return curr_value # would another name be better?
+end
