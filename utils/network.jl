@@ -6,14 +6,13 @@ struct GeneralAct <: ActivationFunction
 end
 
 struct ReLU <: ActivationFunction
-	function ReLU(x::Float64)
-		return max(0,x)
-	end
 	ReLU() = new()
+	ReLU(x) = max.(0,x)
 end
 
-function f(x::Float64, activation::ReLU)
-	return max(0,x)
+struct Max <: ActivationFunction
+	Max() = new()
+	Max(x) = max(maximum(x),0)
 end
 
 struct Layer

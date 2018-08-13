@@ -30,8 +30,8 @@ function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStrea
 		bias[r] = parse(Float64, record[1])
 	 end
 
-	 # activation function is set to GeneralAct as default
-     return Layer(weights, bias, GeneralAct())
+	 # activation function is set to ReLU as default
+     return Layer(weights, bias, ReLU())
 end
 
 #=
