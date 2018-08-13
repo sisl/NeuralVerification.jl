@@ -4,10 +4,13 @@ using JuMP
 using MathProgBase
 using GLPKMathProgInterface
 
-function init_layer(model, i, layerSizes, f)
+#=
+Read in layer from nnet file and return a Layer struct containing its weights/biases
+=#
+function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStream)
 	 bias = Vector{Float64}(layerSizes[i+1])
-     weights = Matrix{Float64}(layerSizes[i + 1], layerSizes[i])
-
+     weights = Matrix{Float64}(layerSizes[i+1], layerSizes[i])
+	 
 	 # first read in weights
 	 for r = 1: layerSizes[i+1]
 	 	line = readline(f)
@@ -27,18 +30,21 @@ function init_layer(model, i, layerSizes, f)
 		bias[r] = parse(Float64, record[1])
 	 end
 
-	 # initialize variables for neurons and deltas
-     return Layer(weights, bias)
+	 # activation function is set to GeneralAct as default
+     return Layer(weights, bias, GeneralAct())
 end
-	
-function read_nnet(fname)
+
+#=
+Read in neural net from file and return Network struct 
+=#	
+function read_nnet(fname::String)
     f = open(fname)
-	
 	line = readline(f)
     while contains(line, "//") #skip comments
     	line = readline(f)
     end
 
+    # read in layer sizes and populate array
 	record = split(line, ",")
     nLayers = parse(Int64, record[1])
     record = split(readline(f), ",")
@@ -47,7 +53,7 @@ function read_nnet(fname)
     	layerSizes[i] = parse(Int64, record[i])
     end
 
-	# read past additonal information to get weight/bias values
+	# read past additonal information
     for i = 1: 5
     	line = readline(f)
     end	
@@ -61,21 +67,16 @@ function read_nnet(fname)
 	end
 
 	return Network(layers)
-
 end
 
+#=
+Compute output of an nnet for a given input vector
+=#
 function compute_output(nnet::Network, input::Vector{Float64})
 	curr_value = input
 	layers = nnet.layers
-
 	for i = 1:length(layers) # layers does not include input layer (which has no weights/biases)
 		curr_value = (layers[i].weights * curr_value) + layers[i].bias
 	end
 	return curr_value # would another name be better?
-end
-
-function add_constraints(model::Model, x::Array{Variable}, constraints::Constraints)
-	@constraint(model, constraints.A *x .== constraints.b)
-	@constraint(model, x .<= constraints.upper)
-	@constraint(model, x .>= constraints.lower)
 end
