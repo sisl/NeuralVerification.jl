@@ -1,6 +1,8 @@
 using JuMP
 include("network.jl")
 
+abstract type Problem end
+
 struct Constraints
 	A::Matrix{Float64}
 	b::Vector{Float64}
@@ -8,12 +10,18 @@ struct Constraints
 	lower::Vector{Float64}
 end
 
-struct Problem
+struct AdversarialProblem <: Problem
+	network::Network
+	input::Vector{Float64}
+	targets::Vector{Int64}
+end
+
+struct FeasibilityProblem <: Problem
 	network::Network
 	input::Constraints
 	output::Constraints
 end
-
+	
 #=
 Add constraints from Constraint struct to a variable
 =#

@@ -1,3 +1,1 @@
-using JuMP
-
-abstract type Solver end 
+abstract type Solver end

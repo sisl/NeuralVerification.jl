@@ -1,19 +1,4 @@
-abstract type ActivationFunction end
-
-struct GeneralAct <: ActivationFunction
-	activation::ActivationFunction
-	GeneralAct() = new()
-end
-
-struct ReLU <: ActivationFunction
-	ReLU() = new()
-	ReLU(x) = max.(0,x)
-end
-
-struct Max <: ActivationFunction
-	Max() = new()
-	Max(x) = max(maximum(x),0)
-end
+include("activation.jl")
 
 struct Layer
     weights::Matrix{Float64}
