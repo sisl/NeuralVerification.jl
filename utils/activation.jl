@@ -4,8 +4,9 @@ struct GeneralAct <: ActivationFunction end
 struct ReLU <: ActivationFunction end
 struct Max <: ActivationFunction end
 
-(f::GeneralAct)(x::Float64) = f(x)
-(f::ReLU)(x::Float64) = max(x,0.0)
+(f::GeneralAct)(x) = f(x)
+(f::ReLU)(x) = max.(x,0)
+(f::Max)(x) = max(maximum(x),0)
 
 
 

@@ -1,48 +1,84 @@
-# Supporting functions
-function getBounds(x::Vector{Float64},delta::Float64,w::Vector{Float64},theta::Float64)
-    betaMax = w'*x+theta
-    betaMin = w'*x+theta
-    for i in 1:length(x)
-        betaMax += abs(w[i])*delta
-        betaMin -= abs(w[i])*delta
+include("../Reachability/reachability.jl")
+
+import LazySets.Hyperrectangle
+
+struct MaxSens <: Reachability
+    resolution::Float64
+end
+
+# This is the main function
+function solve(solver::MaxSens, problem::Problem)
+    inputs = partition(problem.input, solver.resolution)
+    outputs = Vector{Hyperrectangle}(length(inputs))
+    for i in 1:length(inputs)
+        outputs[i] = forward_network(solver, problem.network, inputs[i])
     end
-    return [betaMax,betaMin]
+    return checkInclusion(outputs, problem.output)
 end
 
-function getGamma(actFunc::Function,input::Float64,beta::Vector{Float64})
-    return max(abs(actFunc(beta[1])-actFunc(input)), abs(actFunc(beta[2])-actFunc(input)))
-end
-
-function ReLU(x::Float64)
-    return max(x,0)
-end
-
-function ReLU(x::Vector{Float64})
-    y = x
-    for i in 1:length(x)
-        y[i] = max(x[i],0)
+# This function is called by forward_network
+function forward_layer(solver::MaxSens, layer::Layer, input::Hyperrectangle)
+    gamma = Vector{Float64}(size(layer.weights, 1))
+    for j in 1:size(layer.weights, 1)
+        node = Node(layer.weights[j,:], layer.bias[j], layer.activation)
+        gamma[j] = forward_node(solver, node, input)
     end
-    return y
+    output = layer.activation(layer.weights * input.center + layer.bias)
+
+    # Here we do not require the Hyperrectangle to have equal sides
+    output = Hyperrectangle(output, gamma)
+    return output
 end
 
-function gridPartition(inputSet::Constraints, size::Float64)
-    n_dim = length(inputSet.upper)
-    grid_list = Vector{Int64}(n_dim)
-    n_grid = 1
+function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
+    output = node.w' * input.center + node.b
+    deviation = sum(abs(node.w[i])*input.radius[i] for i in 1:length(input.center))
+    betaMax = output + deviation
+    betaMin = output - deviation
+    #println("forwardNode ", node, " ", output, " ", betaMax, " ", betaMin)
+    return max(abs(node.act(betaMax) - node.act(output)), abs(node.act(betaMin) - node.act(output)))
+end
+
+function partition(input::Constraints, delta::Float64)
+    n_dim = length(input.upper)
+    hyperrectangle_list = Vector{Int64}(n_dim)
+    n_hyperrectangle = 1
     for i in 1:n_dim
-        grid_list[i] = n_grid
-        n_grid *= ceil((inputSet.upper[i]-inputSet.lower[i])/size)
+        hyperrectangle_list[i] = n_hyperrectangle
+        n_hyperrectangle *= ceil((input.upper[i]-input.lower[i])/delta)
     end
-    n_grid = trunc(Int, n_grid)
-    x = Vector{Vector{Float64}}(n_grid)
-    for k in 1:n_grid
+    n_hyperrectangle = trunc(Int, n_hyperrectangle)
+
+    hyperrectangles = Vector{Hyperrectangle}(n_hyperrectangle)
+    for k in 1:n_hyperrectangle
         number = k
-        x[k] = Vector{Float64}(n_dim)
+        center = Vector{Float64}(n_dim)
+        radius = Vector{Float64}(n_dim)
         for i in n_dim:-1:1
-            id = div(number-1, grid_list[i])
-            number = mod(number-1, grid_list[i])+1
-            x[k][i] = inputSet.lower[i] + size/2 + size * id;
+            id = div(number-1, hyperrectangle_list[i])
+            number = mod(number-1, hyperrectangle_list[i])+1
+            center[i] = input.lower[i] + delta/2 + delta * id;
+            radius[i] = delta;
+        end
+        hyperrectangles[k] = Hyperrectangle(center, radius)
+    end
+    return hyperrectangles
+end
+
+function checkInclusion(hyperrectangles::Vector{Hyperrectangle}, set::Constraints)
+    n_vertex = 2^(length(hyperrectangles[1].center))
+    for i in 1:length(hyperrectangles)
+        x = hyperrectangles[i].center
+        delta = hyperrectangles[i].radius 
+        for k in 1:n_vertex
+            binary = bin(k - 1, length(hyperrectangles[i].center))
+            for j in 1:length(hyperrectangles[i].center)
+                x[j] += ifelse(binary[j] == '1', 1, -1) * delta[j]
+            end
+            if maximum(set.A * x - set.b)>0 || maximum(x - set.upper) > 0 || maximum(x - set.lower) < 0
+                return false
+            end
         end
     end
-    return x
+    return true
 end

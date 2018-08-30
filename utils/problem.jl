@@ -1,4 +1,5 @@
 using JuMP
+using LazySets
 include("network.jl")
 
 abstract type Problem end
@@ -20,6 +21,12 @@ struct FeasibilityProblem <: Problem
 	network::Network
 	input::Constraints
 	output::Constraints
+end
+
+struct ReachabilityProblem <: Problem
+	network::Network
+	input::AbstractPolytope
+	output::AbstractPolytope
 end
 	
 #=
