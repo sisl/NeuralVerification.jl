@@ -8,9 +8,9 @@ struct ExactReach <: Reachability
 end
 
 function solve(solver::ExactReach, problem::Problem)
-	reach = forward_network(solver, problem.network, HPolytope(problem.input.A, problem.input.b))
+	reach = forward_network(solver, problem.network, problem.input)
 	#println(reach)
-    return check_inclusion(reach, HPolytope(problem.output.A, problem.output.b))
+    return check_inclusion(reach, problem.output)
 end
 
 function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope})
@@ -69,21 +69,8 @@ function getP(h::Int64, n::Int64)
 	return diagm(vec)
 end
 
-function check_inclusion(reach::Vector{HPolytope}, out::HPolytope)
-	# Since polytopes are convex, we just check whether vertices of the reachable sets are included in the output constraint.
-	# This complement approach is not correct
-	outA, outb = tosimplehrep(out)
-	out_complement = HPolytope(-outA, -outb)
-	for i in 1:length(reach)
-		if ~is_intersection_empty(reach[i], out_complement)
-			# The reachable set enters the complement of the output constraint
-			return false
-		end
-	end
-	return true
-end
-
 # To be implemented
+# This function is called in forward_negative
 function is_intersection_empty(set_a::HPolytope, set_b::HPolytope)
 	return true
 end

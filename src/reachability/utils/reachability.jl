@@ -16,3 +16,18 @@ function forward_network(solver::Reachability, nnet::Network, input::AbstractPol
     end
     return reach
 end
+
+# This function checks whether the reachable set belongs to the output constraint
+# It is called by all solvers under reachability
+# Note vertices_list is not defined for HPolytope: to be defined
+function check_inclusion(reach::Union{Vector{AbstractPolytope}, Vector{Hyperrectangle}}, output::AbstractPolytope)
+	for i in 1:length(reach)
+		vertices = vertices_list(reach[i])
+		for vertex in vertices
+			if ~∈(vertex, output)
+				return false
+			end
+		end
+	end
+	return true
+end

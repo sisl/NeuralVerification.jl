@@ -126,16 +126,3 @@ function getI(n::Int64, id::Int64)
 	end
 	return diagm(vec)
 end
-
-# Check wheather all vertices satisfy to the output constraint
-function check_inclusion(reach::Vector{Zonotope}, out::AbstractPolytope)
-	for i in 1:length(reach)
-		vertices = vertices_list(reach[i])
-		for vertex in vertices
-			if ~∈(vertex, out)
-				return false
-			end
-		end
-	end
-	return true
-end
