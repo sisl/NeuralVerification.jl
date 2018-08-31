@@ -86,10 +86,37 @@ function meet(case::Case, zono::Zonotope)
 	return zono
 end
 
-# To be implemented
 # Combine zonotopes
 function simplify(zonos::Vector{Zonotope})
-	return zonos
+	n = length(zonos)
+	vertices = Vector{Vector{Vector{Float64}}}(n)
+	flag = Vector{Int64}(n)
+	for i in 1:n
+		vertices[i] = vertices_list(zonos[i])
+	end
+
+	# check inclusion
+	for i in 1:n
+		if flag[i] > -1
+			for j in i+1:n
+				if ⊆(zonos[i], zonos[j])
+					flag[i] = -1
+					break
+				end
+				if ⊆(zonos[j], zonos[i])
+					flag[j] = -1
+				end
+			end
+		end
+	end
+
+	new_zonos = Vector{Zonotope}(0)
+	for i in 1:n
+		if flag[i] > -1
+			append!(new_zonos, Zonotope[zonos[i]])
+		end
+	end
+	return new_zonos
 end
 
 function getI(n::Int64, id::Int64)
