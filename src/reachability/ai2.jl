@@ -9,15 +9,15 @@ abstract type Case end
 # x_i >= x_j is represented as greater(i,j)
 # 0 > x_i is represented as neg(i)
 
-struct pos <: Case
+struct Pos <: Case
 	i::Int64
 end
 
-struct neg <: Case
+struct Neg <: Case
 	i::Int64
 end
 
-struct greater <: Case
+struct Greater <: Case
 	i::Int64
 	j::Int64
 end
@@ -63,12 +63,12 @@ function forward_act(act::ReLU, input::Zonotope)
 		for j = 1:length(output)
 			zonos = Vector{Zonotope}(0)
 			# Positive case
-			meet_pos = meet(pos(i), output[j])
+			meet_pos = meet(Pos(i), output[j])
 			if dim(meet_pos) > -1
 				append!(zonos, Zonotope[meet_pos])
 			end
 			# Negative case
-			meet_neg = meet(neg(i), output[j])
+			meet_neg = meet(Neg(i), output[j])
 			if dim(meet_neg) > -1
 				append!(zonos, Zonotope[linear_map(getI(dim(input), i), meet_neg)])
 			end
@@ -88,35 +88,21 @@ end
 
 # Combine zonotopes
 function simplify(zonos::Vector{Zonotope})
-	n = length(zonos)
-	vertices = Vector{Vector{Vector{Float64}}}(n)
-	flag = Vector{Int64}(n)
-	for i in 1:n
-		vertices[i] = vertices_list(zonos[i])
-	end
-
-	# check inclusion
-	for i in 1:n
-		if flag[i] > -1
-			for j in i+1:n
+	flag = fill(true, length(zonos))
+	for i in 1:length(zonos)
+		if flag[i]
+			for j in i+1:length(zonos)
 				if ⊆(zonos[i], zonos[j])
-					flag[i] = -1
+					flag[i] = false
 					break
 				end
 				if ⊆(zonos[j], zonos[i])
-					flag[j] = -1
+					flag[j] = false
 				end
 			end
 		end
 	end
-
-	new_zonos = Vector{Zonotope}(0)
-	for i in 1:n
-		if flag[i] > -1
-			append!(new_zonos, Zonotope[zonos[i]])
-		end
-	end
-	return new_zonos
+	return zonos[flag]
 end
 
 function getI(n::Int64, id::Int64)

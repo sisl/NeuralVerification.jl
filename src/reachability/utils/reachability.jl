@@ -1,8 +1,5 @@
 # General structure for reachability methods
 
-# new datatype
-# abstract type GeometricObj end
-
 using LazySets
 
 abstract type Reachability end
@@ -20,7 +17,7 @@ end
 # This function checks whether the reachable set belongs to the output constraint
 # It is called by all solvers under reachability
 # Note vertices_list is not defined for HPolytope: to be defined
-function check_inclusion(reach::Union{Vector{AbstractPolytope}, Vector{Hyperrectangle}}, output::AbstractPolytope)
+function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
 	for i in 1:length(reach)
 		vertices = vertices_list(reach[i])
 		for vertex in vertices
