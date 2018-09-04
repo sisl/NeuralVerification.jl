@@ -3,21 +3,56 @@ include("utils/reachability.jl")
 import LazySets.Hyperrectangle
 import LazySets.EmptySet
 
-struct ReluVal <: Reachability end
+struct ReluVal <: Reachability 
+	max_iter::Int64
+end
 
 struct Symbolic_Interval
 	Low::Matrix{Float64}
 	Up::Matrix{Float64}
-	input_range::Hyperrectangle
+	interval::Hyperrectangle
+end
+
+# Gradient mask for a single layer
+struct Gradient_Mask
+	lower::Vector{Int64}
+	upper::Vector{Int64}
+end
+
+# Data to be passed during forward_layer
+struct Symbolic_Interval_Mask
+	sym::Symbolic_Interval
+	mask::Vector{Gradient_Mask}
 end
 
 function solve(solver::ReluVal, problem::Problem)
+	# Compute the reachable set without splitting the interval
 	reach = forward_network(solver, problem.network, problem.input)
-	println(reach)
-    return check_inclusion(reach, problem.output)
+	if check_inclusion(reach, problem.output) > 0
+		return check_inclusion(reach, problem.output)
+	end
+
+	# If undertermined, split the interval
+	# Bisection tree. Unsure how to explore, BFS or DFS?
+	for i in 2:solver.max_iter
+		gradient = back_prop(problem.network, reach.mask)
+		intervals = split_input(problem.network, reach.sym.interval, gradient)
+		for interval in intervals
+			reach = forward_network(solver, problem.network, interval)
+			if check_inclusion(reach, problem.output)
+				return check_inclusion(reach, problem.output)
+			end
+		end
+	end
+    return "undertermined"
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input::Union{Symbolic_Interval, Hyperrectangle})
+# To be implemented
+function check_inclusion(reach::Symbolic_Interval_Mask, output::AbstractPolytope)
+	return 0
+end
+
+function forward_layer(solver::ReluVal, layer::Layer, input::Union{Symbolic_Interval_Mask, Hyperrectangle})
 	return forward_act(forward_linear(input, layer.weights, layer.bias))
 end
 
@@ -36,20 +71,25 @@ end
 
 # Symbolic forward_linear for the first layer
 function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
-	return Symbolic_Interval(hcat(W, b), hcat(W, b), input)
+	sym = Symbolic_Interval(hcat(W, b), hcat(W, b), input)
+	mask = Gradient_Mask[]
+	return Symbolic_Interval_Mask(sym, mask)
 end
 
 # Symbolic forward_linear
-function forward_linear(input::Symbolic_Interval, W::Matrix{Float64}, b::Vector{Float64})
+function forward_linear(input::Symbolic_Interval_Mask, W::Matrix{Float64}, b::Vector{Float64})
 	n_output, n_input = size(W)
-	n_symbol = size(Low, 2) - 1
+	println(input.sym.Low)
+	n_symbol = size(input.sym.Low, 2) - 1
+	println(n_output, " ", n_input, " ", n_symbol)
+
 	output_Low = zeros(n_output, n_symbol + 1)
 	output_Up = zeros(n_output, n_symbol + 1)
 	for k in 1:n_symbol + 1
 		for j in 1:n_output
 			for i in 1:n_input
-				output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * input.Up[i, k], W[j, i] * input.Low[i, k])
-				output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * input.Low[i, k], W[j, i] * input.Up[i, k])
+				output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * input.sym.Up[i, k], W[j, i] * input.sym.Low[i, k])
+				output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * input.sym.Low[i, k], W[j, i] * input.sym.Up[i, k])
 			end
 			if k > n_symbol
 				output_Up[j, k] += b[j]
@@ -57,7 +97,9 @@ function forward_linear(input::Symbolic_Interval, W::Matrix{Float64}, b::Vector{
 			end
 		end
 	end
-	return Symbolic_Interval(output_Low, output_Up, input.input_range)
+	sym = Symbolic_Interval(output_Low, output_Up, input.sym.interval)
+	mask = input.mask
+	return Symbolic_Interval_Mask(sym, mask)
 end
 
 # Concrete forward_act
@@ -66,68 +108,104 @@ function forward_act(input::Hyperrectangle)
 	input_lower = low(input)
 	output_upper = fill(0.0, dim(input))
 	output_lower = fill(0.0, dim(input))
-	symbolic_upper = fill(1, dim(input))
-	symbolic_lower = fill(0, dim(input))
+	mask_upper = fill(1, dim(input))
+	mask_lower = fill(0, dim(input))
 	for i in 1:dim(input)
 		if input_upper[i] <= 0
-			symbolic_upper[i] = symbolic_lower[i] = 0
+			mask_upper[i] = mask_lower[i] = 0
 			output_upper[i] = output_lower[i] = 0.0
 		elseif input_lower[i] >= 0
-			symbolic_upper[i] = symbolic_lower[i] = 1
+			mask_upper[i] = mask_lower[i] = 1
 		else
 			output_lower[i] = 0.0
 		end
 	end
-	return (output_lower, output_upper, symbolic_lower, symbolic_upper)
+	return (output_lower, output_upper, mask_lower, mask_upper)
 end
 
 # Symbolic forward_act
-# Low: lower bounds (last entry is the concretized value)
-# Up: upper bounds (last entry is the concretized value)
-# input: input constraint
-function forward_act(Low::Matrix{Float64}, Up::Matrix{Float64}, input::Hyperrectangle)
-	n_output, n_input = size(Low)
+function forward_act(input::Symbolic_Interval_Mask)
+	n_output, n_input = size(input.sym.Up)
 
-	input_upper = high(input)
-	input_lower = low(input)
+	input_upper = high(input.sym.interval)
+	input_lower = low(input.sym.interval)
 
-	output_Up = Up[:, :]
-	output_Low = Low[:, :]
+	output_Up = input.sym.Up[:, :]
+	output_Low = input.sym.Low[:, :]
 
-	symbolic_upper = fill(1, dim(input))
-	symbolic_lower = fill(0, dim(input))
+	mask_upper = fill(1, n_output)
+	mask_lower = fill(0, n_output)
 
 	for i in 1:n_output
-		if upper_bound(Up[i, :], input) <= 0.0
+		if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
 			# Update to zero
-			symbolic_upper[i] = 0
-			symbolic_lower[i] = 0
+			mask_upper[i] = 0
+			mask_lower[i] = 0
 			output_Up[i, :] = fill(0.0, n_input)
 			output_Low[i, :] = fill(0.0, n_input)
-		elseif lower_bound(Low[i, :], input) >= 0
+		elseif lower_bound(input.sym.Low[i, :], input.sym.interval) >= 0
 			# Keep dependency
-			symbolic_upper[i] = symbolic_lower[i] = 1
+			mask_upper[i] = 1
+			mask_lower[i] = 1
 		else
 			# Concretization
-			symbolic_upper[i] = 1
-			symbolic_lower[i] = 0
+			mask_upper[i] = 1
+			mask_lower[i] = 0
 			output_Low[i, :] = zeros(1, n_input)
-			if lower_bound(Up[i, :], input) <= 0
-				output_Up[i, :] = hcat(zeros(1, n_input - 1), upper_bound(Up[i, :], input))
+			if lower_bound(input.sym.Up[i, :], input.sym.interval) <= 0
+				output_Up[i, :] = hcat(zeros(1, n_input - 1), upper_bound(input.sym.Up[i, :], input.sym.interval))
 			end
 		end
 	end
-	return (output_Low, output_Up, symbolic_lower, symbolic_upper)
+	sym = Symbolic_Interval(output_Low, output_Up, input.sym.interval)
+	mask = vcat(input.mask, Gradient_Mask(mask_lower, mask_upper))
+	return Symbolic_Interval_Mask(sym, mask)
 end
 
 # To be implemented
-function back_prop(nnet::Network, gradient::Vector{Vector{Float64}})
-	return true
+function back_prop(nnet::Network, R::Vector{Gradient_Mask})
+	n_layer = length(nnet.layers)
+	# For now, assume the last layer is identity
+	Up = eye(length(nnet.layers[n_layer].bias))
+	Low = eye(length(nnet.layers[n_layer].bias))
+
+	for k in n_layer:-1:1
+		# back through activation function using the gradient mask
+		for i in 1:length(nnet.layers[k].bias)
+			output_Up[i, :] = ifelse(R[k].upper[i], Up[i, :], zeros(1, size(Up,2)))
+			output_Low[i, :] = ifelse(R[k].lower[i], Low[i, :], zeros(1, size(Low,2)))	
+		end
+		output = Symbolic_Interval(output_Low, output_Up, Hyperrectangle())
+		# back through weight matrix
+		output = forward_linear(output, inv(nnet.layers[k].weights), zeros(1, length(nnet.layers[n_layer].bias)))
+		Up = output.Up[:, :]
+		Low = output.Low[:, :]
+	end
+
+	return output
 end
 
-# To be implemented
-function split_input(nnet::Network, g::Hyperrectangle, input::Hyperrectangle)
-	return true
+# Return the splited intervals
+function split_input(nnet::Network, input::Hyperrectangle, g::Symbolic_Interval)
+	largest_smear = - Inf
+	feature = 0
+	r = input.radius .* 2
+	for i in 1:dim(input)
+		smear = sum(ifelse(g.Up[i, j] - g.Low[i, j], g.Up[i, j] * r[i], -g.Low[i, j] * r[i]) for j in 1:size(g.Up, 2))
+		if smear > largest_smear
+			largest_smear = smear
+			feature = i
+		end
+	end
+	input_upper = high(input)
+	input_lower = low(input)
+	input_upper[feature] = input.center[feature]
+	input_split_left = high_dim_interval(input_lower, input_upper)
+
+	input_lower[feature] = input.center[feature]
+	input_upper[feature] = input.center[feature] + input.radius[feature]
+	input_split_right = high_dim_interval(input_lower, input_upper)
+	return (input_split_left, input_split_right)
 end
 
 # Get upper bound in concretization
@@ -147,7 +225,7 @@ function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
 	input_upper = high(input)
 	input_lower = low(input)
 	for i in 1:dim(input)
-		bound += ifelse( map[i]>0, map[i]*input_lower[i], map[i]*input_upper[i])
+		bound += ifelse(map[i]>0, map[i]*input_lower[i], map[i]*input_upper[i])
 	end
 	return bound
 end
