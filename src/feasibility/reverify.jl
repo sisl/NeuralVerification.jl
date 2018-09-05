@@ -34,8 +34,12 @@ end
 Add input/output constraints to model
 =#
 function add_io_constraints(model::Model, problem::FeasibilityProblem, neuron_vars::Array{Array{Variable}})
-    add_constraints(model, first(neuron_vars), problem.input)
-    add_constraints(model, last(neuron_vars),  problem.output)
+    in_A,  in_b  = tosimplehrep(problem.input)
+    out_A, out_b = tosimplehrep(problem.output)
+
+    @constraint(model,  in_A*first(neuron_vars) .<= in_b)
+    @constraint(model, out_A*last(neuron_vars)  .<= out_b)
+    return nothing
 end
 
 #=

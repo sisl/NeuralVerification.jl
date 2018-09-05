@@ -32,7 +32,7 @@ end
 #=
 Add constraints from Polytope to a variable
 =#
-function add_constraints(model::Model, x::Array{Variable}, constraints::HPolytope)
-    A, b = tosimplehrep(constraints)
-    @constraint(model, A*x .<= b)
-end
+# function add_constraints(model::Model, x::Array{Variable}, constraints::HPolytope)
+#     A, b = tosimplehrep(constraints)
+#     @constraint(model, A*x .<= b)
+# end
