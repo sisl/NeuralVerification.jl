@@ -1,5 +1,5 @@
-include("../solver/solver.jl")
-include("../utils/problem.jl")
+# include("../../solver/solver.jl")
+# include("../utils/problem.jl")
 
 struct ReverifySolver <: Solver
 	model::Model
@@ -33,24 +33,29 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_io_constraints(model::Model, problem::Problem, neuron_vars::Array{Array{Variable}}, delta_vars::Array{Array{Variable}})
-    add_constraints(model, neuron_vars[1], problem.input)
-    add_constraints(model, neuron_vars[length(problem.network.layers)+1], problem.output)
+function add_io_constraints(model::Model, problem::FeasibilityProblem, neuron_vars::Array{Array{Variable}})
+    add_constraints(model, neuron_vars[1],   problem.input)
+    add_constraints(model, neuron_vars[end], problem.output)
 end
 
 #=
 Encode problem as an MIP following Reverify algorithm
 =#
-function encode(solver::ReverifySolver, problem::Problem)
-    neuron_vars, delta_vars = init_nnet_vars(solver, problem)
-    add_io_constraints(solver.model, problem, neuron_vars, delta_vars)
-    for i = 1:length(problem.network.layers)
-        layer = problem.network.layers[i]
-        for j in length(layer.bias)
-            @constraint(solver.model, neuron_vars[i+1][j] .>= layer.weights*neuron_vars[i] + layer.bias)
-            @constraint(solver.model, neuron_vars[i+1][j] .<= layer.weights*neuron_vars[i] + layer.bias + solver.m*delta_vars[i+1][j])
-            @constraint(solver.model, neuron_vars[i+1][j] >= 0)
-            @constraint(solver.model, neuron_vars[i+1][j] <= solver.m*(1-delta_vars[i+1][j]))
+function encode(solver::ReverifySolver, problem::FeasibilityProblem)
+
+    neurons, deltas = init_nnet_vars(solver, problem)
+    add_io_constraints(solver.model, problem, neurons)
+
+    for (i, layer) in enumerate(problem.network.layers)
+        for j in 1:length(layer.bias)
+            lbound = layer.weights*neurons[i] + layer.bias # Is it faster in julia to move this out of the j loop?
+            ubound = lbound + solver.m*deltas[i+1][j]
+            @constraints(solver.model, begin
+                neurons[i+1][j] .>= lbound
+                neurons[i+1][j] .<= ubound
+                neurons[i+1][j] >= 0
+                neurons[i+1][j] <= solver.m*(1-deltas[i+1][j])
+            end)
         end
     end
 end
