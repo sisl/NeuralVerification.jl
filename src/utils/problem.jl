@@ -4,12 +4,12 @@ include("network.jl")
 
 abstract type Problem end
 
-struct Constraints
-	A::Matrix{Float64}
-	b::Vector{Float64}
-	upper::Vector{Float64}
-	lower::Vector{Float64}
-end
+# struct Constraints
+# 	A::Matrix{Float64}
+# 	b::Vector{Float64}
+# 	upper::Vector{Float64}
+# 	lower::Vector{Float64}
+# end
 
 struct AdversarialProblem <: Problem
 	network::Network
@@ -17,28 +17,27 @@ struct AdversarialProblem <: Problem
 	targets::Vector{Int64}
 end
 
-struct FeasibilityProblem <: Problem
+struct FeasibilityProblem{P<:AbstractPolytope} <: Problem
 	network::Network
-	input::Constraints
-	output::Constraints
+	input::P
+	output::P
 end
 
-struct ReachabilityProblem <: Problem
+struct ReachabilityProblem{P<:AbstractPolytope} <: Problem
 	network::Network
-	input::AbstractPolytope
-	output::AbstractPolytope
+	input::P
+	output::P
 end
 
 struct Result
 	status::Int64
 	counter_example::Vector{Float64}
 end
-	
+
 #=
-Add constraints from Constraint struct to a variable
+Add constraints from Polytope to a variable
 =#
-function add_constraints(model::Model, x::Array{Variable}, constraints::Constraints)
-	@constraint(model, constraints.A *x .== constraints.b)
-	@constraint(model, x .<= constraints.upper)
-	@constraint(model, x .>= constraints.lower)
-end
+# function add_constraints(model::Model, x::Array{Variable}, constraints::HPolytope)
+#     A, b = tosimplehrep(constraints)
+#     @constraint(model, A*x .<= b)
+# end
