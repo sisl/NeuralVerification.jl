@@ -10,7 +10,7 @@ end
 #=
 Initialize JuMP variables corresponding to neurons and deltas of network for problem
 =#
-function init_nnet_vars(solver::ReverifySolver, problem::FeasibilityProblem)
+function init_nnet_vars(model::Model, problem::FeasibilityProblem)
 
     layers   = problem.network.layers
     neurons = Array{Array{Variable}}(length(layers) + 1) # +1 for input layer
@@ -22,8 +22,8 @@ function init_nnet_vars(solver::ReverifySolver, problem::FeasibilityProblem)
     all_n         = [input_layer_n; all_layers_n]
 
     for (i, n) in enumerate(all_n)
-        neurons[i] = @variable(solver.model, [1:n], basename = "layer $i neuron-")
-        deltas[i]  = @variable(solver.model, [1:n], basename = "layer $i delta-", category = :Bin)
+        neurons[i] = @variable(model, [1:n], basename = "layer $i neuron-")
+        deltas[i]  = @variable(model, [1:n], basename = "layer $i delta-", category = :Bin)
     end
 
     return neurons, deltas
@@ -43,7 +43,7 @@ Encode problem as an MIP following Reverify algorithm
 =#
 function encode(solver::ReverifySolver, problem::FeasibilityProblem)
 
-    neurons, deltas = init_nnet_vars(solver, problem)
+    neurons, deltas = init_nnet_vars(solver.model, problem)
     add_io_constraints(solver.model, problem, neurons)
 
     for (i, layer) in enumerate(problem.network.layers)
