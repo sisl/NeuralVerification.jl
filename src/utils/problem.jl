@@ -28,6 +28,11 @@ struct ReachabilityProblem <: Problem
 	input::AbstractPolytope
 	output::AbstractPolytope
 end
+
+struct Result
+	status::Int64
+	counter_example::Vector{Float64}
+end
 	
 #=
 Add constraints from Constraint struct to a variable

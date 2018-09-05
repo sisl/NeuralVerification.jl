@@ -7,22 +7,22 @@ struct ReluVal <: Reachability
 	max_iter::Int64
 end
 
-struct Symbolic_Interval
+struct SymbolicInterval
 	Low::Matrix{Float64}
 	Up::Matrix{Float64}
 	interval::Hyperrectangle
 end
 
 # Gradient mask for a single layer
-struct Gradient_Mask
+struct GradientMask
 	lower::Vector{Int64}
 	upper::Vector{Int64}
 end
 
 # Data to be passed during forward_layer
-struct Symbolic_Interval_Mask
-	sym::Symbolic_Interval
-	mask::Vector{Gradient_Mask}
+struct SymbolicInterval_Mask
+	sym::SymbolicInterval
+	mask::Vector{GradientMask}
 end
 
 function solve(solver::ReluVal, problem::Problem)
@@ -48,11 +48,11 @@ function solve(solver::ReluVal, problem::Problem)
 end
 
 # To be implemented
-function check_inclusion(reach::Symbolic_Interval_Mask, output::AbstractPolytope)
+function check_inclusion(reach::SymbolicInterval_Mask, output::AbstractPolytope)
 	return 0
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input::Union{Symbolic_Interval_Mask, Hyperrectangle})
+function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicInterval_Mask, Hyperrectangle})
 	return forward_act(forward_linear(input, layer.weights, layer.bias))
 end
 
@@ -71,13 +71,13 @@ end
 
 # Symbolic forward_linear for the first layer
 function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
-	sym = Symbolic_Interval(hcat(W, b), hcat(W, b), input)
-	mask = Gradient_Mask[]
-	return Symbolic_Interval_Mask(sym, mask)
+	sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
+	mask = GradientMask[]
+	return SymbolicInterval_Mask(sym, mask)
 end
 
 # Symbolic forward_linear
-function forward_linear(input::Symbolic_Interval_Mask, W::Matrix{Float64}, b::Vector{Float64})
+function forward_linear(input::SymbolicInterval_Mask, W::Matrix{Float64}, b::Vector{Float64})
 	n_output, n_input = size(W)
 	println(input.sym.Low)
 	n_symbol = size(input.sym.Low, 2) - 1
@@ -97,9 +97,9 @@ function forward_linear(input::Symbolic_Interval_Mask, W::Matrix{Float64}, b::Ve
 			end
 		end
 	end
-	sym = Symbolic_Interval(output_Low, output_Up, input.sym.interval)
+	sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
 	mask = input.mask
-	return Symbolic_Interval_Mask(sym, mask)
+	return SymbolicInterval_Mask(sym, mask)
 end
 
 # Concrete forward_act
@@ -124,7 +124,7 @@ function forward_act(input::Hyperrectangle)
 end
 
 # Symbolic forward_act
-function forward_act(input::Symbolic_Interval_Mask)
+function forward_act(input::SymbolicInterval_Mask)
 	n_output, n_input = size(input.sym.Up)
 
 	input_upper = high(input.sym.interval)
@@ -157,13 +157,13 @@ function forward_act(input::Symbolic_Interval_Mask)
 			end
 		end
 	end
-	sym = Symbolic_Interval(output_Low, output_Up, input.sym.interval)
-	mask = vcat(input.mask, Gradient_Mask(mask_lower, mask_upper))
-	return Symbolic_Interval_Mask(sym, mask)
+	sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
+	mask = vcat(input.mask, GradientMask(mask_lower, mask_upper))
+	return SymbolicInterval_Mask(sym, mask)
 end
 
 # To be implemented
-function back_prop(nnet::Network, R::Vector{Gradient_Mask})
+function back_prop(nnet::Network, R::Vector{GradientMask})
 	n_layer = length(nnet.layers)
 	# For now, assume the last layer is identity
 	Up = eye(length(nnet.layers[n_layer].bias))
@@ -175,7 +175,7 @@ function back_prop(nnet::Network, R::Vector{Gradient_Mask})
 			output_Up[i, :] = ifelse(R[k].upper[i], Up[i, :], zeros(1, size(Up,2)))
 			output_Low[i, :] = ifelse(R[k].lower[i], Low[i, :], zeros(1, size(Low,2)))	
 		end
-		output = Symbolic_Interval(output_Low, output_Up, Hyperrectangle())
+		output = SymbolicInterval(output_Low, output_Up, Hyperrectangle())
 		# back through weight matrix
 		output = forward_linear(output, inv(nnet.layers[k].weights), zeros(1, length(nnet.layers[n_layer].bias)))
 		Up = output.Up[:, :]
@@ -186,7 +186,7 @@ function back_prop(nnet::Network, R::Vector{Gradient_Mask})
 end
 
 # Return the splited intervals
-function split_input(nnet::Network, input::Hyperrectangle, g::Symbolic_Interval)
+function split_input(nnet::Network, input::Hyperrectangle, g::SymbolicInterval)
 	largest_smear = - Inf
 	feature = 0
 	r = input.radius .* 2
