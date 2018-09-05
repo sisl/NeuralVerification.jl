@@ -18,13 +18,8 @@ end
 # It is called by all solvers under reachability
 # Note vertices_list is not defined for HPolytope: to be defined
 function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
-	for i in 1:length(reach)
-		vertices = vertices_list(reach[i])
-		for vertex in vertices
-			if ~∈(vertex, output)
-				return false
-			end
-		end
-	end
-	return true
+    for poly in reach
+        issubset(poly, output) || return false
+    end
+    return true
 end
