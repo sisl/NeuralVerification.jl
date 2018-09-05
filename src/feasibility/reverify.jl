@@ -10,23 +10,25 @@ end
 #=
 Initialize JuMP variables corresponding to neurons and deltas of network for problem
 =#
-function init_nnet_vars(solver::ReverifySolver, problem::Problem)
-    layers = problem.network.layers
-    neurons = Array{Array{Variable}}(length(layers) + 1) # include neurons & deltas for input layer
-    deltas = Array{Array{Variable}}(length(layers) + 1)
-    
-    # initialize variables for first layer
-    n_inputs = size(layers[1].weights,2)
-    neurons[1] = @variable(solver.model,[1:n_inputs])
-    deltas[1] = @variable(solver.model,[1:n_inputs])
-    
-    for (i,layer) in enumerate(layers)
-        neurons[i+1] = @variable(solver.model, [1:length(layers[i].bias)])
-        deltas[i+1] = @variable(solver.model, [1:length(layers[i].bias)], Bin)
+function init_nnet_vars(solver::ReverifySolver, problem::FeasibilityProblem)
+
+    layers   = problem.network.layers
+    neurons = Array{Array{Variable}}(length(layers) + 1) # +1 for input layer
+    deltas  = Array{Array{Variable}}(length(layers) + 1)
+    # input layer is treated differently from other layers
+    # NOTE: this double-counts layers[1]. Was that the intent?
+    input_layer_n = size(layers[1].weights, 2)
+    all_layers_n  = [length(l.bias) for l in layers]
+    all_n         = [input_layer_n; all_layers_n]
+
+    for (i, n) in enumerate(all_n)
+        neurons[i] = @variable(solver.model, [1:n], basename = "layer $i neuron-")
+        deltas[i]  = @variable(solver.model, [1:n], basename = "layer $i delta-", category = :Bin)
     end
-    
+
     return neurons, deltas
 end
+
 
 #=
 Add input/output constraints to model
@@ -40,7 +42,7 @@ end
 Encode problem as an MIP following Reverify algorithm
 =#
 function encode(solver::ReverifySolver, problem::Problem)
-    neuron_vars, delta_vars = init_nnet_vars(solver, problem) 
+    neuron_vars, delta_vars = init_nnet_vars(solver, problem)
     add_io_constraints(solver.model, problem, neuron_vars, delta_vars)
     for i = 1:length(problem.network.layers)
         layer = problem.network.layers[i]
