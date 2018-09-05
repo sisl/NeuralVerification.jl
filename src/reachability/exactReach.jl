@@ -72,5 +72,6 @@ end
 # To be implemented
 # This function is called in forward_negative
 function is_intersection_empty(set_a::HPolytope, set_b::HPolytope)
-	return true
+    inter = intersect(set_a, set_b)
+    return dim(inter) == -1
 end
