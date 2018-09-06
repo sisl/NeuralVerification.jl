@@ -20,7 +20,7 @@ struct GradientMask
 end
 
 # Data to be passed during forward_layer
-struct SymbolicInterval_Mask
+struct SymbolicIntervalMask
 	sym::SymbolicInterval
 	mask::Vector{GradientMask}
 end
@@ -28,31 +28,61 @@ end
 function solve(solver::ReluVal, problem::Problem)
 	# Compute the reachable set without splitting the interval
 	reach = forward_network(solver, problem.network, problem.input)
-	if check_inclusion(reach, problem.output) > 0
-		return check_inclusion(reach, problem.output)
+	result = check_inclusion(reach.sym, problem.output)
+	println(reach, result)
+	if norm(result.status) > 0
+		return result
 	end
 
 	# If undertermined, split the interval
-	# Bisection tree. Unsure how to explore, BFS or DFS?
+	# Bisection tree. Unsure how to explore.
+	# Let's use BFS for now
+	reach_list = SymbolicIntervalMask[reach]
 	for i in 2:solver.max_iter
+		if length(reach_list) == 0
+			return Result(1, [])
+		end
+		reach = reach_list[1]
+		deleteat!(reach_list, 1)
 		gradient = back_prop(problem.network, reach.mask)
 		intervals = split_input(problem.network, reach.sym.interval, gradient)
 		for interval in intervals
 			reach = forward_network(solver, problem.network, interval)
-			if check_inclusion(reach, problem.output)
-				return check_inclusion(reach, problem.output)
+			result = check_inclusion(reach.sym, problem.output)
+			if result.status < 0 # If counter_example found
+				return result.status
+			elseif result.status == 0 # If undertermined, need to split
+				reach_list = vcat(reach_list, reach)
 			end
 		end
 	end
-    return "undertermined"
+    return Result(0, []) # undetermined
 end
 
-# To be implemented
-function check_inclusion(reach::SymbolicInterval_Mask, output::AbstractPolytope)
-	return 0
+# This overwrites check_inclusion in utils/reachability.jl
+function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope)
+	n_output = dim(output)
+	n_input = dim(reach.interval)
+	upper = fill(0.0, n_output)
+	lower = fill(0.0, n_output)
+
+	for i in 1:n_output
+		lower[i] = lower_bound(reach.Low[i, :], reach.interval)
+		upper[i] = upper_bound(reach.Low[i, :], reach.interval)
+	end
+	reachable = high_dim_interval(lower, upper)
+	println(reachable)
+
+	if issubset(reachable, output)
+		return Result(1, []) # true
+	elseif is_intersection_empty(reachable, output)
+		return Result(-1, []) # false
+	else
+		return Result(0, []) # undertermined
+	end
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicInterval_Mask, Hyperrectangle})
+function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
 	return forward_act(forward_linear(input, layer.weights, layer.bias))
 end
 
@@ -73,11 +103,11 @@ end
 function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
 	sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
 	mask = GradientMask[]
-	return SymbolicInterval_Mask(sym, mask)
+	return SymbolicIntervalMask(sym, mask)
 end
 
 # Symbolic forward_linear
-function forward_linear(input::SymbolicInterval_Mask, W::Matrix{Float64}, b::Vector{Float64})
+function forward_linear(input::SymbolicIntervalMask, W::Matrix{Float64}, b::Vector{Float64})
 	n_output, n_input = size(W)
 	println(input.sym.Low)
 	n_symbol = size(input.sym.Low, 2) - 1
@@ -99,7 +129,7 @@ function forward_linear(input::SymbolicInterval_Mask, W::Matrix{Float64}, b::Vec
 	end
 	sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
 	mask = input.mask
-	return SymbolicInterval_Mask(sym, mask)
+	return SymbolicIntervalMask(sym, mask)
 end
 
 # Concrete forward_act
@@ -124,7 +154,7 @@ function forward_act(input::Hyperrectangle)
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicInterval_Mask)
+function forward_act(input::SymbolicIntervalMask)
 	n_output, n_input = size(input.sym.Up)
 
 	input_upper = high(input.sym.interval)
@@ -159,30 +189,54 @@ function forward_act(input::SymbolicInterval_Mask)
 	end
 	sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
 	mask = vcat(input.mask, GradientMask(mask_lower, mask_upper))
-	return SymbolicInterval_Mask(sym, mask)
+	return SymbolicIntervalMask(sym, mask)
 end
 
-# To be implemented
+# To be tested
 function back_prop(nnet::Network, R::Vector{GradientMask})
 	n_layer = length(nnet.layers)
 	# For now, assume the last layer is identity
 	Up = eye(length(nnet.layers[n_layer].bias))
 	Low = eye(length(nnet.layers[n_layer].bias))
+	output_Up = zeros(length(nnet.layers[n_layer].bias))
+	output_Low = zeros(length(nnet.layers[n_layer].bias))
 
 	for k in n_layer:-1:1
 		# back through activation function using the gradient mask
 		for i in 1:length(nnet.layers[k].bias)
-			output_Up[i, :] = ifelse(R[k].upper[i], Up[i, :], zeros(1, size(Up,2)))
-			output_Low[i, :] = ifelse(R[k].lower[i], Low[i, :], zeros(1, size(Low,2)))	
+			output_Up[i, :] = ifelse(R[k].upper[i] > 0, Up[i, :], zeros(1, size(Up,2)))
+			output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))	
 		end
-		output = SymbolicInterval(output_Low, output_Up, Hyperrectangle())
+		println(output_Low, output_Up)
 		# back through weight matrix
-		output = forward_linear(output, inv(nnet.layers[k].weights), zeros(1, length(nnet.layers[n_layer].bias)))
-		Up = output.Up[:, :]
-		Low = output.Low[:, :]
+		(Low, Up) = backward_linear(output_Low, output_Up, pinv(nnet.layers[k].weights))
 	end
 
 	return output
+end
+
+# This function is similar to forward_linear
+function backward_linear(Low::Matrix{Float64}, Up::Matrix{Float64}, W::Matrix{Float64})
+	n_output, n_input = size(W)
+	println(Low)
+	n_symbol = size(Low, 2) - 1
+	println(n_output, " ", n_input, " ", n_symbol)
+
+	output_Low = zeros(n_output, n_symbol + 1)
+	output_Up = zeros(n_output, n_symbol + 1)
+	for k in 1:n_symbol + 1
+		for j in 1:n_output
+			for i in 1:n_input
+				output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * Up[i, k], W[j, i] * Low[i, k])
+				output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * Low[i, k], W[j, i] * Up[i, k])
+			end
+			if k > n_symbol
+				output_Up[j, k] += b[j]
+				output_Low[j, k] += b[j]
+			end
+		end
+	end
+	return (output_Low, output_Up)
 end
 
 # Return the splited intervals
