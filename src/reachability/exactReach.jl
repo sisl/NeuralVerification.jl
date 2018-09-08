@@ -1,11 +1,8 @@
-include("utils/reachability.jl")
-
 import LazySets.HPolytope # Constraints representation
 import LazySets.LinearConstraint
 import LazySets.is_intersection_empty
 
-struct ExactReach <: Reachability
-end
+struct ExactReach end
 
 function solve(solver::ExactReach, problem::Problem)
 	reach = forward_network(solver, problem.network, problem.input)

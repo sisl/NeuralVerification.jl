@@ -1,9 +1,7 @@
-include("utils/reachability.jl")
-
 import LazySets.Hyperrectangle
 import LazySets.EmptySet
 
-struct ReluVal <: Reachability 
+struct ReluVal 
 	max_iter::Int64
 end
 

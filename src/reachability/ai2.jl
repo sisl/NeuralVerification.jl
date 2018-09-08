@@ -1,5 +1,3 @@
-include("utils/reachability.jl")
-
 import LazySets.Zonotope
 import LazySets.EmptySet
 
@@ -22,7 +20,7 @@ struct Greater <: Case
 	j::Int64
 end
 
-struct Ai2 <: Reachability end
+struct Ai2 end
 
 function solve(solver::Ai2, problem::Problem)
 	reach = forward_network(solver, problem.network, problem.input)

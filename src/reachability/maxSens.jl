@@ -1,8 +1,6 @@
-include("utils/reachability.jl")
-
 import LazySets.Hyperrectangle
 
-struct MaxSens <: Reachability
+struct MaxSens
     resolution::Float64
 end
 
