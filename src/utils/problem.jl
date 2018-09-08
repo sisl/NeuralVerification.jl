@@ -2,8 +2,6 @@ using JuMP
 using LazySets
 include("network.jl")
 
-abstract type Problem end
-
 # struct Constraints
 # 	A::Matrix{Float64}
 # 	b::Vector{Float64}
@@ -11,19 +9,7 @@ abstract type Problem end
 # 	lower::Vector{Float64}
 # end
 
-struct AdversarialProblem <: Problem
-	network::Network
-	input::Vector{Float64}
-	targets::Vector{Int64}
-end
-
-struct FeasibilityProblem{P<:AbstractPolytope} <: Problem
-	network::Network
-	input::P
-	output::P
-end
-
-struct ReachabilityProblem{P<:AbstractPolytope} <: Problem
+struct Problem{P<:AbstractPolytope}
 	network::Network
 	input::P
 	output::P
