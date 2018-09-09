@@ -16,9 +16,11 @@ struct Problem{P<:AbstractPolytope}
 end
 
 struct Result
-	status::Int64
+	status::Symbol
 	counter_example::Vector{Float64}
 end
+
+Result(x) = Result(x, [])
 
 #=
 Add constraints from Polytope to a variable

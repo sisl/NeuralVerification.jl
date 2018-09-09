@@ -11,6 +11,8 @@ struct SymbolicInterval
 	interval::Hyperrectangle
 end
 
+SymbolicInterval(x, y) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
+
 # Gradient mask for a single layer
 struct GradientMask
 	lower::Vector{Int64}
@@ -27,8 +29,7 @@ function solve(solver::ReluVal, problem::Problem)
 	# Compute the reachable set without splitting the interval
 	reach = forward_network(solver, problem.network, problem.input)
 	result = check_inclusion(reach.sym, problem.output)
-	println(reach, result)
-	if norm(result.status) > 0
+	if result.status != :Undertermined
 		return result
 	end
 
@@ -38,7 +39,7 @@ function solve(solver::ReluVal, problem::Problem)
 	reach_list = SymbolicIntervalMask[reach]
 	for i in 2:solver.max_iter
 		if length(reach_list) == 0
-			return Result(1, [])
+			return Result(:True)
 		end
 		reach = reach_list[1]
 		deleteat!(reach_list, 1)
@@ -47,14 +48,14 @@ function solve(solver::ReluVal, problem::Problem)
 		for interval in intervals
 			reach = forward_network(solver, problem.network, interval)
 			result = check_inclusion(reach.sym, problem.output)
-			if result.status < 0 # If counter_example found
-				return result.status
-			elseif result.status == 0 # If undertermined, need to split
+			if result.status == :False # If counter_example found
+				return result
+			elseif result.status == :Undertermined # If undertermined, need to split
 				reach_list = vcat(reach_list, reach)
 			end
 		end
 	end
-    return Result(0, []) # undetermined
+    return Result(:Undertermined) # undetermined
 end
 
 # This overwrites check_inclusion in utils/reachability.jl
@@ -69,14 +70,13 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope)
 		upper[i] = upper_bound(reach.Low[i, :], reach.interval)
 	end
 	reachable = high_dim_interval(lower, upper)
-	println(reachable)
 
 	if issubset(reachable, output)
-		return Result(1, []) # true
+		return Result(:True)
 	elseif is_intersection_empty(reachable, output)
-		return Result(-1, []) # false
+		return Result(:False)
 	else
-		return Result(0, []) # undertermined
+		return Result(:Undertermined)
 	end
 end
 
@@ -107,9 +107,7 @@ end
 # Symbolic forward_linear
 function forward_linear(input::SymbolicIntervalMask, W::Matrix{Float64}, b::Vector{Float64})
 	n_output, n_input = size(W)
-	println(input.sym.Low)
 	n_symbol = size(input.sym.Low, 2) - 1
-	println(n_output, " ", n_input, " ", n_symbol)
 
 	output_Low = zeros(n_output, n_symbol + 1)
 	output_Up = zeros(n_output, n_symbol + 1)
@@ -193,32 +191,32 @@ end
 # To be tested
 function back_prop(nnet::Network, R::Vector{GradientMask})
 	n_layer = length(nnet.layers)
+	n_output = length(nnet.layers[n_layer].bias)
 	# For now, assume the last layer is identity
-	Up = eye(length(nnet.layers[n_layer].bias))
-	Low = eye(length(nnet.layers[n_layer].bias))
-	output_Up = zeros(length(nnet.layers[n_layer].bias))
-	output_Low = zeros(length(nnet.layers[n_layer].bias))
+	Up = eye(n_output)
+	Low = eye(n_output)
+
 
 	for k in n_layer:-1:1
 		# back through activation function using the gradient mask
-		for i in 1:length(nnet.layers[k].bias)
+		n_node = length(nnet.layers[k].bias)
+		output_Up = zeros(n_node, n_output)
+		output_Low = zeros(n_node, n_output)
+		for i in 1:n_node
 			output_Up[i, :] = ifelse(R[k].upper[i] > 0, Up[i, :], zeros(1, size(Up,2)))
 			output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))	
 		end
-		println(output_Low, output_Up)
 		# back through weight matrix
 		(Low, Up) = backward_linear(output_Low, output_Up, pinv(nnet.layers[k].weights))
 	end
 
-	return output
+	return SymbolicInterval(Low, Up)
 end
 
 # This function is similar to forward_linear
 function backward_linear(Low::Matrix{Float64}, Up::Matrix{Float64}, W::Matrix{Float64})
 	n_output, n_input = size(W)
-	println(Low)
 	n_symbol = size(Low, 2) - 1
-	println(n_output, " ", n_input, " ", n_symbol)
 
 	output_Low = zeros(n_output, n_symbol + 1)
 	output_Up = zeros(n_output, n_symbol + 1)
@@ -227,10 +225,6 @@ function backward_linear(Low::Matrix{Float64}, Up::Matrix{Float64}, W::Matrix{Fl
 			for i in 1:n_input
 				output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * Up[i, k], W[j, i] * Low[i, k])
 				output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * Low[i, k], W[j, i] * Up[i, k])
-			end
-			if k > n_symbol
-				output_Up[j, k] += b[j]
-				output_Low[j, k] += b[j]
 			end
 		end
 	end
@@ -243,7 +237,7 @@ function split_input(nnet::Network, input::Hyperrectangle, g::SymbolicInterval)
 	feature = 0
 	r = input.radius .* 2
 	for i in 1:dim(input)
-		smear = sum(ifelse(g.Up[i, j] - g.Low[i, j], g.Up[i, j] * r[i], -g.Low[i, j] * r[i]) for j in 1:size(g.Up, 2))
+		smear = sum(ifelse(g.Up[i, j] - g.Low[i, j] > 0, g.Up[i, j] * r[i], -g.Low[i, j] * r[i]) for j in 1:size(g.Up, 2))
 		if smear > largest_smear
 			largest_smear = smear
 			feature = i
