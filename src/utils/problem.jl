@@ -3,21 +3,21 @@ using LazySets
 include("network.jl")
 
 # struct Constraints
-# 	A::Matrix{Float64}
-# 	b::Vector{Float64}
-# 	upper::Vector{Float64}
-# 	lower::Vector{Float64}
+#   A::Matrix{Float64}
+#   b::Vector{Float64}
+#   upper::Vector{Float64}
+#   lower::Vector{Float64}
 # end
 
 struct Problem{P<:AbstractPolytope}
-	network::Network
-	input::P
-	output::P
+    network::Network
+    input::P
+    output::P
 end
 
 struct Result
-	status::Symbol
-	counter_example::Vector{Float64}
+    status::Symbol
+    counter_example::Vector{Float64}
 end
 
 Result(x) = Result(x, [])
