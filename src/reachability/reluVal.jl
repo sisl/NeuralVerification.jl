@@ -3,6 +3,7 @@ import LazySets.EmptySet
 
 struct ReluVal 
     max_iter::Int64
+    tree_search::Symbol
 end
 
 struct SymbolicInterval
@@ -34,20 +35,25 @@ function solve(solver::ReluVal, problem::Problem)
     end
 
     # If undertermined, split the interval
-    # Bisection tree. Unsure how to explore.
-    # Let's use BFS for now
+    # Bisection tree. Defult DFS.
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
         if length(reach_list) == 0
             return Result(:True)
         end
-        reach = reach_list[1]
-        deleteat!(reach_list, 1)
+        if solver.tree_search == :BFS
+            reach = reach_list[1]
+            deleteat!(reach_list, 1)            
+        else
+            n = length(reach_list)
+            reach = reach_list[n]
+            deleteat!(reach_list, n)
+        end
         gradient = back_prop(problem.network, reach.mask)
         intervals = split_input(problem.network, reach.sym.interval, gradient)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
-            result = check_inclusion(reach.sym, problem.output)
+            result = check_inclusion(reach.sym, problem.output, problem.network)
             if result.status == :False # If counter_example found
                 return result
             elseif result.status == :Undertermined # If undertermined, need to split
@@ -59,7 +65,7 @@ function solve(solver::ReluVal, problem::Problem)
 end
 
 # This overwrites check_inclusion in utils/reachability.jl
-function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope)
+function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
     n_output = dim(output)
     n_input = dim(reach.interval)
     upper = fill(0.0, n_output)
@@ -73,11 +79,17 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope)
 
     if issubset(reachable, output)
         return Result(:True)
-    elseif is_intersection_empty(reachable, output)
-        return Result(:False)
-    else
-        return Result(:Undertermined)
     end
+    if is_intersection_empty(reachable, output)
+        return Result(:False)
+    end
+    # Sample the middle point
+    middle_point = (high(reach.interval) + low(reach.interval))./2
+    if ~∈(compute_output(nnet, middle_point), output)
+        return Result(:False, middle_point)
+    end
+
+    return Result(:Undertermined)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
