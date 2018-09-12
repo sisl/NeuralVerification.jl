@@ -6,13 +6,16 @@ struct ReluVal
     tree_search::Symbol
 end
 
+ReluVal() = ReluVal(10, :DFS)
+ReluVal(x::Int64) = ReluVal(x, :DFS)
+
 struct SymbolicInterval
     Low::Matrix{Float64}
     Up::Matrix{Float64}
     interval::Hyperrectangle
 end
 
-SymbolicInterval(x, y) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
+SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
 # Gradient mask for a single layer
 struct GradientMask
@@ -29,7 +32,7 @@ end
 function solve(solver::ReluVal, problem::Problem)
     # Compute the reachable set without splitting the interval
     reach = forward_network(solver, problem.network, problem.input)
-    result = check_inclusion(reach.sym, problem.output)
+    result = check_inclusion(reach.sym, problem.output, problem.network)
     if result.status != :Undertermined
         return result
     end
