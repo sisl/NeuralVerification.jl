@@ -1,6 +1,7 @@
 
-struct ReverifySolver <: Solver
+struct ReverifySolver{O<:AbstractMathProgSolver} <: Solver
 	m::Float64
+    optimizer::O
 end
 
 #=
@@ -63,10 +64,10 @@ end
 optional argument [optimizer] is where the desired JuMP solver goes.
 NOTE: extendin JuMP.solve ...good idea?
 =#
-function JuMP.solve(solver::ReverifySolver, problem::FeasibilityProblem, optimizer = GLPKSolverMIP())
-    model = JuMP.Model(solver = optimizer)
+function solve(solver::ReverifySolver, problem::FeasibilityProblem)
+    model = JuMP.Model(solver = solver.optimizer)
     encode(solver, model, problem)
-    status = solve(model)
+    status = JuMP.solve(model)
     return status
 end
 
