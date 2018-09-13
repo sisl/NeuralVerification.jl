@@ -1,5 +1,6 @@
 
 using NeuralVerification
+using Base.Test
 
 at = @__DIR__
 
