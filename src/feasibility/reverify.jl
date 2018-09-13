@@ -5,30 +5,35 @@ end
 
 Reverify(x) = Reverify(x, 1000.0)
 
-function solve(solver::Reverify, problem::Problem)
-    model = JuMP.Model(solver = solver.optimizer)
-    encode(solver, model, problem)
-    status = JuMP.solve(model)
-    if status == :Optimal
-        return Result(:False)
+#=
+Encode problem as an MIP following Reverify algorithm
+=#
+function encode(solver::Reverify, model::Model, problem::Problem)
+    neurons, deltas = init_nnet_vars(model, problem.network)
+    add_io_constraints(model, problem, neurons)
+    for (i, layer) in enumerate(problem.network.layers)
+        lbounds = layer.weights * neurons[i] + layer.bias
+        dy = solver.m*(deltas[i+1])  # TODO rename variable
+        for j in 1:length(layer.bias)
+            ubounds = lbounds + dy[j]
+            @constraints(model, begin
+                                    neurons[i+1][j] .>= lbounds
+                                    neurons[i+1][j] .<= ubounds
+                                    neurons[i+1][j]  >= 0.0
+                                    neurons[i+1][j]  <= solver.m-dy[j]
+                                end)
+        end
     end
-    if status == :Infeasible
-        # To do: return adversarial case
-        return Result(:True)
-    end
-    return Result(:Undertermined)
 end
 
 #=
 Initialize JuMP variables corresponding to neurons and deltas of network for problem
 =#
 function init_nnet_vars(model::Model, network::Network)
-
     layers = network.layers
     neurons = Vector{Vector{Variable}}(length(layers) + 1) # +1 for input layer
     deltas  = Vector{Vector{Variable}}(length(layers) + 1)
     # input layer is treated differently from other layers
-    # NOTE: this double-counts layers[1].
     input_layer_n = size(first(layers).weights, 2)
     all_layers_n  = [length(l.bias) for l in layers]
     insert!(all_layers_n, 1, input_layer_n)
@@ -40,7 +45,6 @@ function init_nnet_vars(model::Model, network::Network)
 
     return neurons, deltas
 end
-
 
 #=
 Add input/output constraints to model
@@ -56,23 +60,3 @@ function add_io_constraints(model::Model, problem::Problem, neuron_vars::Vector{
     return nothing
 end
 
-#=
-Encode problem as an MIP following Reverify algorithm
-=#
-function encode(solver::Reverify, model::Model, problem::Problem)
-    neurons, deltas = init_nnet_vars(model, problem.network)
-    add_io_constraints(model, problem, neurons)
-    for (i, layer) in enumerate(problem.network.layers)
-        lbounds = layer.weights * neurons[i] + layer.bias
-        dy      = solver.m*(deltas[i+1])  # TODO rename variable
-        for j in 1:length(layer.bias)
-            ubounds = lbounds + dy[j]
-            @constraints(model, begin
-                                    neurons[i+1][j] .>= lbounds
-                                    neurons[i+1][j] .<= ubounds
-                                    neurons[i+1][j]  >= 0.0
-                                    neurons[i+1][j]  <= solver.m-dy[j]
-                                end)
-        end
-    end
-end

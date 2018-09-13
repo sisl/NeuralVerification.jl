@@ -9,10 +9,10 @@ include("network.jl")
 #   lower::Vector{Float64}
 # end
 
-struct Problem{P<:AbstractPolytope}
+struct Problem{P<:AbstractPolytope, Q<:AbstractPolytope}
     network::Network
     input::P
-    output::P
+    output::Q
 end
 
 struct Result
