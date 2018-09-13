@@ -33,7 +33,7 @@ function forward_positive(layer::Layer, input::HPolytope)
 end
 
 function forward_negative(layer::Layer, input::HPolytope)
-    if is_intersection_empty(input, HPolytope(layer.weights, -layer.bias))
+    if HPolytope_intersection_empty(input, HPolytope(layer.weights, -layer.bias))
         return HPolytope[]
     else
         n = length(layer.bias)
@@ -64,7 +64,8 @@ function getP(h::Int64, n::Int64)
 end
 
 # This function is called in forward_negative
-function is_intersection_empty(set_a::HPolytope, set_b::HPolytope)
+# NOTE: renamed function to avoid type piracy with LazySets. TODO: submit this function to them.
+function HPolytope_intersection_empty(set_a::HPolytope, set_b::HPolytope)
     inter = intersect(set_a, set_b)
     return dim(inter) == -1
 end
