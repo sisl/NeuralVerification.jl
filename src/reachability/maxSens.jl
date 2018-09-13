@@ -7,33 +7,31 @@ end
 # This is the main function
 function solve(solver::MaxSens, problem::Problem)
     inputs = partition(problem.input, solver.resolution)
-    outputs = Vector{Hyperrectangle}(length(inputs))
-    for i in 1:length(inputs)
-        outputs[i] = forward_network(solver, problem.network, inputs[i])
-    end
+    f_n(x) = forward_network(solver, problem.network, x)
+    outputs = map(f_n, inputs)
     return check_inclusion(outputs, problem.output)
 end
 
 # This function is called by forward_network
-function forward_layer(solver::MaxSens, layer::Layer, input::Hyperrectangle)
-    gamma = Vector{Float64}(size(layer.weights, 1))
-    for j in 1:size(layer.weights, 1)
-        node = Node(layer.weights[j,:], layer.bias[j], layer.activation)
+function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
+    (W, b, act) = (L.weights, L.bias, L.activation)
+    output = act(W * input.center + b)
+    gamma = Vector{Float64}(size(W, 1))
+    for j in 1:size(W, 1)
+        node = Node(W[j,:], b[j], act)
         gamma[j] = forward_node(solver, node, input)
     end
-    output = layer.activation(layer.weights * input.center + layer.bias)
-
     # Here we do not require the Hyperrectangle to have equal sides
-    output = Hyperrectangle(output, gamma)
-    return output
+    return Hyperrectangle(output, gamma)
 end
 
 function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
-    output = node.w' * input.center + node.b
-    deviation = sum(abs(node.w[i])*input.radius[i] for i in 1:length(input.center))
-    betaMax = output + deviation
-    betaMin = output - deviation
-    return max(abs(node.act(betaMax) - node.act(output)), abs(node.act(betaMin) - node.act(output)))
+    output    = node.w' * input.center + node.b
+    deviation = sum(abs.(node.w) .* input.radius)
+    β    = node.act(output)  # TODO expert suggestion for variable name. beta? β? O? x?
+    βmax = node.act(output + deviation)
+    βmin = node.act(output - deviation)
+    return max(abs(βmax - β), abs(βmin - β))
 end
 
 # This function needs to be improved
