@@ -1,4 +1,4 @@
-# This method only works for half space constraint
+# This method only works for half space output constraint
 # c y >= b
 # Input constraint needs to be a hyperrectangle with uniform radius
 struct ConvDual
