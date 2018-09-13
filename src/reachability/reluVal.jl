@@ -1,7 +1,5 @@
-import LazySets.Hyperrectangle
-import LazySets.EmptySet
 
-struct ReluVal 
+struct ReluVal
     max_iter::Int64
     tree_search::Symbol
 end
@@ -46,7 +44,7 @@ function solve(solver::ReluVal, problem::Problem)
         end
         if solver.tree_search == :BFS
             reach = reach_list[1]
-            deleteat!(reach_list, 1)            
+            deleteat!(reach_list, 1)
         else
             n = length(reach_list)
             reach = reach_list[n]
@@ -78,7 +76,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
         lower[i] = lower_bound(reach.Low[i, :], reach.interval)
         upper[i] = upper_bound(reach.Low[i, :], reach.interval)
     end
-    reachable = high_dim_interval(lower, upper)
+    reachable = Hyperrectangle(low = lower, high = upper)
 
     if issubset(reachable, output)
         return Result(:True)
@@ -108,7 +106,7 @@ function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::V
         output_upper[j] = upper_bound(W[j, :], input) + b[j]
         output_lower[j] = lower_bound(W[j, :], input) + b[j]
     end
-    output = high_dim_interval(output_lower, output_upper)
+    output = Hyperrectangle(low = output_lower, high = output_upper)
     return output
 end
 
@@ -219,7 +217,7 @@ function back_prop(nnet::Network, R::Vector{GradientMask})
         output_Low = zeros(n_node, n_output)
         for i in 1:n_node
             output_Up[i, :] = ifelse(R[k].upper[i] > 0, Up[i, :], zeros(1, size(Up,2)))
-            output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))  
+            output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))
         end
         # back through weight matrix
         (Low, Up) = backward_linear(output_Low, output_Up, pinv(nnet.layers[k].weights))
@@ -261,11 +259,11 @@ function split_input(nnet::Network, input::Hyperrectangle, g::SymbolicInterval)
     input_upper = high(input)
     input_lower = low(input)
     input_upper[feature] = input.center[feature]
-    input_split_left = high_dim_interval(input_lower, input_upper)
+    input_split_left = Hyperrectangle(low = input_lower, high = input_upper)
 
     input_lower[feature] = input.center[feature]
     input_upper[feature] = input.center[feature] + input.radius[feature]
-    input_split_right = high_dim_interval(input_lower, input_upper)
+    input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
     return (input_split_left, input_split_right)
 end
 
@@ -289,9 +287,4 @@ function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
         bound += ifelse(map[i]>0, map[i]*input_lower[i], map[i]*input_upper[i])
     end
     return bound
-end
-
-# Turn lower and upper bounds in high dimension into Hyperrectangle
-function high_dim_interval(lower::Vector{Float64}, upper::Vector{Float64})
-    return Hyperrectangle((upper + lower)./2, (upper - lower)./2)
 end

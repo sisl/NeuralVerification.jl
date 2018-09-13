@@ -50,7 +50,7 @@ function forward_linear(input::Zonotope, W::Matrix{Float64}, b::Vector{Float64})
     return output
 end
 
-function forward_act(act, input::Zonotope) 
+function forward_act(act, input::Zonotope)
     return error("not supported yet")
 end
 
@@ -63,12 +63,12 @@ function forward_act(act::ReLU, input::Zonotope)
             # Positive case
             meet_pos = meet(Pos(i), output[j])
             if dim(meet_pos) > -1
-                append!(zonos, Zonotope[meet_pos])
+                append!(zonos, meet_pos)
             end
             # Negative case
             meet_neg = meet(Neg(i), output[j])
             if dim(meet_neg) > -1
-                append!(zonos, Zonotope[linear_map(getI(dim(input), i), meet_neg)])
+                append!(zonos, linear_map(getI(dim(input), i), meet_neg))
             end
             println(zonos)
             append!(newPoly, simplify(zonos))
@@ -87,16 +87,13 @@ end
 # Combine zonotopes
 function simplify(zonos::Vector{Zonotope})
     flag = fill(true, length(zonos))
-    for i in 1:length(zonos)
-        if flag[i]
-            for j in i+1:length(zonos)
-                if ⊆(zonos[i], zonos[j])
-                    flag[i] = false
-                    break
-                end
-                if ⊆(zonos[j], zonos[i])
-                    flag[j] = false
-                end
+    N = length(zonos)
+    for i in 1:N, j in (i+1):N
+        if flag[i] && flag[j]
+            if issubset(zonos[i], zonos[j])
+                flag[i] = false
+            elseif issubset(zonos[j], zonos[i])
+                flag[j] = false
             end
         end
     end
@@ -104,9 +101,5 @@ function simplify(zonos::Vector{Zonotope})
 end
 
 function getI(n::Int64, id::Int64)
-    vec = Vector{Int64}(n)
-    for i in 1:n
-        vec[i] = ifelse(i == id, 0, 1)
-    end
-    return diagm(vec)
+    return sparse([id], [id], [1], n, n)
 end

@@ -1,7 +1,5 @@
 # General structure for reachability methods
 
-using LazySets
-
 # This function performs layer-by-layer propagation
 # It is called by all solvers under reachability
 function forward_network(solver, nnet::Network, input::AbstractPolytope)

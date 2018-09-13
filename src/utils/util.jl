@@ -1,16 +1,9 @@
-include("problem.jl")
-
-using JuMP
-using MathProgBase
-using GLPKMathProgInterface
-
 #=
 Read in layer from nnet file and return a Layer struct containing its weights/biases
 =#
 function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStream)
      bias = Vector{Float64}(layerSizes[i+1])
      weights = Matrix{Float64}(layerSizes[i+1], layerSizes[i])
-     
      # first read in weights
      for r = 1: layerSizes[i+1]
         line = readline(f)
@@ -22,7 +15,6 @@ function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStrea
             token = record[c]
         end
      end
-
      # now read in bias
      for r = 1: layerSizes[i+1]
         line = readline(f)
@@ -35,8 +27,8 @@ function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStrea
 end
 
 #=
-Read in neural net from file and return Network struct 
-=#  
+Read in neural net from file and return Network struct
+=#
 function read_nnet(fname::String)
     f = open(fname)
     line = readline(f)
@@ -56,7 +48,7 @@ function read_nnet(fname::String)
     # read past additonal information
     for i = 1: 5
         line = readline(f)
-    end 
+    end
 
     # initialize layers
     model = Model(solver=GLPKSolverMIP())
@@ -79,4 +71,19 @@ function compute_output(nnet::Network, input::Vector{Float64})
         curr_value = (layers[i].weights * curr_value) + layers[i].bias
     end
     return curr_value # would another name be better?
+end
+
+#=
+Returns ouput of neuron j in layer i for a given input. NOTE: The was necessary
+for the sampling methods, but now might not be.
+=#
+function compute_output(nnet::Network, input::Vector{Float64}, I, j)
+    layers = nnet.layers
+    @assert 0 <= i <= length(layers)         "number of layers in nnet is $(length(layers)). Got $i for number of layers to compute"
+    @assert 0 <= j <= length(layers[i].bias) "number of neurons in layer is $(length(layers[i].bias)). Got $j for neuron index"
+    curr_value = input
+    for i = 1:I
+        curr_value = (layers[i].weights * curr_value) + layers[i].bias
+    end
+    return curr_value[j]
 end

@@ -53,7 +53,7 @@ to increase neuron coverage
             Randomly pick transformation T2 from T
             Randomly pick parameter P2 for T2
             newImage = ApplyTransforms(image, T1, P1, T2, P2)
-            if covInc(newimage) then
+            if covInc(newimage) then                               # covInc probably stands for coverage increase
                 Tqueue.enqueue(T1)
                 Tqueue.enqueue(T2)
                 UpdateCoverage()
@@ -69,23 +69,25 @@ to increase neuron coverage
 function generate_tests(T::Vector{Tranformation}, I::Vector{Image}, nnet::Network)
     S = deepcopy(I)
     testcases = similar(I, 0)
-    cov_tracker = Set()
+    active = 0
     while !isempty(S)
         img = pop!(S)
         Tqueue = similar(T, 0)
         failed_tries = 0
+        active = neuron_coverage(img, nnet)
         while failed_tries <= MAX_FAILED_TRIES  #reasonable value not mentioned
             T1 = isempty(Tqueue) ? rand(T) : pop!(Tqueue)
             T2 = rand(T)
             set_random_parameter!(T1)
             set_random_parameter!(T2)
-            newimage = apply_transforms(img, T1, T2)          # Should always apply transform to img (or to newImage on future iterations)? Not clear in paper.
-            if coverage_increase(newimage, nnet, cov_tracker) # covInc probably stands for coverage increase (not explained in paper)
-                update_coverage!(newimage, nnet, cov_tracker)
-                push!(testcases, newimage)
+            newimage = apply_transforms(img, T1, T2)
+            new_active = neuron_coverage(newimage, nnet)
+            if new_active > active
+                active = new_active
                 push!(Tqueue, T1)
                 push!(Tqueue, T2)
-                push!(S, newImage)
+                push!(S, newimage)
+                push!(testcases, newimage)
             else
                 failed_tries += 1
             end
@@ -94,39 +96,18 @@ function generate_tests(T::Vector{Tranformation}, I::Vector{Image}, nnet::Networ
     return testcases
 end
 
-coverage_increase(image, DNN, cov_tracker)  = true or false
-update_coverage!(image, DNN, cov_tracker)   = should only update
-coverage_increase!(image, DNN, cov_tracker) = should return true/false as well as update. One pass is more efficient.
-set_random_parameter!(T::Transformation)    = probobaly have to create a transformation type. Best case scenario can use transformation operators from ImageTransformation.jl or some other package
-
-
-function coverage_increase(img::AbstractArray, nnet::Network, cov_tracker::Set)
-
-    return length(update_coverage(img, nnet, cov_tracker)) > length(cov_tracker)
-end
-
-function update_coverage(img, nnet, cov_tracker)
-    new_cov_tracker = similar(cov_tracker)
-    update_coverage!(img, nnet, new_cov_tracker)
-    return new_cov_tracker
-end
-
-# might honestly be more efficient to keep an array of true/false
-function update_coverage!(img, nnet, cov_tracker)
-    for i in 1:length(nnet.layers)
-        for j in 1:length(layers[i].bias)
-            neuron_index = blah
-            n = get_neuron(nnet, neuron_index)
-            if out(n, img) > ACTIVATION_THRESHHOLD # 0.2 in the paper
-                push(cov_tracker, neuron_index)
-            elseif neuron_index ∈ cov_tracker
-                pop!(cov_tracker, neuron_index)
-            end
-        end
+function neuron_coverage(img, nnet)
+    isactivated(x) = x > ACTIVATION_THRESHHOLD  # 0.2 in the paper
+    active = 0
+    curr_value = img
+    layers = nnet.layers
+    for i in 1:length(layers)
+        curr_value = (layers[i].weights * curr_value) + layers[i].bias # specifically for fully connected DNN
+        active += count(isactivated, curr_value)
     end
+    return activated
 end
-# requires implementing `out`, which works like compute_output(nnet, input, i, j)
-# for the jth neuron in ith layer. Or compute_output(nnet, input, k) where k is the linear index
+
 
 # CoordinateTransformations (which will probably be necessary) exports Transformation
 abstract type Transformation end
