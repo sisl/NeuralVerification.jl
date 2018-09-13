@@ -8,6 +8,7 @@ function solve(solver::ConvDual, problem::Problem)
     check_compactability(solver, problem)
     J = dual_cost(solver, problem)
     # Check if the lower bound satisfies the constraint
+    # println("Dual cost: ", J)
     return ifelse(J[1] >= 0.0, Result(:True), Result(:Undetermined))
 end
 
@@ -27,8 +28,12 @@ function dual_cost(solver::ConvDual, problem::Problem)
     n_layer = length(problem.network.layers)
     v, J = tosimplehrep(problem.output)
 
+    # println("lower bound: ", l)
+    # println("upper bound: ", u)
+    # println("activation pattern: ", act_pattern)
+
     for i in n_layer:-1:1
-        J += - v'*problem.network.layers[i].bias
+        J -= v'*problem.network.layers[i].bias
         v = problem.network.layers[i].weights'*v
         if i > 1
             for j in 1:length(v)
@@ -39,9 +44,7 @@ function dual_cost(solver::ConvDual, problem::Problem)
             J += sum(ifelse(act_pattern[i-1][j] == 0 && v[j] > 0, l[i-1][j] * v[j], 0) for j in 1:length(v))
         end
     end
-
-    J += - problem.input.center * v - problem.input.radius[1] * sum(abs.(v))
-
+    J -= problem.input.center * v + problem.input.radius[1] * sum(abs.(v))
     return J
 end
 
@@ -55,15 +58,15 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
     gamma = Vector{Vector{Float64}}(n_layer)
     mu = Vector{Vector{Vector{Float64}}}(n_layer)
 
-    v1 = -nnet.layers[1].weights'
-    gamma[1] = -nnet.layers[1].bias
+    v1 = nnet.layers[1].weights'
+    gamma[1] = nnet.layers[1].bias
 
     # Bounds for the first layer
     output = nnet.layers[1].weights * input + nnet.layers[1].bias
     n_output = length(output)
     l[1] = fill(0.0, n_output)
     u[1] = fill(0.0, n_output)
-    for i in 1:length(n_output)
+    for i in 1:n_output
         l[1][i] = output[i] - epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
         u[1][i] = output[i] + epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
     end
@@ -72,13 +75,14 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
         act_pattern[i-1], D = get_activation(l[i-1], u[i-1])
 
         # Initialize new terms
-        gamma[i] = -nnet.layers[i].bias
+        gamma[i] = nnet.layers[i].bias
 
-        n_output = length(act_pattern[i-1])
-        mu[i] = Vector{Vector{Float64}}(n_output)
-        for j in 1:n_output
-            #mu[i][j] = ifelse(act_pattern[j] == 0, nnet.layers[i].weights * D[:, j], zeros(n_output))
-            mu[i][j] = nnet.layers[i].weights * D[:, j]
+        n_input = length(act_pattern[i-1])
+        n_output = length(nnet.layers[i].bias)
+
+        mu[i] = Vector{Vector{Float64}}(n_input)
+        for j in 1:n_input
+            mu[i][j] = ifelse(act_pattern[i-1][j] == 0, nnet.layers[i].weights * D[:, j], zeros(n_output))
         end
 
         # Propagate existiing terms
@@ -93,11 +97,11 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
         v1 = nnet.layers[i].weights * D * v1'
         v1 = v1'
 
-        # Compute bounds
-        n_output = length(nnet.layers[i].bias)
+        # Compute bounds        
         l[i] = fill(0.0, n_output)
         u[i] = fill(0.0, n_output)
         phi = v1' * input + sum(gamma[j] for j in 1:i)
+
         for ii in 1:n_output
             neg = fill(0.0, i-1)
             pos = fill(0.0, i-1)
@@ -123,7 +127,7 @@ function get_activation(l::Vector{Float64}, u::Vector{Float64})
     for i in 1:n
         if u[i] <= 0
             act_pattern[i] = -1
-            D[i, i] = 1.0
+            D[i, i] = 0.0
         elseif l[i] >= 0
             act_pattern[i] = 1
             D[i, i] = 1.0
