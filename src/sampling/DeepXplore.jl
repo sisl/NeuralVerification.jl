@@ -79,14 +79,14 @@ function generate_tests(seed_set::Inputs,
             obj1 = compute_obj1(x, d, c, dnns, λ1)
             obj2 = compute_obj2(x, dnns, cov_tracker)
             obj = obj1 + λ2*obj2
-            grad = δobj / δx                # compute gradient. What is δx for the first gradient? s?
+            grad = δobj / δx                # compute gradient. What are δobj and δx for the first gradient? s?
             grad = domain_constraints(grad) # domain specific constraints (such as 0-255 for pixels, etc.)
-            x = x + s*grad
+            x = x + s*grad                  # shouldn't domain constraints be applied after this step?
 
             prediction = predict(d, x)
             diff_found = false
             for dnn in rest
-                if predict(dnn, x) != prediction
+                if predict(dnn, x) != prediction   # can maybe make this general by looking at a difference between the two predictions.
                     push!(gen_test, x)
                     update!(cov_tracker, d, x)
                     diff_found = true
