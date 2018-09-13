@@ -1,44 +1,33 @@
 
-# for Reverify
-using JuMP
-using MathProgBase.SolverInterface
-using GLPKMathProgInterface
+using NeuralVerification
 
-# for reachability solvers
-using LazySets
-using Polyhedra
-using CDDLib
+# TODO can we unify all of the reachability test conditions?
 
-# TODO create include heirarchy in a NeuralVerification.jl file with exports etc.
-include("../solver/solver.jl")
-include("../src/utils/activation.jl")
-include("../src/utils/problem.jl")
-include("../src/utils/util.jl")
+at = @__DIR__
 
-# TODO include all the solvers in the include heirarchy as well. Potentially as their own submodules
-include("../src/feasibility/reverify.jl")
-small_nnet = read_nnet("../examples/networks/small_nnet.txt")
+small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
 A = Matrix{Float64}(2,1)
-A[1,1] = 1
-A[2,1] = -1
+A[1] = 1
+A[2] = -1
+
+#reverify
 
 inputSet = HPolytope(A, [1.0,1.0])
 outputSet = HPolytope(A,[1.0,1.0])
 problem = Problem(small_nnet, inputSet, outputSet)
 solver = Reverify(GLPKSolverMIP(), 1000.0)
-solve(solver, problem)
+@test solve(solver, problem).status == :True  # True means infeasible (NOTE: is that intuitive?)
 
-
-include("../src/reachability/maxSens.jl")
+#maxSens
 
 inputSet = HPolytope(A, [1.0,1.0])
 outputSet = HPolytope(A,[100.0,1.0])
 resolution = 0.3
 problem = Problem(small_nnet, inputSet, outputSet)
 solver = MaxSens(resolution)
-solve(solver, problem)
+@test solve(solver, problem) == true
 
-include("../src/reachability/exactReach.jl")
+#exactReach
 
 # inputSet = Constraints(eye(1),[1.0],[1.0],[-1.0])        => [1, -1]x <= [0, 2]
 # outputSet = Constraints(zeros(1,1),[0],[100.0],[-1.0])   => [0, -0]x <= [100, 1] NOTE is this correct?
@@ -47,10 +36,10 @@ A2 = zeros(2, 1)
 outputSet = HPolytope(A2, [100.0, 1.0])
 problem = Problem(small_nnet, inputSet, outputSet)
 solver = ExactReach()
-solve(solver, problem)
+@test solve(solver, problem) == true
 
 
-include("../src/reachability/reluVal.jl")
+#reluVal
 
 solver = ReluVal(2)
 inputSet = high_dim_interval([-1.0],[1.0])
