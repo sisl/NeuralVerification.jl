@@ -1,10 +1,20 @@
-struct Reverify{O<:AbstractMathProgSolver} <: Solver
+struct Reverify{O<:AbstractMathProgSolver} <: Feasibility
 	optimizer::O
 	m::Float64 # The big M in the linearization
 end
 
 Reverify(x) = Reverify(x, 1000.0)
 
+function interpret_result(solver::Reverify, status)
+    if status == :Optimal
+        # To do: return adversarial case
+        return Result(:False)
+    end
+    if status == :Infeasible
+        return Result(:True)
+    end
+    return Result(:Undertermined)
+end
 #=
 Encode problem as an MIP following Reverify algorithm
 =#
