@@ -1,7 +1,5 @@
-import LazySets.Hyperrectangle
-import LazySets.EmptySet
 
-struct ReluVal 
+struct ReluVal
     max_iter::Int64
     tree_search::Symbol
 end
@@ -46,7 +44,7 @@ function solve(solver::ReluVal, problem::Problem)
         end
         if solver.tree_search == :BFS
             reach = reach_list[1]
-            deleteat!(reach_list, 1)            
+            deleteat!(reach_list, 1)
         else
             n = length(reach_list)
             reach = reach_list[n]
@@ -219,7 +217,7 @@ function back_prop(nnet::Network, R::Vector{GradientMask})
         output_Low = zeros(n_node, n_output)
         for i in 1:n_node
             output_Up[i, :] = ifelse(R[k].upper[i] > 0, Up[i, :], zeros(1, size(Up,2)))
-            output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))  
+            output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))
         end
         # back through weight matrix
         (Low, Up) = backward_linear(output_Low, output_Up, pinv(nnet.layers[k].weights))

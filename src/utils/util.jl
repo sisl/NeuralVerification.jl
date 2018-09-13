@@ -1,9 +1,3 @@
-include("problem.jl")
-
-using JuMP
-using MathProgBase
-using GLPKMathProgInterface
-
 #=
 Read in layer from nnet file and return a Layer struct containing its weights/biases
 =#

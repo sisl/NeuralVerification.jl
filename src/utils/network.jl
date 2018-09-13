@@ -1,4 +1,3 @@
-include("activation.jl")
 
 struct Node
     w::Vector{Float64}

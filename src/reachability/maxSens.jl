@@ -1,4 +1,3 @@
-import LazySets.Hyperrectangle
 
 struct MaxSens
     resolution::Float64

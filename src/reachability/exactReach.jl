@@ -1,6 +1,3 @@
-import LazySets.HPolytope # Constraints representation
-import LazySets.LinearConstraint
-import LazySets.is_intersection_empty
 
 struct ExactReach end
 

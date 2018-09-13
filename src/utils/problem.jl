@@ -1,6 +1,3 @@
-using JuMP
-using LazySets
-include("network.jl")
 
 # struct Constraints
 #   A::Matrix{Float64}
