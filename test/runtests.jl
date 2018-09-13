@@ -42,7 +42,7 @@ solver = ExactReach()
 #reluVal
 
 solver = ReluVal(2)
-inputSet = high_dim_interval([-1.0],[1.0])
-outputSet = high_dim_interval([-1.0],[50.0])
+inputSet = Hyperrectangle(low = [-1.0], high = [1.0])
+outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
 problem = Problem(small_nnet, inputSet, outputSet)
 solve(solver, problem)
