@@ -1,8 +1,6 @@
 
 using NeuralVerification
 
-# TODO can we unify all of the reachability test conditions?
-
 at = @__DIR__
 
 small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
@@ -10,39 +8,37 @@ A = Matrix{Float64}(2,1)
 A[1] = 1
 A[2] = -1
 
-#reverify
+# TODO can we unify all of the reachability test conditions?
+### reverify
+inputSet  = HPolytope(A, [1.0,1.0])
+outputSet = HPolytope(A, [1.0,1.0])
+problem_reverify = Problem(small_nnet, inputSet, outputSet)
+solver_reverify = Reverify(GLPKSolverMIP(), 1000.0)
 
-inputSet = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A,[1.0,1.0])
-problem = Problem(small_nnet, inputSet, outputSet)
-solver = Reverify(GLPKSolverMIP(), 1000.0)
-@test solve(solver, problem).status == :True  # True means infeasible (NOTE: is that intuitive?)
-
-#maxSens
-
-inputSet = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A,[100.0,1.0])
+### maxSens
+inputSet  = HPolytope(A, [1.0,1.0])
+outputSet = HPolytope(A, [100.0,1.0])
 resolution = 0.3
-problem = Problem(small_nnet, inputSet, outputSet)
-solver = MaxSens(resolution)
-@test solve(solver, problem) == true
+problem_maxSens = Problem(small_nnet, inputSet, outputSet)
+solver_maxSens = MaxSens(resolution)
 
-#exactReach
-
+### exactReach
 # inputSet = Constraints(eye(1),[1.0],[1.0],[-1.0])        => [1, -1]x <= [0, 2]
 # outputSet = Constraints(zeros(1,1),[0],[100.0],[-1.0])   => [0, -0]x <= [100, 1] NOTE is this correct?
-inputSet = HPolytope(A, [0.0, 2.0])
 A2 = zeros(2, 1)
+inputSet  = HPolytope(A,  [0.0, 2.0])
 outputSet = HPolytope(A2, [100.0, 1.0])
-problem = Problem(small_nnet, inputSet, outputSet)
-solver = ExactReach()
-@test solve(solver, problem) == true
-
+problem_exactReach = Problem(small_nnet, inputSet, outputSet)
+solver_exactReach = ExactReach()
 
 #reluVal
-
-solver = ReluVal(2)
-inputSet = Hyperrectangle(low = [-1.0], high = [1.0])
+inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
 outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
-problem = Problem(small_nnet, inputSet, outputSet)
-solve(solver, problem)
+problem_reluVal = Problem(small_nnet, inputSet, outputSet)
+solver_reluVal = ReluVal(2)
+
+
+@test solve(solver_reverify,   problem_reverify).status == :True  # True means infeasible (NOTE: is that intuitive?)
+@test solve(solver_maxSens,    problem_maxSens)         == true
+@test solve(solver_exactReach, problem_exactReach)      == true
+@test solve(solver_reluVal,    problem_reluVal).status  == :False
