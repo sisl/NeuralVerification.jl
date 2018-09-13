@@ -1,4 +1,4 @@
-struct Reverify{O<:AbstractMathProgSolver} <: Solver
+struct Reverify{O<:AbstractMathProgSolver} <: Feasibility
 	optimizer::O
 	m::Float64 # The big M in the linearization
 end
