@@ -5,46 +5,42 @@ struct ConvDual
 end
 
 function solve(solver::ConvDual, problem::Problem)
-    check_compactability(solver, problem)
-    J = dual_cost(solver, problem)
+    J = dual_cost(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
-    # println("Dual cost: ", J)
-    return ifelse(J[1] >= 0.0, Result(:True), Result(:Undetermined))
-end
-
-function check_compactability(solver::ConvDual, problem::Problem)
-    # Input should be a hyperrectangle with uniform radius
-    if typeof(problem.input) != LazySets.Hyperrectangle{Float64}
-        return error("Input constraint needs to be a Hyperrectangle.")
+    if J[1] >= 0.0
+        return Result(:True)
     end
-    if typeof(problem.output) != LazySets.HPolytope{Float64}
-        return error("Output constraint needs to be a HPolytope.")
-    end
+    return Result(:Undetermined)
 end
 
 # compute lower bound of the dual problem.
-function dual_cost(solver::ConvDual, problem::Problem)
-    l, u, act_pattern = get_bounds(problem.network, problem.input.center, problem.input.radius[1])
-    n_layer = length(problem.network.layers)
-    v, J = tosimplehrep(problem.output)
+function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
 
-    # println("lower bound: ", l)
-    # println("upper bound: ", u)
-    # println("activation pattern: ", act_pattern)
+    @assert all(x -> x == first(input.radius), input.radius) "input.radius must be uniform. Got $(input.radius)"
 
-    for i in n_layer:-1:1
-        J -= v'*problem.network.layers[i].bias
-        v = problem.network.layers[i].weights'*v
-        if i > 1
-            for j in 1:length(v)
-                if act_pattern[i-1][j] < 1
-                    v[j] = ifelse(act_pattern[i-1][j] == 0, u[i-1][j] * abs(v[j])/(u[i-1][j] - l[i-1][j]), 0)
+    layers = network.layers
+    l, u, act_pattern = get_bounds(network, input.center, input.radius[1])
+    n_layer = length(network.layers)
+    v, J = tosimplehrep(output)
+
+    # Propagate backwards:
+    for i in n_layer:-1:2
+        J -= v'*layers[i].bias
+        v = layers[i].weights'*v  # intentional transposition of the weights?
+        for j in 1:length(v)
+            if act_pattern[i-1][j] < 1
+                v[j] = 0 # by default
+                # relaxed relu condition
+                if act_pattern[i-1][j] == 0
+                    v[j] = u[i-1][j] * abs(v[j])/(u[i-1][j] - l[i-1][j])
+                    if v[j] > 0
+                        J += l[i-1][j] * v[j]
+                    end
                 end
             end
-            J += sum(ifelse(act_pattern[i-1][j] == 0 && v[j] > 0, l[i-1][j] * v[j], 0) for j in 1:length(v))
         end
     end
-    J -= problem.input.center * v + problem.input.radius[1] * sum(abs.(v))
+    J -= input.center * v + input.radius[1] * sum(abs.(v))
     return J
 end
 
@@ -97,7 +93,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
         v1 = nnet.layers[i].weights * D * v1'
         v1 = v1'
 
-        # Compute bounds        
+        # Compute bounds
         l[i] = fill(0.0, n_output)
         u[i] = fill(0.0, n_output)
         phi = v1' * input + sum(gamma[j] for j in 1:i)
@@ -107,8 +103,15 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
             pos = fill(0.0, i-1)
             # Need to debug
             for j in 1:i-1
-                neg[j] = sum(ifelse(act_pattern[i-1][k] == 0 && mu[j+1][k][ii] < 0, l[j][k]*(-mu[j+1][k][ii]), 0) for k in 1:length(mu[j+1]))
-                pos[j] = sum(ifelse(act_pattern[i-1][k] == 0 && mu[j+1][k][ii] > 0, l[j][k]*(mu[j+1][k][ii]), 0) for k in 1:length(mu[j+1]))
+                for k in 1:length(mu[j+1])
+                    if act_pattern[i-1][k] == 0
+                        if mu[j+1][k][ii] < 0
+                            neg[j] = l[j][k] * (-mu[j+1][k][ii])
+                        elseif mu[j+1][k][ii] > 0
+                            pos[j] = l[j][k] * (mu[j+1][k][ii])
+                        end
+                    end
+                end
             end
             l[i][ii] = phi[ii] - epsilon * sum(abs.(v1[:, ii])) + sum(neg)
             u[i][ii] = phi[ii] + epsilon * sum(abs.(v1[:, ii])) - sum(pos)
@@ -122,15 +125,13 @@ end
 
 function get_activation(l::Vector{Float64}, u::Vector{Float64})
     n = length(l)
-    act_pattern = fill(0, n)
-    D = zeros(n, n)
+    act_pattern = zeros(Int, n)
+    D = spdiagm(ones(n))
     for i in 1:n
-        if u[i] <= 0
+        if u[i] <= 0.0
             act_pattern[i] = -1
-            D[i, i] = 0.0
-        elseif l[i] >= 0
+        elseif l[i] >= 0.0
             act_pattern[i] = 1
-            D[i, i] = 1.0
         else
             D[i, i] = u[i] / (u[i] - l[i])
         end
