@@ -19,30 +19,38 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
     @assert all(x -> x == first(input.radius), input.radius) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
-    l, u, act_pattern = get_bounds(network, input.center, input.radius[1])
+    L, U, act_pattern = get_bounds(network, input.center, input.radius[1])
     n_layer = length(network.layers)
     v, J = tosimplehrep(output)
 
-    # Propagate backwards:
     for i in n_layer:-1:2
         J -= v'*layers[i].bias
         v = layers[i].weights'*v  # intentional transposition of the weights?
-        for j in 1:length(v)
-            if act_pattern[i-1][j] < 1
-                v[j] = 0 # by default
-                # relaxed relu condition
-                if act_pattern[i-1][j] == 0
-                    v[j] = u[i-1][j] * abs(v[j])/(u[i-1][j] - l[i-1][j])
-                    if v[j] > 0
-                        J += l[i-1][j] * v[j]
-                    end
-                end
+
+        J += backprop!(v, U[i-1], L[i-1], act_pattern[i-1])
+    end
+
+    J -= input.center * v .+ input.radius[1] * sum(abs.(v))
+    return J
+end
+
+#=
+modifies v and returns J
+=#
+function backprop!(v, u, l, act)
+    J = 0
+    for j in 1:length(v)
+        if act[j] < 1 # means u<0 and/or l>0
+            v[j] = 0 # by default ReLU
+            if act[j] == 0 # means l<0<u
+                v[j] = u[j] * abs(v[j])/(u[j] - l[j]) # relaxed ReLU condition
+                J += (v[j] > 0) * l[j] * v[j]         # is 0 if v[j] < 0
             end
         end
     end
-    J -= input.center * v + input.radius[1] * sum(abs.(v))
     return J
 end
+
 
 # This step is similar to reachability method
 function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
