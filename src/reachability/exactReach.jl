@@ -66,6 +66,12 @@ end
 # This function is called in forward_negative
 # NOTE: renamed function to avoid type piracy with LazySets. TODO: submit this function to them.
 function HPolytope_intersection_empty(set_a::HPolytope, set_b::HPolytope)
-    inter = intersect(set_a, set_b)
-    return dim(inter) == -1
+    aVrep, bVrep = tovrep(set_a), tovrep(set_b)
+    for v in aVrep
+        v in set_b || return false
+    end
+    for v in bVrep
+        v in set_a || return false
+    end
+    return true
 end
