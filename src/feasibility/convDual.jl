@@ -16,21 +16,21 @@ end
 # compute lower bound of the dual problem.
 function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
 
-    @assert all(x -> x == first(input.radius), input.radius) "input.radius must be uniform. Got $(input.radius)"
+    @assert iszero(input.radius - input.radius[1]) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
+    n_layer = length(layers)
     L, U, act_pattern = get_bounds(network, input.center, input.radius[1])
-    n_layer = length(network.layers)
     v, J = tosimplehrep(output)
 
-    for i in n_layer:-1:2
+    for i in n_layer:-1:1
         J -= v'*layers[i].bias
         v = layers[i].weights'*v  # intentional transposition of the weights?
-
-        J += backprop!(v, U[i-1], L[i-1], act_pattern[i-1])
+        if i>1
+            J += backprop!(v, U[i-1], L[i-1], act_pattern[i-1])
+        end
     end
-
-    J -= input.center * v .+ input.radius[1] * sum(abs.(v))
+    J -= input.center * v + input.radius[1] * sum(abs.(v))
     return J
 end
 
@@ -38,14 +38,15 @@ end
 modifies v and returns J
 =#
 function backprop!(v, u, l, act)
-    J = 0
+    J = 0.0
     for j in 1:length(v)
-        if act[j] < 1 # means u<0 and/or l>0
-            v[j] = 0 # by default ReLU
-            if act[j] == 0 # means l<0<u
-                v[j] = u[j] * abs(v[j])/(u[j] - l[j]) # relaxed ReLU condition
-                J += (v[j] > 0) * l[j] * v[j]         # is 0 if v[j] < 0
+        if act[j] == 0 # means l<0<u
+            v[j] = u[j] * abs(v[j])/(u[j] - l[j]) # relaxed ReLU condition
+            if v[j] > 0.0
+                J += l[j] * v[j]
             end
+        elseif act[j] == -1 # means u<0
+            v[j] = 0.0 # by default ReLU
         end
     end
     return J

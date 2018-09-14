@@ -41,7 +41,7 @@ export
     MaxSens,
     ExactReach,
     ReluVal,
-    convDual,
+    ConvDual,
     # necessary functions:
     read_nnet,
     solve,
