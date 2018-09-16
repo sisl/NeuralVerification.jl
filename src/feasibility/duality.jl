@@ -13,7 +13,7 @@ end
 
 function encode(solver::Duality, model::Model, problem::Problem)
 	# Need to implement get_bounds (not included in the paper)
-    # bounds = get_bounds(problem)
+    bounds = get_bounds(problem)
     lambda, mu = init_nnet_vars(model, problem.network)
 
     c, d = tosimplehrep(problem.output)
@@ -28,6 +28,18 @@ function encode(solver::Duality, model::Model, problem::Problem)
     # problem.input.radius' * abs.(mu[1]' * (problem.network.layers[1].weights))
 
     @objective(model, Min, J[1])
+end
+
+# This function calls maxSens to compute the bounds
+function get_bounds(problem::Problem)
+    solver = MaxSens()
+    bounds = Vector{Hyperrectangle}(length(problem.network.layers))
+    reach = problem.input
+    for (i, layer) in enumerate(problem.network.layers)
+        reach = forward_layer(solver, layer, reach)
+        bounds[i] = reach
+    end
+    return bounds
 end
 
 function init_nnet_vars(model::Model, network::Network)
