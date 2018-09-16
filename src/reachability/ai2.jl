@@ -1,24 +1,3 @@
-import LazySets.Zonotope
-import LazySets.EmptySet
-
-abstract type Case end
-# three cases:
-# x_i >= 0 is represented as pos(i)
-# x_i >= x_j is represented as greater(i,j)
-# 0 > x_i is represented as neg(i)
-
-struct Pos <: Case
-    i::Int64
-end
-
-struct Neg <: Case
-    i::Int64
-end
-
-struct Greater <: Case
-    i::Int64
-    j::Int64
-end
 
 struct Ai2 end
 
@@ -28,78 +7,60 @@ function solve(solver::Ai2, problem::Problem)
     return check_inclusion(reach, problem.output)
 end
 
-function forward_layer(solver::Ai2, layer::Layer, inputs::Vector{Zonotope})
-    output = Vector{Zonotope}(0)
-    for input in inputs
-        outLinear = forward_linear(input, layer.weights, layer.bias)
-        append!(output, forward_act(layer.activation, outLinear))
+forward_layer(solver::Ai2, layer::Layer, inputs::Vector{<:AbstractPolytope}) = forward_layer.(solver, layer, inputs)
+
+function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
+    W, b, act = layer.weights, layer.bias, layer.activation
+    outLinear = shiftcenter(linear_map(W, input), b)
+    return transform(act, outLinear)
+end
+
+#=
+In general, convert any polytope to a VPolytope to proceed.
+TODO: create high performance Zonotype exception
+=#
+transform(f::ActivationFunction, poly::AbstractPolytope) = transform(f, VPolytope(vertices_list(poly)))
+#=
+define a version of transform for each activation
+NOTE: the paper considers ReLU_i(ReLU_{i-1}(ReLU_{i-2}(...ReLU_1(V)))) where i denotes the dimension.
+ReLU is (should be...) a commutive operation with respect to dimension, and so doing all ReLUs in parallel as considered in this transform should be equivalent
+I.e. it shouldn't matter if you do: for vertices{for dims{ apply_ReLU }}, or for dims{for vertices{for apply_ReLU }}}
+=#
+function transform(f::ReLU, V::VPolytope) # NOTE: this form might be true for all ActivationFuntions, if they are commutive like ReLU
+    new_vertices = [f(v) for v in V.vertices]
+    return VPolytope(new_vertices)
+end
+
+shiftcenter(zono::Zonotope, shift::Vector)         = Zonotope(zono.center + shift, zono.generators)
+shiftcenter(poly::AbstractPolytope, shift::Vector) = shiftcenter(VPolytope(vertices_list(poly)), shift)
+
+function shiftcenter(V::VPolytope, shift::Vector)
+    original = vertices_list(V)
+    shifted  = similar(original)
+    for i in 1:length(original)
+        shifted[i] = original[i] + shift
     end
-    return output
+    VPolytope(shifted)
 end
 
-function forward_layer(solver::Ai2, layer::Layer, input::Zonotope)
-    output = Vector{Zonotope}(0)
-    outLinear = forward_linear(input, layer.weights, layer.bias)
-    append!(output, forward_act(layer.activation, outLinear))
-    return output
-end
 
-function forward_linear(input::Zonotope, W::Matrix{Float64}, b::Vector{Float64})
-    rotation = linear_map(W, input)
-    output = Zonotope(rotation.center + b, rotation.generators)
-    return output
-end
+#=
+meet and join will still become necessary in the zonotope case
+The Case type is probably not necessary for correct dispatch
+=#
+# function meet(case::Case, H::HPolytope)
+#     addconstraint!(H, constraint(case, H))
+#     return H
+# end
 
-function forward_act(act, input::Zonotope)
-    return error("not supported yet")
-end
+# function constraint(case::Type{Case}, n_dims, constraint_dim)
+#     space = zeros(n_dims)
+#     if case == Pos
+#         space[constraint_dim] =  1.0
+#     elseif case == Neg
+#         space[constraint_dim] = -1.0
+#     end
+#     return HalfSpace(space, 0.0)
+# end
 
-function forward_act(act::ReLU, input::Zonotope)
-    output = Zonotope[input]
-    for i in 1:dim(input)
-        newPoly = Vector{Zonotope}(0)
-        for j = 1:length(output)
-            zonos = Vector{Zonotope}(0)
-            # Positive case
-            meet_pos = meet(Pos(i), output[j])
-            if dim(meet_pos) > -1
-                append!(zonos, meet_pos)
-            end
-            # Negative case
-            meet_neg = meet(Neg(i), output[j])
-            if dim(meet_neg) > -1
-                append!(zonos, linear_map(getI(dim(input), i), meet_neg))
-            end
-            println(zonos)
-            append!(newPoly, simplify(zonos))
-        end
-        output = newPoly
-    end
-    return output
-end
-
-# To be implemented
-# Adjust the zonotope by applying the conditions
-function meet(case::Case, zono::Zonotope)
-    return zono
-end
-
-# Combine zonotopes
-function simplify(zonos::Vector{Zonotope})
-    flag = fill(true, length(zonos))
-    N = length(zonos)
-    for i in 1:N, j in (i+1):N
-        if flag[i] && flag[j]
-            if issubset(zonos[i], zonos[j])
-                flag[i] = false
-            elseif issubset(zonos[j], zonos[i])
-                flag[j] = false
-            end
-        end
-    end
-    return zonos[flag]
-end
-
-function getI(n::Int64, id::Int64)
-    return sparse([id], [id], [1], n, n)
-end
+# constraint(case::Case, poly::AbstractPolytope) = constraint(typeof(case), dim((poly), case.i)
