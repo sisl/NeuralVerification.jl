@@ -28,7 +28,7 @@ include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
 include("reachability/reluVal.jl")
-# include("reachability/ai2.jl")
+include("reachability/ai2.jl")
 
 
 export
@@ -41,6 +41,7 @@ export
     MaxSens,
     ExactReach,
     ReluVal,
+    Ai2,
     ConvDual,
     # necessary functions:
     read_nnet,
