@@ -19,11 +19,10 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
     @assert iszero(input.radius - input.radius[1]) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
-    n_layer = length(layers)
     L, U, act_pattern = get_bounds(network, input.center, input.radius[1])
     v, J = tosimplehrep(output)
 
-    for i in n_layer:-1:1
+    for i in reverse(1:length(layers))
         J -= v'*layers[i].bias
         v = layers[i].weights'*v  # intentional transposition of the weights?
         if i>1
@@ -135,12 +134,13 @@ end
 function get_activation(l::Vector{Float64}, u::Vector{Float64})
     n = length(l)
     act_pattern = zeros(Int, n)
-    D = spdiagm(ones(n))
+    D = spdiagm(zeroes(n))
     for i in 1:n
         if u[i] <= 0.0
             act_pattern[i] = -1
         elseif l[i] >= 0.0
             act_pattern[i] = 1
+            D[i, i] = 1.0
         else
             D[i, i] = u[i] / (u[i] - l[i])
         end
