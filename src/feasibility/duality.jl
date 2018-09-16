@@ -1,6 +1,10 @@
 # This method only works for half space output constraint
 # c y <= d
 # For this implementation, limit the input constraint to Hyperrectangle
+
+import Base.abs
+import JuMP: GenericAffExpr
+
 struct Duality{O<:AbstractMathProgSolver} <: Feasibility
     optimizer::O
 end
@@ -12,32 +16,83 @@ function interpret_result(solver::Duality, status)
 end
 
 function encode(solver::Duality, model::Model, problem::Problem)
-	# Need to implement get_bounds (not included in the paper)
     bounds = get_bounds(problem)
+
     lambda, mu = init_nnet_vars(model, problem.network)
+
+    n_layer = length(problem.network.layers)
 
     c, d = tosimplehrep(problem.output)
     all_layers_n  = [length(l.bias) for l in problem.network.layers]
 	
 	# Input constraint
+    # max { - mu[1]' * (W[1] * input + b[1]) }
+    # input belongs to a Hyperrectangle
     J = d - mu[1]' * (problem.network.layers[1].weights * problem.input.center + problem.network.layers[1].bias)
-    # w = problem.network.layers[1].weights
-    # J += sum(problem.input.radius[j] * ifelse(mu[1][j] * w[:,j] > 0, mu[1][j] * w[:,j], -mu[1][j] * w[:,j]) for j in 1:all_layers_n[1])
-    
-    # How to include absolute value in objective function?
-    # problem.input.radius' * abs.(mu[1]' * (problem.network.layers[1].weights))
+    for i in 1:size(problem.network.layers[1].weights, 2)
+        J += abs(mu[1]' * problem.network.layers[1].weights[:, i]) * problem.input.radius[i]
+    end
 
+    # Cost for all linear layers
+    # For all layer l
+    # max { lambda[l]' * x[l] - mu[l]' * (W[l] * x[l] + b[l]) }
+    # x[i] belongs to a Hyperrectangle
+    for l in 2:n_layer
+        (W, b) = (problem.network.layers[l].weights, problem.network.layers[l].bias)
+        J += lambda[l-1]' * bounds[l].center - mu[l]' * (W * bounds[l].center + b)
+        for i in 1:all_layers_n[l-1]
+            J += abs(lambda[l-1][i] - mu[l]' * W[:, i]) * bounds[l].radius[i] 
+        end
+    end
+
+    # Cost for all activations functions
+    # For all layer l and node k
+    # max { mu[l][k] * z - lambda[l][k] * act(z) }
+    # z = W * bounds[l] + b
+    for l in 1:n_layer
+        (W, b, act) = (problem.network.layers[l].weights, problem.network.layers[l].bias, problem.network.layers[l].activation)
+        for k in 1:all_layers_n[l]
+            z = W[k, :] * bounds[l].center + b[k]
+            r = sum(abs.(W[k, :]) .* bounds[l].radius)
+            J += mu[l][k] * z + abs(mu[l][k]) * r
+            J += ifelse(lambda[l][k] > 0, -lambda[l][k] * act(z-r), -lambda[l][k] * act(z+r))
+        end
+    end
+
+    @constraints(model, lambda[l] == -c)
     @objective(model, Min, J[1])
+end
+
+function abs(v::Variable)
+    @variable(v.m, aux >= 0)
+    @addConstraint(v.m, aux >= v)
+    @addConstraint(v.m, aux >= -v)
+    return aux
+end
+
+function abs{V<:GenericAffExpr}(v::V)
+    m = first(v).m
+    @variable(m, aux >= 0)
+    @addConstraint(m, aux >= v)
+    @addConstraint(m, aux >= -v)
+    return aux
+end
+
+function abs{V<:GenericAffExpr}(v::Array{V})
+    m = first(first(v).vars).m
+    @variable(m, aux[1:length(v)] >= 0)
+    @addConstraint(m, aux .>= v)
+    @addConstraint(m, aux .>= -v)
+    return aux
 end
 
 # This function calls maxSens to compute the bounds
 function get_bounds(problem::Problem)
     solver = MaxSens()
-    bounds = Vector{Hyperrectangle}(length(problem.network.layers))
-    reach = problem.input
+    bounds = Vector{Hyperrectangle}(length(problem.network.layers) + 1)
+    bounds[1] = problem.input
     for (i, layer) in enumerate(problem.network.layers)
-        reach = forward_layer(solver, layer, reach)
-        bounds[i] = reach
+        bounds[i+1] = forward_layer(solver, layer, bounds[i])
     end
     return bounds
 end
