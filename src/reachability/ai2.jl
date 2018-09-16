@@ -3,8 +3,14 @@ struct Ai2 end
 
 function solve(solver::Ai2, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
-    println(reach)
-    return check_inclusion(reach, problem.output)
+    isinc = check_inclusion(reach, problem.output)
+
+    #TODO is this the correct return pattern?
+    if isinc
+        return Result(:True)
+    else
+        return Result(:False)
+    end
 end
 
 forward_layer(solver::Ai2, layer::Layer, inputs::Vector{<:AbstractPolytope}) = forward_layer.(solver, layer, inputs)
