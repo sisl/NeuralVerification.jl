@@ -3,6 +3,8 @@ struct MaxSens
     resolution::Float64
 end
 
+MaxSens() = MaxSens(1.0)
+
 # This is the main function
 function solve(solver::MaxSens, problem::Problem)
     inputs = partition(problem.input, solver.resolution)
