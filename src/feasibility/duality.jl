@@ -18,7 +18,7 @@ end
 function encode(solver::Duality, model::Model, problem::Problem)
     bounds = get_bounds(problem)
 
-    lambda, mu = init_nnet_vars(model, problem.network)
+    lambda, mu = init_nnet_vars(solver, model, problem.network)
 
     n_layer = length(problem.network.layers)
 
@@ -86,18 +86,8 @@ function abs{V<:GenericAffExpr}(v::Array{V})
     return aux
 end
 
-# This function calls maxSens to compute the bounds
-function get_bounds(problem::Problem)
-    solver = MaxSens()
-    bounds = Vector{Hyperrectangle}(length(problem.network.layers) + 1)
-    bounds[1] = problem.input
-    for (i, layer) in enumerate(problem.network.layers)
-        bounds[i+1] = forward_layer(solver, layer, bounds[i])
-    end
-    return bounds
-end
-
-function init_nnet_vars(model::Model, network::Network)
+# The variables in Duality are Lagrangian Multipliers
+function init_nnet_vars(solver::Duality, model::Model, network::Network)
     layers = network.layers
     lambda = Vector{Vector{Variable}}(length(layers)) 
     mu = Vector{Vector{Variable}}(length(layers))
@@ -106,7 +96,7 @@ function init_nnet_vars(model::Model, network::Network)
 
     for (i, n) in enumerate(all_layers_n)
         lambda[i] = @variable(model, [1:n])
-        mu[i]  = @variable(model, [1:n], Bin)
+        mu[i]  = @variable(model, [1:n])
     end
 
     return lambda, mu

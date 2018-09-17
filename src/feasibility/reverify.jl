@@ -19,8 +19,9 @@ end
 Encode problem as an MIP following Reverify algorithm
 =#
 function encode(solver::Reverify, model::Model, problem::Problem)
-    neurons, deltas = init_nnet_vars(model, problem.network)
-    add_io_constraints(model, problem, neurons)
+    neurons, deltas = init_nnet_vars(solver, model, problem.network)
+    add_input_constraint(model, problem.input, first(neurons))
+    add_complementary_output_constraint(model, problem.output, last(neurons))
     for (i, layer) in enumerate(problem.network.layers)
         lbounds = layer.weights * neurons[i] + layer.bias
         dy = solver.m*(deltas[i+1])  # TODO rename variable
@@ -34,39 +35,5 @@ function encode(solver::Reverify, model::Model, problem::Problem)
                                 end)
         end
     end
-end
-
-#=
-Initialize JuMP variables corresponding to neurons and deltas of network for problem
-=#
-function init_nnet_vars(model::Model, network::Network)
-    layers = network.layers
-    neurons = Vector{Vector{Variable}}(length(layers) + 1) # +1 for input layer
-    deltas  = Vector{Vector{Variable}}(length(layers) + 1)
-    # input layer is treated differently from other layers
-    input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
-
-    for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n])
-        deltas[i]  = @variable(model, [1:n], Bin)
-    end
-
-    return neurons, deltas
-end
-
-#=
-Add input/output constraints to model
-=#
-function add_io_constraints(model::Model, problem::Problem, neuron_vars::Vector{Vector{Variable}})
-    in_A,  in_b  = tosimplehrep(problem.input)
-    out_A, out_b = tosimplehrep(problem.output)
-
-    @constraint(model,  in_A*first(neuron_vars) .<= in_b)
-
-    # Needs to take the complementary of output constraint
-    @constraint(model, out_A*last(neuron_vars)  .<= out_b)
-    return nothing
 end
 
