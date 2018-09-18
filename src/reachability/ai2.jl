@@ -33,7 +33,7 @@ ReLU is (should be...) a commutive operation with respect to dimension, and so d
 I.e. it shouldn't matter if you do: for vertices{for dims{ apply_ReLU }}, or for dims{for vertices{for apply_ReLU }}}
 =#
 function transform(f::ReLU, V::VPolytope) # NOTE: this form might be true for all ActivationFuntions, if they are commutive like ReLU
-    new_vertices = [f(v) for v in V.vertices]
+    new_vertices = [f(v) for v in vertices_list(V)]
     return VPolytope(new_vertices)
 end
 
@@ -41,12 +41,8 @@ shiftcenter(zono::Zonotope, shift::Vector)         = Zonotope(zono.center + shif
 shiftcenter(poly::AbstractPolytope, shift::Vector) = shiftcenter(VPolytope(vertices_list(poly)), shift)
 
 function shiftcenter(V::VPolytope, shift::Vector)
-    original = vertices_list(V)
-    shifted  = similar(original)
-    for i in 1:length(original)
-        shifted[i] = original[i] + shift
-    end
-    VPolytope(shifted)
+    shifted = [v + shift for v in vertices_list(V)]
+    return VPolytope(shifted)
 end
 
 
