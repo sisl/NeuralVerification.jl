@@ -24,9 +24,9 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
 
     for i in reverse(1:length(layers))
         J -= v'*layers[i].bias
-        v = layers[i].weights'*v  # intentional transposition of the weights?
+        v = layers[i].weights'*v
         if i>1
-            J += backprop!(v, U[i-1], L[i-1], act_pattern[i-1])
+            J += backprop!(v, U[i-1], L[i-1])
         end
     end
     J -= input.center * v + input.radius[1] * sum(abs.(v))
@@ -36,16 +36,13 @@ end
 #=
 modifies v and returns J
 =#
-function backprop!(v, u, l, act)
+function backprop!(v, u, l)
     J = 0.0
     for j in 1:length(v)
-        if act[j] == 0 # means l<0<u
-            v[j] = u[j] * abs(v[j])/(u[j] - l[j]) # relaxed ReLU condition
-            if v[j] > 0.0
-                J += l[j] * v[j]
-            end
-        elseif act[j] == -1 # means u<0
-            v[j] = 0.0 # by default ReLU
+        val = relaxed_ReLU(l[j], u[j])
+        if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is the the right reasoning?)
+            v[j] = abs(v[j]) * val
+            J += v[j] * l[j]
         end
     end
     return J
@@ -132,18 +129,17 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
 end
 
 function get_activation(l::Vector{Float64}, u::Vector{Float64})
-    n = length(l)
-    act_pattern = zeros(Int, n)
-    D = spdiagm(zeroes(n))
-    for i in 1:n
-        if u[i] <= 0.0
-            act_pattern[i] = -1
-        elseif l[i] >= 0.0
-            act_pattern[i] = 1
-            D[i, i] = 1.0
-        else
-            D[i, i] = u[i] / (u[i] - l[i])
-        end
-    end
+    act_pattern = get_activation.(l, u)
+    D  = spdiagm(relaxed_ReLU.(l, u))  # a sparse matrix whose diagonal values are the relaxed_ReLU values
     return (act_pattern, D)
+end
+function get_activation(l::Float64, u::Float64)
+    u <= 0.0 && return -1
+    l >= 0.0 && return 1
+    return 0
+end
+function relaxed_ReLU(l::Float64, u::Float64)
+    u <= 0.0 && return 0.0
+    l >= 0.0 && return 1.0
+    return u / (u - l)
 end
