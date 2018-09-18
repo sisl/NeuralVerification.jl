@@ -15,7 +15,7 @@ end
 # Note vertices_list is not defined for HPolytope: to be defined
 function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
     for poly in reach
-        issubset(poly, output) || return false
+        issubset(poly, output) || return Result(:False)
     end
-    return true
+    return Result(:True)
 end

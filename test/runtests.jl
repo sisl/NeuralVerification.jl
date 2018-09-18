@@ -40,6 +40,6 @@ solver_reluVal = ReluVal(2)
 
 
 @test solve(solver_reverify,   problem_reverify).status == :True  # True means infeasible (NOTE: is that intuitive?)
-@test solve(solver_maxSens,    problem_maxSens)         == true
-@test solve(solver_exactReach, problem_exactReach)      == true
+@test solve(solver_maxSens,    problem_maxSens)         == :True
+@test solve(solver_exactReach, problem_exactReach)      == :True
 @test solve(solver_reluVal,    problem_reluVal).status  == :False
