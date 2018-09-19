@@ -5,10 +5,10 @@ end
 
 Reverify(x) = Reverify(x, 1000.0)
 
-function interpret_result(solver::Reverify, status)
+function interpret_result(solver::Reverify, status, neurons)
     if status == :Optimal
         # To do: return adversarial case
-        return Result(:False)
+        return Result(:False, getvalue(neurons))
     end
     if status == :Infeasible
         return Result(:True)
@@ -36,5 +36,6 @@ function encode(solver::Reverify, model::Model, problem::Problem)
                                 end)
         end
     end
+    return neurons[1] #delta unimportant
 end
 
