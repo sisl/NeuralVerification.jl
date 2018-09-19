@@ -59,7 +59,7 @@ function encode(solver::Duality, model::Model, problem::Problem)
         end
     end
 
-    @constraints(model, lambda[l] == -c)
+    @constraints(model, lambda[] == -c)
     @objective(model, Min, J[1])
 end
 
