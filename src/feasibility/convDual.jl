@@ -40,7 +40,7 @@ function backprop!(v, u, l)
     J = 0.0
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
-        if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is the the right reasoning?)
+        if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
             v[j] = abs(v[j]) * val
             J += v[j] * l[j]
         end
@@ -65,10 +65,10 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
     # Bounds for the first layer
     output = nnet.layers[1].weights * input + nnet.layers[1].bias
     n_output = length(output)
-    l[1] = fill(0.0, n_output)
-    u[1] = fill(0.0, n_output)
+    l[1] = zeros(n_output)
+    u[1] = zeros(n_output)
     for i in 1:n_output
-        l[1][i] = output[i] - epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
+        l[1][i] = output[i] - epsilon * sum(abs.(nnet.layers[1].weights[i, :])) #TODO check [i, :] vs [:, i]
         u[1][i] = output[i] + epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
     end
 
@@ -83,50 +83,61 @@ function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
 
         mu[i] = Vector{Vector{Float64}}(n_input)
         for j in 1:n_input
-            mu[i][j] = ifelse(act_pattern[i-1][j] == 0, nnet.layers[i].weights * D[:, j], zeros(n_output))
+            if act_pattern[i-1][j] == 0
+            #if relaxed_ReLU(l[i-1], u[i-1]) == -1 # equivalent
+                mu[i][j] = nnet.layers[i].weights * D[:, j]
+            else
+                mu[i][j] = zeros(n_output)
+            end
         end
 
         # Propagate existiing terms
         for j in 1:i-1
+            ReLUed_weights = nnet.layers[i].weights * D
             if j > 1
-                for k in 1:length(mu[j])
-                    mu[j][k] = nnet.layers[i].weights * D * mu[j][k]
-                end
+                mu[j] = [ReLUed_weights * m for m in mu[j]]
             end
-            gamma[j] = nnet.layers[i].weights * D * gamma[j]
+            gamma[j] = ReLUed_weights * gamma[j]
         end
-        v1 = nnet.layers[i].weights * D * v1'
-        v1 = v1'
+        # (ABC')' = CB'A'
+        v1 = v1 * D' * nnet.layers[i].weights'
 
         # Compute bounds
-        l[i] = fill(0.0, n_output)
-        u[i] = fill(0.0, n_output)
         phi = v1' * input + sum(gamma[j] for j in 1:i)
 
-        for ii in 1:n_output
-            neg = fill(0.0, i-1)
-            pos = fill(0.0, i-1)
-            # Need to debug
-            for j in 1:i-1
-                for k in 1:length(mu[j+1])
-                    if act_pattern[i-1][k] == 0
-                        if mu[j+1][k][ii] < 0
-                            neg[j] = l[j][k] * (-mu[j+1][k][ii])
-                        elseif mu[j+1][k][ii] > 0
-                            pos[j] = l[j][k] * (mu[j+1][k][ii])
-                        end
-                    end
-                end
-            end
-            l[i][ii] = phi[ii] - epsilon * sum(abs.(v1[:, ii])) + sum(neg)
-            u[i][ii] = phi[ii] + epsilon * sum(abs.(v1[:, ii])) - sum(pos)
-        end
+        vertical_sums_on_v1 = vec(sum(abs.(v1), 1)) # sum down the columns after abs
+        neg, pos = all_neg_pos_sums(i, n_output, act_pattern, l, mu)
+        l[i] = phi .- epsilon * vertical_sums_on_v1 + neg
+        u[i] = phi .+ epsilon * vertical_sums_on_v1 - pos
     end
 
     act_pattern[n_layer], D = get_activation(l[n_layer], u[n_layer])
 
     return (l, u, act_pattern)
 end
+
+# TODO rename function and inputs
+function all_neg_pos_sums(i, n_output, act_pattern, l, mu)
+    neg = zeros(n_output)
+    pos = zeros(n_output)
+    # Need to debug
+    for j in 1:i-1
+        for k in 1:length(mu[j+1])
+            if act_pattern[i-1][k] == 0  # relaxed_ReLU(l, u) !∈ (0.0, 1.0)
+                muvals = mu[j+1][k]
+                for (ii, val) in enumerate(muvals)
+                    if     val < 0    neg[ii] += l[j][k] * -val
+                    elseif val > 0    pos[ii] += l[j][k] *  val
+                    end
+                end
+            end
+        end
+    end
+    return neg, pos
+end
+
+
+
 
 function get_activation(l::Vector{Float64}, u::Vector{Float64})
     act_pattern = get_activation.(l, u)
