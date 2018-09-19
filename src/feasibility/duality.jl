@@ -2,9 +2,6 @@
 # c y <= d
 # For this implementation, limit the input constraint to Hyperrectangle
 
-import Base.abs
-import JuMP: GenericAffExpr
-
 struct Duality{O<:AbstractMathProgSolver} <: Feasibility
     optimizer::O
 end
@@ -16,88 +13,105 @@ function interpret_result(solver::Duality, status)
 end
 
 function encode(solver::Duality, model::Model, problem::Problem)
+    layers = problem.network.layers
     bounds = get_bounds(problem)
 
-    lambda, mu = init_nnet_vars(solver, model, problem.network)
+    λ, μ = init_nnet_vars(solver, model, problem.network)
 
-    n_layer = length(problem.network.layers)
+    n_layer = length(layers)
 
     c, d = tosimplehrep(problem.output)
-    all_layers_n  = [length(l.bias) for l in problem.network.layers]
-	
-	# Input constraint
-    # max { - mu[1]' * (W[1] * input + b[1]) }
-    # input belongs to a Hyperrectangle
-    J = d - mu[1]' * (problem.network.layers[1].weights * problem.input.center + problem.network.layers[1].bias)
-    for i in 1:size(problem.network.layers[1].weights, 2)
-        J += abs(mu[1]' * problem.network.layers[1].weights[:, i]) * problem.input.radius[i]
-    end
+    all_layers_n  = map(l -> length(l.bias), layers)  # this shows up a lot. Consider making it a utility function
+
+    # Input constraint
+    J = input_layer_cost(layers[1], μ[1], d, problem.input)
 
     # Cost for all linear layers
-    # For all layer l
-    # max { lambda[l]' * x[l] - mu[l]' * (W[l] * x[l] + b[l]) }
-    # x[i] belongs to a Hyperrectangle
     for l in 2:n_layer
-        (W, b) = (problem.network.layers[l].weights, problem.network.layers[l].bias)
-        J += lambda[l-1]' * bounds[l].center - mu[l]' * (W * bounds[l].center + b)
-        for i in 1:all_layers_n[l-1]
-            J += abs(lambda[l-1][i] - mu[l]' * W[:, i]) * bounds[l].radius[i] 
-        end
+        J += layer_cost(layers[l], μ[l], λ[l-1], bounds[l])
     end
 
-    # Cost for all activations functions
-    # For all layer l and node k
-    # max { mu[l][k] * z - lambda[l][k] * act(z) }
-    # z = W * bounds[l] + b
-    for l in 1:n_layer
-        (W, b, act) = (problem.network.layers[l].weights, problem.network.layers[l].bias, problem.network.layers[l].activation)
-        for k in 1:all_layers_n[l]
-            z = W[k, :] * bounds[l].center + b[k]
-            r = sum(abs.(W[k, :]) .* bounds[l].radius)
-            J += mu[l][k] * z + abs(mu[l][k]) * r
-            J += ifelse(lambda[l][k] > 0, -lambda[l][k] * act(z-r), -lambda[l][k] * act(z+r))
-        end
-    end
+    J += activation_cost.(layers, μ, λ, bounds) |> sum
 
-    @constraints(model, lambda[l] == -c)
+    # output constraint
+    @constraint(model, λ[n_layer] .== -c)
     @objective(model, Min, J[1])
 end
 
-function abs(v::Variable)
-    @variable(v.m, aux >= 0)
-    @addConstraint(v.m, aux >= v)
-    @addConstraint(v.m, aux >= -v)
-    return aux
+# For each layer l and node k
+# max { mu[l][k] * z - lambda[l][k] * act(z) }
+function activation_cost(layer, μ, λ, bound)
+    J = zero(typeof(first(μ)))
+    (W, b, act) = (layer.weights, layer.bias, layer.activation)
+    for k in 1:length(b)
+        z = W[k, :]' * bound.center + b[k]
+        r = sum(abs.(W[k, :]) .* bound.radius)
+        J += μ[k] * z + symbolic_abs(μ[k]) * r
+        # TODO make this pretty:
+        # NOTE 1-2 = -1. Use this if "if" doesn't work for Variables
+        if λ[k] > 0   J += -λ[k] * act(z-r)
+        else          J += -λ[k] * act(z+r)
+        end
+    end
+    return J
 end
 
-function abs{V<:GenericAffExpr}(v::V)
-    m = first(v).m
-    @variable(m, aux >= 0)
-    @addConstraint(m, aux >= v)
-    @addConstraint(m, aux >= -v)
+# For all layer l
+# max { lambda[l]' * x[l] - mu[l]' * (W[l] * x[l] + b[l]) }
+# x[i] belongs to a Hyperrectangle
+# TODO consider bringing in μᵀ instead of μ
+function layer_cost(layer, μ, λ, bound)
+    (W, b) = (layer.weights, layer.bias)
+    J = λ' * bound.center - μ' * (W' * bound.center + b)
+    # instead of for-loop:
+    J += sum(symbolic_abs(λ .- W'*μ) .* bound.radius) # TODO check that this is equivalent to before
+    return J
+end
+# Input constraint
+# max { - mu[1]' * (W[1] * input + b[1]) }
+# input belongs to a Hyperrectangle
+function input_layer_cost(layer, μ, d, input)
+    W, b = layer.weights, layer.bias
+    J = d - μ' * (W' * input.center .+ b)
+    J += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
+    return J
+end
+# NOTE renamed to symbolic_abs to avoid type piracy
+function symbolic_abs(m::Model, v)
+    aux = @variable(m) #get an anonymous variable
+    @constraint(m, aux >= 0)
+    @constraint(m, aux >= v)
+    @constraint(m, aux >= -v)
     return aux
 end
+symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
+symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
+#=
+    this definition not necessary if using broadcast in the array case
+    (see array method above). It might be less efficient in the solver though(?)
+    so maybe this method with internal broadcast is desired
+=#
+# function symbolic_abs(m::Model, v::Array)
+#     @variable(m, aux >= 0)
+#     @addConstraint(m, aux .>= v)
+#     @addConstraint(m, aux .>= -v)
+#     return aux
+# end
 
-function abs{V<:GenericAffExpr}(v::Array{V})
-    m = first(first(v).vars).m
-    @variable(m, aux[1:length(v)] >= 0)
-    @addConstraint(m, aux .>= v)
-    @addConstraint(m, aux .>= -v)
-    return aux
-end
 
 # The variables in Duality are Lagrangian Multipliers
 function init_nnet_vars(solver::Duality, model::Model, network::Network)
     layers = network.layers
-    lambda = Vector{Vector{Variable}}(length(layers)) 
-    mu = Vector{Vector{Variable}}(length(layers))
+    λ = Vector{Vector{Variable}}(length(layers))
+    μ = Vector{Vector{Variable}}(length(layers))
 
-    all_layers_n  = [length(l.bias) for l in layers]
+    all_layers_n = map(l->length(l.bias), layers)
 
     for (i, n) in enumerate(all_layers_n)
-        lambda[i] = @variable(model, [1:n])
-        mu[i]  = @variable(model, [1:n])
+        λ[i] = @variable(model, [1:n])
+        μ[i] = @variable(model, [1:n])
     end
 
-    return lambda, mu
+    return λ, μ
 end
