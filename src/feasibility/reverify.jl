@@ -23,12 +23,13 @@ function encode(solver::Reverify, model::Model, problem::Problem)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
     for (i, layer) in enumerate(problem.network.layers)
+        # modify
         lbounds = layer.weights * neurons[i] + layer.bias
         dy = solver.m*(deltas[i+1])  # TODO rename variable
         for j in 1:length(layer.bias)
             ubounds = lbounds + dy[j]
             @constraints(model, begin
-                                    neurons[i+1][j] .>= lbounds
+                                    neurons[i+1][j] >= lbounds[j]
                                     neurons[i+1][j] .<= ubounds
                                     neurons[i+1][j]  >= 0.0
                                     neurons[i+1][j]  <= solver.m-dy[j]
