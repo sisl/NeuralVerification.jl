@@ -49,7 +49,7 @@ function add_complementary_output_constraint(model::Model, output::AbstractPolyt
     # Needs to take the complementary of output constraint
     # Here let's assume that the output constraint is a half space
     # So the complementary is just out_A * y .> out_b
-    @constraint(model, out_A * neuron_vars .<= out_b)
+    @constraint(model, -out_A * neuron_vars .<= -out_b)
     return nothing
 end
 

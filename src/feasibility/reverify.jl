@@ -26,13 +26,13 @@ function encode(solver::Reverify, model::Model, problem::Problem)
         # modify
         lbounds = layer.weights * neurons[i] + layer.bias
         dy = solver.m*(deltas[i+1])  # TODO rename variable
+        ubounds = lbounds + dy
         for j in 1:length(layer.bias)
-            ubounds = lbounds + dy[j]
             @constraints(model, begin
                                     neurons[i+1][j] >= lbounds[j]
-                                    neurons[i+1][j] .<= ubounds
-                                    neurons[i+1][j]  >= 0.0
-                                    neurons[i+1][j]  <= solver.m-dy[j]
+                                    neurons[i+1][j] <= ubounds[j]
+                                    neurons[i+1][j] >= 0.0
+                                    neurons[i+1][j] <= solver.m-dy[j]
                                 end)
         end
     end
