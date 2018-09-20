@@ -1,13 +1,12 @@
 struct Reverify{O<:AbstractMathProgSolver} <: Feasibility
-	optimizer::O
-	m::Float64 # The big M in the linearization
+    optimizer::O
+    m::Float64 # The big M in the linearization
 end
 
 Reverify(x) = Reverify(x, 1000.0)
 
 function interpret_result(solver::Reverify, status, neurons)
     if status == :Optimal
-        # To do: return adversarial case
         return Result(:False, getvalue(neurons))
     end
     if status == :Infeasible
@@ -23,7 +22,6 @@ function encode(solver::Reverify, model::Model, problem::Problem)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
     for (i, layer) in enumerate(problem.network.layers)
-        # modify
         lbounds = layer.weights * neurons[i] + layer.bias
         dy = solver.m*(deltas[i+1])  # TODO rename variable
         ubounds = lbounds + dy
@@ -36,6 +34,6 @@ function encode(solver::Reverify, model::Model, problem::Problem)
                                 end)
         end
     end
-    return neurons[1] #delta unimportant
+    return neurons[1] #return input variable
 end
 
