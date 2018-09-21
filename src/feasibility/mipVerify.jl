@@ -41,10 +41,20 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
         end
     end
 
-    # Need to specify objective here
-    # @objective(model, Min, norm(first(neurons) - problem.input.center))
+    # Objective: need to change to L∞ norm
+    J = maximum(neurons[1] - problem.input.center)
+    @objective(model, Min, J)
+    return neurons[1]
 end
 
-function interpret_result(solver::MIPVerify, status)
-    return Result(:True)
+function interpret_result(solver::MIPVerify, status, neurons)
+    if status == :Infeasible
+        return Result(:Undertermined)
+    end
+    J = maximum(getvalue(neurons) - problem.input.center)
+    if J > maximum(problem.input.radius)
+        return Result(:True, J)
+    else
+        return Result(:False, J)
+    end
 end

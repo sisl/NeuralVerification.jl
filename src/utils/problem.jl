@@ -15,9 +15,12 @@ end
 struct Result
     status::Symbol
     counter_example::Vector{Float64}
+    max_disturbance::Float64 # For adversarial problems
 end
 
-Result(x) = Result(x, [])
+Result(x) = Result(x, [], -1.0)
+Result(x, y::Vector{Float64}) = Result(x, y, -1.0)
+Result(x, y::Float64) = Result(x, [], y)
 
 #=
 Add constraints from Polytope to a variable
