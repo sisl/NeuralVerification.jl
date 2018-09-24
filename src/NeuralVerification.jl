@@ -44,6 +44,7 @@ export
     ReluVal,
     Ai2,
     ConvDual,
+    Duality,
     # necessary functions:
     read_nnet,
     solve,
