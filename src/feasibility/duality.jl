@@ -14,23 +14,19 @@ end
 
 function encode(solver::Duality, model::Model, problem::Problem)
     layers = problem.network.layers
+    n_layer = length(layers)
     bounds = get_bounds(problem)
+    c, d = tosimplehrep(problem.output)
 
     λ, μ = init_nnet_vars(solver, model, problem.network)
-
-    n_layer = length(layers)
-
-    c, d = tosimplehrep(problem.output)
-    all_layers_n  = map(l -> length(l.bias), layers)  # this shows up a lot. Consider making it a utility function
-
+    ## J the objective function
     # Input constraint
     J = input_layer_cost(layers[1], μ[1], d, problem.input)
-
     # Cost for all linear layers
-    for l in 2:n_layer
-        J += layer_cost(layers[l], μ[l], λ[l-1], bounds[l])
+    for i in 2:n_layer
+        J += layer_cost(layers[i], μ[i], λ[i-1], bounds[i])
     end
-
+    # Cost for activation(?)
     J += activation_cost.(layers, μ, λ, bounds) |> sum
 
     # output constraint
@@ -47,17 +43,16 @@ function activation_cost(layer, μ, λ, bound)
         z = W[k, :]' * bound.center + b[k]
         r = sum(abs.(W[k, :]) .* bound.radius)
         J += μ[k] * z + symbolic_abs(μ[k]) * r
-        # TODO make this pretty:
-        # NOTE 1-2 = -1. Use this if "if" doesn't work for Variables
-        if λ[k] > 0   J += -λ[k] * act(z-r)
-        else          J += -λ[k] * act(z+r)
-        end
+        # NOTE 1-2 = -1.
+        # this is a way of creating a +/- condition on λ
+        # since variables can't be evaluated
+        J += λ[k] * act(z + (1 - 2*(λ[k]>0)) * r)
     end
     return J
 end
 
 # For all layer l
-# max { lambda[l]' * x[l] - mu[l]' * (W[l] * x[l] + b[l]) }
+# max { λ[l]' * x[l] - μ[l]' * (W[l] * x[l] + b[l]) }
 # x[i] belongs to a Hyperrectangle
 # TODO consider bringing in μᵀ instead of μ
 function layer_cost(layer, μ, λ, bound)
@@ -72,7 +67,8 @@ end
 # input belongs to a Hyperrectangle
 function input_layer_cost(layer, μ, d, input)
     W, b = layer.weights, layer.bias
-    J = d - μ' * (W' * input.center .+ b)
+
+    J = d .- μ' * (W * input.center .+ b)
     J += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
     return J
 end
@@ -87,17 +83,6 @@ end
 symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
 symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
 symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
-#=
-    this definition not necessary if using broadcast in the array case
-    (see array method above). It might be less efficient in the solver though(?)
-    so maybe this method with internal broadcast is desired
-=#
-# function symbolic_abs(m::Model, v::Array)
-#     @variable(m, aux >= 0)
-#     @addConstraint(m, aux .>= v)
-#     @addConstraint(m, aux .>= -v)
-#     return aux
-# end
 
 
 # The variables in Duality are Lagrangian Multipliers
