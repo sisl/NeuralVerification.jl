@@ -69,6 +69,7 @@ function compute_output(nnet::Network, input::Vector{Float64})
     layers = nnet.layers
     for i = 1:length(layers) # layers does not include input layer (which has no weights/biases)
         curr_value = (layers[i].weights * curr_value) + layers[i].bias
+        curr_value = layers[i].activation(curr_value)
     end
     return curr_value # would another name be better?
 end
@@ -84,6 +85,7 @@ function compute_output(nnet::Network, input::Vector{Float64}, I, j)
     curr_value = input
     for i = 1:I
         curr_value = (layers[i].weights * curr_value) + layers[i].bias
+        curr_value = layers[i].activation(curr_value)
     end
     return curr_value[j]
 end
