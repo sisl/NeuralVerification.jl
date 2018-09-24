@@ -1,5 +1,7 @@
 abstract type Feasibility end
 
+import JuMP: GenericAffExpr
+
 # General structure for Feasibility Problems
 function solve(solver::Feasibility, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
@@ -34,11 +36,27 @@ function init_nnet_vars(solver::Feasibility, model::Model, network::Network)
     insert!(all_layers_n, 1, input_layer_n)
 
     for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n])
+        neurons[i] = @variable(model, [1:n]) # To do: name the variables
         deltas[i]  = @variable(model, [1:n], Bin)
     end
 
     return neurons, deltas
+end
+
+function absolute{V<:GenericAffExpr}(v::V)
+    m = first(v).m
+    @variable(m, aux >= 0)
+    @constraint(m, aux >= v)
+    @constraint(m, aux >= -v)
+    return aux
+end
+
+function absolute{V<:GenericAffExpr}(v::Array{V})
+    m = first(first(v).vars).m
+    @variable(m, aux[1:length(v)] >= 0)
+    @constraint(m, aux .>= v)
+    @constraint(m, aux .>= -v)
+    return aux
 end
 
 #=

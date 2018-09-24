@@ -9,10 +9,10 @@ end
 function solve(solver::FastLin, problem::Problem)
     ϵ = fill(solver.ϵ0, solver.maxIter)
     ϵ_upper = 2 * solver.ϵ0
-    ϵ_lower = 0
+    ϵ_lower = 0.0
     c, d = tosimplehrep(problem.output)
     i = 1
-    while ϵ[i] > solver.accuracy && i < solver.maxIter do
+    while ϵ[i] > solver.accuracy && i < solver.maxIter
         input_bounds = Hyperrectangle(problem.input.center, ϵ*ones(dim(problem.input)))
         # Here it uses reachability to comput the output bounds
         output_bounds = forward_network(solver, problem.network, input_bounds)
@@ -23,6 +23,7 @@ function solve(solver::FastLin, problem::Problem)
         else
             ϵ_upper = ϵ[i]
             ϵ[i+1] = (ϵ[i] + ϵ_lower) / 2
+        end
         i = i+1
     end
     return ifelse(ϵ[i] > minimum(problem.input.radius), Result(:True, ϵ[i]), Result(:False, ϵ[i]))
