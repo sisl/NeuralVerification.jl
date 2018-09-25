@@ -13,7 +13,7 @@ function interpret_result(solver::Duality, status, J)
     end
     opt_cost = getvalue(J)
     # println(opt_cost)
-    return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT)) 
+    return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT))
 end
 
 function encode(solver::Duality, model::Model, problem::Problem)
@@ -87,9 +87,9 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::Variable, b::Variable) = symbolic_max(a.m, a, b)
-symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr) = symbolic_max(first(a.vars).m, a, b)
-symbolic_max(a::Array{<:JuMP.GenericAffExpr}, b::Array{<:JuMP.GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
+symbolic_max(a::Variable, b::Variable)                           = symbolic_max(a.m, a, b)
+symbolic_max(a::E, b::E) where E <: JuMP.GenericAffExpr          = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::A, b::A) where A <: Array{<:JuMP.GenericAffExpr} = symbolic_max.(first(first(a).vars).m, a, b)
 
 
 # NOTE renamed to symbolic_abs to avoid type piracy
