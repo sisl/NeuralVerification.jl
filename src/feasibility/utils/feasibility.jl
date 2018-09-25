@@ -5,9 +5,9 @@ import JuMP: GenericAffExpr
 # General structure for Feasibility Problems
 function solve(solver::Feasibility, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
-    input_neuron = encode(solver, model, problem)
+    var = encode(solver, model, problem)
     status = JuMP.solve(model)
-    return interpret_result(solver, status, input_neuron)
+    return interpret_result(solver, status, var)
 end
 
 # Presolve to determine the bounds of variables
@@ -64,16 +64,33 @@ Add input/output constraints to model
 =#
 function add_complementary_output_constraint(model::Model, output::AbstractPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
-    # Needs to take the complementary of output constraint
-    # Here let's assume that the output constraint is a half space
-    # So the complementary is just out_A * y .> out_b
-    @constraint(model, -out_A * neuron_vars .<= -out_b)
+    # Needs to take the complementary of output constraint  
+    n = length(out_b)
+    if n == 1
+        # Here the output constraint is a half space
+        # So the complementary is just out_A * y .> out_b
+        @constraint(model, -out_A * neuron_vars .<= -out_b)
+    else
+        # Here the complementary is a union of different constraints
+        # We use binary variable to encode the union of constraints
+        out_deltas = @variable(model, [1:n], Bin)
+        @constraint(model, sum(out_deltas) == 1)
+        for i in 1:n
+            @constraint(model, -out_A[i, :]' * neuron_vars * out_deltas[i] <= -out_b[i] * out_deltas[i])
+        end
+    end
     return nothing
 end
 
-function add_input_constraint(model::Model, input::AbstractPolytope, neuron_vars::Vector{Variable})
+function add_input_constraint(model::Model, input::HPolytope, neuron_vars::Vector{Variable})
     in_A,  in_b  = tosimplehrep(input)
     @constraint(model,  in_A * neuron_vars .<= in_b)
+    return nothing
+end
+
+function add_input_constraint(model::Model, input::Hyperrectangle, neuron_vars::Vector{Variable})
+    @constraint(model,  neuron_vars .<= high(input))
+    @constraint(model,  neuron_vars .>= low(input))
     return nothing
 end
 

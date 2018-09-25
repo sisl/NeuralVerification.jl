@@ -19,7 +19,7 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
     @assert iszero(input.radius - input.radius[1]) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
-    L, U, act_pattern = get_bounds(network, input.center, input.radius[1])
+    L, U = get_bounds(network, input.center, input.radius[1])
     v, J = tosimplehrep(output)
 
     for i in reverse(1:length(layers))
@@ -40,7 +40,7 @@ function backprop!(v, u, l)
     J = 0.0
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
-        if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is the the right reasoning?)
+        if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
             v[j] = abs(v[j]) * val
             J += v[j] * l[j]
         end
@@ -48,96 +48,106 @@ function backprop!(v, u, l)
     return J
 end
 
-
+# Forward_network and forward_layer:
 # This step is similar to reachability method
-function get_bounds(nnet::Network, input::Vector{Float64}, epsilon::Float64)
-    n_layer = length(nnet.layers)
-    l = Vector{Vector{Float64}}(n_layer)
-    u = Vector{Vector{Float64}}(n_layer)
-    act_pattern = Vector{Vector{Float64}}(n_layer)
+function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
+    layers  = nnet.layers
+    n_layer = length(layers)
 
-    gamma = Vector{Vector{Float64}}(n_layer)
-    mu = Vector{Vector{Vector{Float64}}}(n_layer)
+    l = Vector{Vector{Float64}}(0)              ; sizehint!(l, n_layer)
+    u = Vector{Vector{Float64}}(0)              ; sizehint!(u, n_layer)
+    γ = Vector{Vector{Float64}}(0)              ; sizehint!(γ, n_layer)
+    μ = Vector{Vector{Vector{Float64}}}(0)      ; sizehint!(μ, n_layer)
 
-    v1 = nnet.layers[1].weights'
-    gamma[1] = nnet.layers[1].bias
-
+    v1 = layers[1].weights'
+    push!(γ, layers[1].bias)
     # Bounds for the first layer
-    output = nnet.layers[1].weights * input + nnet.layers[1].bias
-    n_output = length(output)
-    l[1] = fill(0.0, n_output)
-    u[1] = fill(0.0, n_output)
-    for i in 1:n_output
-        l[1][i] = output[i] - epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
-        u[1][i] = output[i] + epsilon * sum(abs.(nnet.layers[1].weights[i, :]))
-    end
+    l1, u1 = input_layer_bounds(layers[1], input, ϵ)
+    push!(l, l1)
+    push!(u, u1)
 
     for i in 2:n_layer
-        act_pattern[i-1], D = get_activation(l[i-1], u[i-1])
-
-        # Initialize new terms
-        gamma[i] = nnet.layers[i].bias
-
-        n_input = length(act_pattern[i-1])
-        n_output = length(nnet.layers[i].bias)
-
-        mu[i] = Vector{Vector{Float64}}(n_input)
-        for j in 1:n_input
-            mu[i][j] = ifelse(act_pattern[i-1][j] == 0, nnet.layers[i].weights * D[:, j], zeros(n_output))
-        end
-
-        # Propagate existiing terms
-        for j in 1:i-1
-            if j > 1
-                for k in 1:length(mu[j])
-                    mu[j][k] = nnet.layers[i].weights * D * mu[j][k]
-                end
-            end
-            gamma[j] = nnet.layers[i].weights * D * gamma[j]
-        end
-        v1 = nnet.layers[i].weights * D * v1'
-        v1 = v1'
-
-        # Compute bounds
-        l[i] = fill(0.0, n_output)
-        u[i] = fill(0.0, n_output)
-        phi = v1' * input + sum(gamma[j] for j in 1:i)
-
-        for ii in 1:n_output
-            neg = fill(0.0, i-1)
-            pos = fill(0.0, i-1)
-            # Need to debug
-            for j in 1:i-1
-                for k in 1:length(mu[j+1])
-                    if act_pattern[i-1][k] == 0
-                        if mu[j+1][k][ii] < 0
-                            neg[j] = l[j][k] * (-mu[j+1][k][ii])
-                        elseif mu[j+1][k][ii] > 0
-                            pos[j] = l[j][k] * (mu[j+1][k][ii])
-                        end
-                    end
-                end
-            end
-            l[i][ii] = phi[ii] - epsilon * sum(abs.(v1[:, ii])) + sum(neg)
-            u[i][ii] = phi[ii] + epsilon * sum(abs.(v1[:, ii])) - sum(pos)
-        end
+        # NOTE: no good way of mutating v1 inside
+        v1, new_l, new_u = bounds_forward_layer!(layers[i], l, u, μ, v1, γ, ϵ)
+        push!(l, new_l)
+        push!(u, new_u)
     end
 
-    act_pattern[n_layer], D = get_activation(l[n_layer], u[n_layer])
-
-    return (l, u, act_pattern)
+    return l, u
 end
 
-function get_activation(l::Vector{Float64}, u::Vector{Float64})
-    act_pattern = get_activation.(l, u)
-    D  = spdiagm(relaxed_ReLU.(l, u))  # a sparse matrix whose diagonal values are the relaxed_ReLU values
-    return (act_pattern, D)
+function bounds_forward_layer!(layer, l, u, μ, v1, γ, ϵ)
+
+    W, b = layer.weights, layer.bias
+    n_in  = length(last(l))
+    n_out = length(b)
+
+    input_ReLU = relaxed_ReLU.(last(l), last(u))
+    D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
+
+    # Propagate existing terms
+    DW = D*W'
+    v1 = v1 * DW
+    map!(g -> g*DW,   γ, γ)
+    for M in μ
+        map!(m -> m*DW,   M, M)
+    end
+    # New terms
+    push!(γ, b)
+    push!(μ, new_μ(n_in, n_out, input_ReLU))
+
+    # Compute bounds
+    ψ = input' * v1 + sum(γ)
+    colsums_v1 = vec(sum(abs, v1, 1)) # sum down the columns after abs
+    colsums_v1 *= ϵ
+    neg, pos = all_neg_pos_sums(input_ReLU, l, μ)
+    new_l = ψ - colsums_v1 + neg
+    new_u = ψ + colsums_v1 - pos
+
+    return v1, new_l, new_u
 end
-function get_activation(l::Float64, u::Float64)
-    u <= 0.0 && return -1
-    l >= 0.0 && return 1
-    return 0
+
+# TODO rename function and inputs
+function all_neg_pos_sums(slopes, l, mu)
+    n_output = length(first(l))
+    neg = zeros(n_output)
+    pos = zeros(n_output)
+    # Need to debug
+    for (j, ℓ) in enumerate(l)          # ℓ::Vector{Float64}
+        for (k, M) in enumerate(mu[j])  # M::Vector{Float64}
+            if 0 < slopes[k] < 1  # if in the triangle region of relaxed ReLU
+                posind = M .> 0
+
+                neg .+= ℓ[k] * -M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                pos .+= ℓ[k] *  M .* posind
+            end
+        end
+    end
+    return neg, pos
 end
+
+function input_layer_bounds(input_layer, input, ϵ)
+    W, b = input_layer.weights, input_layer.bias
+    out1 = W * input + b
+    Δ    = ϵ * sum(abs, W, 2)  #TODO check sum(, 1) vs sum(, 2)
+    l = out1 - Δ
+    u = out1 + Δ
+    return l, u
+end
+
+
+function new_μ(n_input, n_output, input_ReLU)
+    μ = Vector{Vector{Float64}}(n_input)
+    for j in 1:n_input
+        if input_ReLU[j] == 0 # negative part
+            μ[j] = W * D[:, j]
+        else
+            μ[j] = zeros(n_output)
+        end
+    end
+    return μ
+end
+
 function relaxed_ReLU(l::Float64, u::Float64)
     u <= 0.0 && return 0.0
     l >= 0.0 && return 1.0

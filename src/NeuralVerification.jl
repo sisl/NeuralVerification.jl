@@ -23,6 +23,7 @@ include("utils/util.jl")
 include("feasibility/utils/feasibility.jl")
 include("feasibility/reverify.jl")
 include("feasibility/convDual.jl")
+include("feasibility/duality.jl")
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
@@ -43,6 +44,7 @@ export
     ReluVal,
     Ai2,
     ConvDual,
+    Duality,
     # necessary functions:
     read_nnet,
     solve,
