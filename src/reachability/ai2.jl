@@ -3,10 +3,9 @@ struct Ai2 end
 
 function solve(solver::Ai2, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
-    isinc = check_inclusion(reach, problem.output)
 
     #TODO is this the correct return pattern?
-    if isinc
+    if check_inclusion(reach, problem.output)
         return Result(:True)
     else
         return Result(:False)
@@ -21,21 +20,35 @@ function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
     return transform(act, outLinear)
 end
 
-#=
-In general, convert any polytope to a VPolytope to proceed.
-TODO: create high performance Zonotype exception
-=#
-transform(f::ActivationFunction, poly::AbstractPolytope) = transform(f, VPolytope(vertices_list(poly)))
-#=
-define a version of transform for each activation
-NOTE: the paper considers ReLU_i(ReLU_{i-1}(ReLU_{i-2}(...ReLU_1(V)))) where i denotes the dimension.
-ReLU is (should be...) a commutive operation with respect to dimension, and so doing all ReLUs in parallel as considered in this transform should be equivalent
-I.e. it shouldn't matter if you do: for vertices{for dims{ apply_ReLU }}, or for dims{for vertices{for apply_ReLU }}}
-=#
-function transform(f::ReLU, V::VPolytope) # NOTE: this form might be true for all ActivationFuntions, if they are commutive like ReLU
-    new_vertices = [f(v) for v in vertices_list(V)]
-    return VPolytope(new_vertices)
+function transform(f::ReLU, P::AbstractPolytope)
+    pos = meet(P, true)
+    neg = meet(P, false)
+
+    Vneg = VPolytope([f(v) for v in vertices_list(neg)])
+
+    return convex_hull(pos, Vneg)
 end
+
+meet(V::VPolytope, pos) = tovrep(meet(tohrep(V), side))
+
+function meet(H::HPolytope, pos)
+    HH = deepcopy(H)
+    meet!(HH, pos)
+    return HH
+end
+function meet!(H::HPolytope{T}, pos::Bool) where T
+    # constraints are given by ax <= b so (-) is required for a positive constraint
+    if (pos)  d = -eye(dim(H))
+    else      d =  eye(dim(H))
+    end
+
+    for i in size(d, 1)
+        new_hs = HalfSpace(d[i, :], zero(T))
+        addconstraint!(H, new_hs)
+    end
+end
+
+
 
 shiftcenter(zono::Zonotope, shift::Vector)         = Zonotope(zono.center + shift, zono.generators)
 shiftcenter(poly::AbstractPolytope, shift::Vector) = shiftcenter(VPolytope(vertices_list(poly)), shift)
@@ -44,7 +57,6 @@ function shiftcenter(V::VPolytope, shift::Vector)
     shifted = [v + shift for v in vertices_list(V)]
     return VPolytope(shifted)
 end
-
 
 #=
 meet and join will still become necessary in the zonotope case
