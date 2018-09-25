@@ -5,9 +5,9 @@ import JuMP: GenericAffExpr
 # General structure for Feasibility Problems
 function solve(solver::Feasibility, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
-    input_neuron = encode(solver, model, problem)
+    var = encode(solver, model, problem)
     status = JuMP.solve(model)
-    return interpret_result(solver, status, input_neuron)
+    return interpret_result(solver, status, var)
 end
 
 # Presolve to determine the bounds of variables
