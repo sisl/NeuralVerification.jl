@@ -29,12 +29,8 @@ function encode(solver::Duality, model::Model, problem::Problem)
     # Cost for activation(?)
     J += activation_cost.(layers, μ, λ, bounds) |> sum
 
-<<<<<<< HEAD
-    @constraints(model, lambda[] == -c)
-=======
     # output constraint
     @constraint(model, λ[n_layer] .== -c)
->>>>>>> 4a427cf4b8973bb7b6ef2f250c3a87034cc730f3
     @objective(model, Min, J[1])
 end
 
