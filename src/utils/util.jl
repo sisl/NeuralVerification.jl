@@ -89,3 +89,30 @@ function compute_output(nnet::Network, input::Vector{Float64}, I, j)
     end
     return curr_value[j]
 end
+
+# Given a network, find the activation pattern of all neurons
+# Assume ReLU
+function get_activation(nnet::Network, x::Vector{Float64})
+    act_pattern = Vector{Vector{Bool}}(length(nnet.layers))
+    curr_value = x
+    for (i, layer) in enumerate(nnet.layers)
+        curr_value = layer.weights * curr_value + layer.bias
+        act_pattern[i] = curr_value .>= 0.0
+        curr_value = layer.activation(curr_value)
+    end
+    return act_pattern
+end
+
+# Given a network, find the gradient at the input x
+# Assume ReLU
+function get_gradient(nnet::Network, x::Vector{Float64})
+    curr_value = x
+    gradient = eye(length(x))
+    for (i, layer) in enumerate(nnet.layers)
+        curr_value = layer.weights * curr_value + layer.bias
+        act_pattern = curr_value .>= 0.0
+        gradient = diagm(Vector{Float64}(act_pattern)) * layer.weights * gradient
+        curr_value = layer.activation(curr_value)
+    end
+    return gradient
+end

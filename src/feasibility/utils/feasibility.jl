@@ -82,9 +82,15 @@ function add_complementary_output_constraint(model::Model, output::AbstractPolyt
     return nothing
 end
 
-function add_input_constraint(model::Model, input::AbstractPolytope, neuron_vars::Vector{Variable})
+function add_input_constraint(model::Model, input::HPolytope, neuron_vars::Vector{Variable})
     in_A,  in_b  = tosimplehrep(input)
     @constraint(model,  in_A * neuron_vars .<= in_b)
+    return nothing
+end
+
+function add_input_constraint(model::Model, input::Hyperrectangle, neuron_vars::Vector{Variable})
+    @constraint(model,  neuron_vars .<= high(input))
+    @constraint(model,  neuron_vars .>= low(input))
     return nothing
 end
 

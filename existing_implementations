@@ -4,5 +4,8 @@ github.com/vtjeng/MIPVerify.jl
 ConvDual
 github.com/locuslab/convex_adversarial
 
-reluVal
+ReluVal
 github.com/tcwangshiqi-columbia/ReluVal
+
+Sherlock
+github.com/souradeep-111/sherlock

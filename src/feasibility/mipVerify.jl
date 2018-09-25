@@ -55,12 +55,12 @@ end
 
 function interpret_result(solver::MIPVerify, status, neurons)
     if status == :Infeasible
-        return Result(:Undertermined)
+        return Result(:SAT)
     end
     J = maximum(abs.(getvalue(neurons) - problem.input.center))
     if J >= minimum(problem.input.radius)
-        return Result(:True, J)
+        return Result(:SAT)
     else
-        return Result(:False, J)
+        return Result(:UNSAT, J)
     end
 end

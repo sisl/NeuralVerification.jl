@@ -11,6 +11,7 @@ function solve(solver::ILP, problem::Problem)
     while i < solver.max_iter
         model = JuMP.Model(solver = solver.optimizer)
         act_pattern = get_activation(problem.network, x)
+        println(act_pattern)
         input_neurons = encode(solver, model, problem, act_pattern)
         status = JuMP.solve(model)
         x = getvalue(input_neurons)
@@ -67,15 +68,4 @@ function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{B
         curr_value = layer.activation(curr_value)
     end
     return true
-end
-
-function get_activation(nnet::Network, x::Vector{Float64})
-    act_pattern = Vector{Vector{Bool}}(length(nnet.layers))
-    curr_value = x
-    for (i, layer) in enumerate(nnet.layers)
-        curr_value = layer.weights * curr_value + layer.bias
-        act_pattern[i] = curr_value .>= 0.0
-        curr_value = layer.activation(curr_value)
-    end
-    return act_pattern
 end
