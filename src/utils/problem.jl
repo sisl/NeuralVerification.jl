@@ -12,12 +12,36 @@ struct Problem{P<:AbstractPolytope, Q<:AbstractPolytope}
     output::Q
 end
 
-struct Result
+# Abstract type Result
+# CounterExampleResult
+# TrueFalseResult
+# AdversarialResult
+# function status(result::Result)
+abstract type Result end
+
+struct TrueFalseResult <: Result
+	status::Symbol
+end
+
+struct CounterExampleResult <: Result
     status::Symbol
     counter_example::Vector{Float64}
 end
 
-Result(x) = Result(x, [])
+struct AdversarialResult <: Result
+	status::Symbol
+	max_disturbance::Float64
+end
+
+Result(x) = TrueFalseResult(x)
+Result(x, y::Vector{Float64}) = CounterExampleResult(x, y)
+Result(x, y::Float64) = AdversarialResult(x, y)
+CounterExampleResult(x) = CounterExampleResult(x, [])
+AdversarialResult(x) = AdversarialResult(x, -1.0)
+
+function status(result::Result)
+	return result.status
+end
 
 #=
 Add constraints from Polytope to a variable
