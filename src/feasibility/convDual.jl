@@ -67,28 +67,27 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     push!(u, u1)
 
     for i in 2:n_layer
-        W, b = layers[i].weights, layers[i].bias
-        n_in  = length(last(l))
-        n_out = length(b)
+        n_input  = length(layers[i-1].bias)
+        n_output = length(layers[i].bias)
 
         input_ReLU = relaxed_ReLU.(last(l), last(u))
         D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
 
         # Propagate existing terms
-        WD = W*D
+        WD = layers[i].weights*D
         v1 = v1 * WD' # TODO CHECK
         map!(g -> WD*g,   γ, γ)
         for M in μ
             map!(m -> WD*m,   M, M)
         end
         # New terms
-        push!(γ, b)
-        push!(μ, new_μ(n_in, n_out, input_ReLU, WD))
+        push!(γ, layers[i].bias)
+        push!(μ, new_μ(n_input, n_output, input_ReLU, WD))
 
         # Compute bounds
-        ψ = v1' * input + sum(γ)  # TODO SHOULD BE v1' but not compatible
+        ψ = v1' * input + sum(γ)
         eps_v1_sum = ϵ * vec(sum(abs, v1, 1))
-        neg, pos = all_neg_pos_sums(input_ReLU, l, μ)
+        neg, pos = all_neg_pos_sums(input_ReLU, l, μ, n_output)
         push!(l,  ψ - eps_v1_sum + neg )
         push!(u,  ψ + eps_v1_sum - pos )
     end
@@ -97,8 +96,8 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
 end
 
 # TODO rename function and inputs
-function all_neg_pos_sums(slopes, l, μ)
-    n_output = length(first(l))
+function all_neg_pos_sums(slopes, l, μ, n_output)
+    # n_output = length(last(l))
     neg = zeros(n_output)
     pos = zeros(n_output)
     # Need to debug
