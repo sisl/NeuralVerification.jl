@@ -41,7 +41,7 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
     end
 
     # Objective: L∞ norm of the disturbance
-    J = maximum(absolute(neurons[1] - problem.input.center))
+    J = maximum(symbolic_abs(neurons[1] - problem.input.center))
     @objective(model, Min, J)
     println(model)
 
