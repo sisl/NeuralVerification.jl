@@ -9,15 +9,15 @@ end
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, true) # true for upper bound, false for lower bound
     (x_l, l) = output_bound(solver, problem, false)
-    if u <= high(problem.output)[1] && l >= low(problem.output)[1]
-        return Result(:SAT)
-    elseif u - high(problem.output)[1] > solver.delta
-        return Result(:UNSAT, x_u)
-    elseif low(problem.output)[1] - l > solver.delta
-        return Result(:UNSAT, x_l)
-    else
-        return Result(:UNKNOWN)
-    end
+
+    uh = u - high(problem.output)[1]
+    ll = l - low(problem.output)[1]
+
+    uh <= 0 && ll >= 0     && return Result(:SAT)
+    uh > solver.delta      && return Result(:UNSAT, x_u)
+    ll < solver.delta      && return Result(:UNSAT, x_l)
+
+    return Result(:UNKNOWN)
 end
 
 function output_bound(solver::Sherlock, problem::Problem, upper::Bool)
@@ -79,16 +79,14 @@ end
 
 function global_search(nnet::Network, bound::Float64, inputSet::AbstractPolytope, optimizer::AbstractMathProgSolver, upper::Bool)
     # Call Reverify for global search
-    outputSet = HPolytope()
-    if upper
-        h = HalfSpace([1.0], bound)
-    else
-        h = HalfSpace([-1.0], -bound)
+    if (upper)    h = HalfSpace([1.0], bound)
+    else          h = HalfSpace([-1.0], -bound)
     end
-    addconstraint!(outputSet, h)
+    outputSet = HPolytope([h])
+
     problem = Problem(nnet, inputSet, outputSet)
-    solver = Reverify(optimizer)
-    result = solve(solver, problem)
+    solver  = Reverify(optimizer)
+    result  = solve(solver, problem)
     if result.status == :SAT
         x = result.counter_example
         bound = compute_output(nnet, x)
