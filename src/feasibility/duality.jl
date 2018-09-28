@@ -91,8 +91,6 @@ symbolic_max(a::Variable, b::Variable)                           = symbolic_max(
 symbolic_max(a::E, b::E) where E <: JuMP.GenericAffExpr          = symbolic_max(first(a.vars).m, a, b)
 symbolic_max(a::A, b::A) where A <: Array{<:JuMP.GenericAffExpr} = symbolic_max.(first(first(a).vars).m, a, b)
 
-
-# NOTE renamed to symbolic_abs to avoid type piracy
 function symbolic_abs(m::Model, v)
     aux = @variable(m) #get an anonymous variable
     @constraint(m, aux >= 0)
@@ -111,7 +109,7 @@ function init_nnet_vars(solver::Duality, model::Model, network::Network)
     λ = Vector{Vector{Variable}}(length(layers))
     μ = Vector{Vector{Variable}}(length(layers))
 
-    all_layers_n = map(l->length(l.bias), layers)
+    all_layers_n = n_nodes.(layers)
 
     for (i, n) in enumerate(all_layers_n)
         λ[i] = @variable(model, [1:n])

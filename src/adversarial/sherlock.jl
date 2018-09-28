@@ -11,7 +11,7 @@ function solve(solver::Sherlock, problem::Problem)
     (x_l, l) = output_bound(solver, problem, false)
     if u <= high(problem.output)[1] && l >= low(problem.output)[1]
         return Result(:SAT)
-    elseif u - high(problem.output)[1] > solver.delta 
+    elseif u - high(problem.output)[1] > solver.delta
         return Result(:UNSAT, x_u)
     elseif low(problem.output)[1] - l > solver.delta
         return Result(:UNSAT, x_l)
@@ -103,10 +103,10 @@ function init_nnet_vars(solver::Sherlock, model::Model, network::Network)
     neurons = Vector{Vector{Variable}}(length(layers) + 1) # +1 for input layer
     # input layer is treated differently from other layers
     input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
+    all_layers_n  = n_nodes.(layers)
+    prepend!(all_layers_n, input_layer_n)
     for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n]) 
+        neurons[i] = @variable(model, [1:n])
     end
     return neurons
 end

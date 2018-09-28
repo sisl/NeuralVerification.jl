@@ -32,8 +32,8 @@ function init_nnet_vars(solver::Feasibility, model::Model, network::Network)
     deltas  = Vector{Vector{Variable}}(length(layers) + 1)
     # input layer is treated differently from other layers
     input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
+    all_layers_n  = n_nodes.(layers)
+    prepend!(all_layers_n, input_layer_n)
 
     for (i, n) in enumerate(all_layers_n)
         neurons[i] = @variable(model, [1:n]) # To do: name the variables
@@ -64,7 +64,7 @@ Add input/output constraints to model
 =#
 function add_complementary_output_constraint(model::Model, output::AbstractPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
-    # Needs to take the complementary of output constraint  
+    # Needs to take the complementary of output constraint
     n = length(out_b)
     if n == 1
         # Here the output constraint is a half space

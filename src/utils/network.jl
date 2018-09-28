@@ -14,3 +14,6 @@ end
 struct Network
     layers::Vector{Layer} # layers includes output layer
 end
+
+
+n_nodes(L::Layer) = length(L.bias)
