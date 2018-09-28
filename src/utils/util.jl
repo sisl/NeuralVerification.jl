@@ -159,14 +159,14 @@ function get_bounds(nnet::Network, input::Hyperrectangle)
     return bounds
 end
 
-get_bounds(problem::Problem) = get_bounds(problem.nnet, problem.input)
+get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 function linear_transformation(layer::Layer, input::Hyperrectangle)
     (W, b, act) = (layer.weights, layer.bias, layer.activation)
-    before_act_center = W * bounds[i].center + b
+    before_act_center = W * input.center + b
     before_act_radius = zeros(size(W,1))
     for j in 1:size(W, 1)
-        before_act_radius[j] = sum(abs.(W[j, :]) .* bounds[i].radius)
+        before_act_radius[j] = sum(abs.(W[j, :]) .* input.radius)
     end
     return Hyperrectangle(before_act_center, before_act_radius)
 end
