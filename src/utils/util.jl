@@ -90,8 +90,9 @@ function compute_output(nnet::Network, input::Vector{Float64}, I, j)
     return curr_value[j]
 end
 
-# Given a network, find the activation pattern of all neurons
+# Given a network, find the activation pattern of all neurons at a given point x
 # Assume ReLU
+# return Vector{Vector{Bool}}
 function get_activation(nnet::Network, x::Vector{Float64})
     act_pattern = Vector{Vector{Bool}}(length(nnet.layers))
     curr_value = x
@@ -103,6 +104,33 @@ function get_activation(nnet::Network, x::Vector{Float64})
     return act_pattern
 end
 
+# Given a network, find the activation pattern of all neurons for a set
+# Assume ReLU
+# 1: activated
+# 0: undertermined
+# -1: not activated
+function get_activation(nnet::Network, input::Hyperrectangle)
+    bounds = get_bounds(nnet, input)
+    return get_activation(nnet, bounds)
+end
+
+function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
+    act_pattern = Vector{Vector{Int}}(length(nnet.layers))
+    for (i, layer) in enumerate(nnet.layers)
+        before_act_bound = linear_transformation(layer, bounds[i])
+        lower = low(before_act_bound)
+        upper = high(before_act_bound)
+        act_pattern[i] = fill(0, length(layer.bias))
+        for j in 1:length(layer.bias) # For evey node
+            if lower[j] > 0.0
+                act_pattern[i][j] = 1
+            elseif upper[j] < 0.0 
+                act_pattern[i][j] = -1
+            end
+        end
+    end
+    return act_pattern
+end
 # Given a network, find the gradient at the input x
 # Assume ReLU
 function get_gradient(nnet::Network, x::Vector{Float64})
@@ -115,4 +143,30 @@ function get_gradient(nnet::Network, x::Vector{Float64})
         curr_value = layer.activation(curr_value)
     end
     return gradient
+end
+
+# Presolve to determine the bounds of variables
+# This function calls maxSens to compute the bounds
+# Bounds are computed AFTER activation function
+# Return Vector{Hyperrectangle}
+function get_bounds(nnet::Network, input::Hyperrectangle)
+    solver = MaxSens()
+    bounds = Vector{Hyperrectangle}(length(nnet.layers) + 1)
+    bounds[1] = input
+    for (i, layer) in enumerate(nnet.layers)
+        bounds[i+1] = forward_layer(solver, layer, bounds[i])
+    end
+    return bounds
+end
+
+get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
+
+function linear_transformation(layer::Layer, input::Hyperrectangle)
+    (W, b, act) = (layer.weights, layer.bias, layer.activation)
+    before_act_center = W * input.center + b
+    before_act_radius = zeros(size(W,1))
+    for j in 1:size(W, 1)
+        before_act_radius[j] = sum(abs.(W[j, :]) .* input.radius)
+    end
+    return Hyperrectangle(before_act_center, before_act_radius)
 end

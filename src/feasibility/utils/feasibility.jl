@@ -10,19 +10,6 @@ function solve(solver::Feasibility, problem::Problem)
     return interpret_result(solver, status, var)
 end
 
-# Presolve to determine the bounds of variables
-# This function calls maxSens to compute the bounds
-# Bounds are computed AFTER activation function
-function get_bounds(problem::Problem)
-    solver = MaxSens()
-    bounds = Vector{Hyperrectangle}(length(problem.network.layers) + 1)
-    bounds[1] = problem.input
-    for (i, layer) in enumerate(problem.network.layers)
-        bounds[i+1] = forward_layer(solver, layer, bounds[i])
-    end
-    return bounds
-end
-
 #=
 Initialize JuMP variables corresponding to neurons and deltas of network for problem
 =#
@@ -49,6 +36,7 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
+
 symbolic_max(a::Variable, b::Variable)                           = symbolic_max(a.m, a, b)
 symbolic_max(a::E, b::E) where E <: JuMP.GenericAffExpr          = symbolic_max(first(a.vars).m, a, b)
 symbolic_max(a::A, b::A) where A <: Array{<:JuMP.GenericAffExpr} = symbolic_max.(first(first(a).vars).m, a, b)
