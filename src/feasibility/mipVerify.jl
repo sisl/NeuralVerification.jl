@@ -16,12 +16,7 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
     for (i, layer) in enumerate(problem.network.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
-        before_act_center = W * bounds[i].center + b
-        before_act_radius = zeros(size(W,1))
-        for j in 1:size(W, 1)
-            before_act_radius[j] = sum(abs.(W[j, :]) .* bounds[i].radius)
-        end
-        before_act_rectangle = Hyperrectangle(before_act_center, before_act_radius)
+        before_act_rectangle = linear_transformation(layer, bounds[i])
         lower = low(before_act_rectangle)
         upper = high(before_act_rectangle)
         println(lower, upper)
@@ -46,7 +41,7 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
     end
 
     # Objective: L∞ norm of the disturbance
-    J = maximum(absolute(neurons[1] - problem.input.center))
+    J = maximum(symbolic_abs(neurons[1] - problem.input.center))
     @objective(model, Min, J)
     println(model)
 

@@ -10,19 +10,6 @@ function solve(solver::Feasibility, problem::Problem)
     return interpret_result(solver, status, var)
 end
 
-# Presolve to determine the bounds of variables
-# This function calls maxSens to compute the bounds
-# Bounds are computed AFTER activation function
-function get_bounds(problem::Problem)
-    solver = MaxSens()
-    bounds = Vector{Hyperrectangle}(length(problem.network.layers) + 1)
-    bounds[1] = problem.input
-    for (i, layer) in enumerate(problem.network.layers)
-        bounds[i+1] = forward_layer(solver, layer, bounds[i])
-    end
-    return bounds
-end
-
 #=
 Initialize JuMP variables corresponding to neurons and deltas of network for problem
 =#
@@ -43,28 +30,36 @@ function init_nnet_vars(solver::Feasibility, model::Model, network::Network)
     return neurons, deltas
 end
 
-function absolute{V<:GenericAffExpr}(v::V)
-    m = first(v).m
-    @variable(m, aux >= 0)
+function symbolic_max(m::Model, a, b)
+    aux = @variable(m)
+    @constraint(m, aux >= a)
+    @constraint(m, aux >= b)
+    return aux
+end
+symbolic_max(a::Variable, b::Variable) = symbolic_max(a.m, a, b)
+symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr) = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::Array{<:JuMP.GenericAffExpr}, b::Array{<:JuMP.GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
+
+
+# NOTE renamed to symbolic_abs to avoid type piracy
+function symbolic_abs(m::Model, v)
+    aux = @variable(m) #get an anonymous variable
+    @constraint(m, aux >= 0)
     @constraint(m, aux >= v)
     @constraint(m, aux >= -v)
     return aux
 end
+symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
+symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
 
-function absolute{V<:GenericAffExpr}(v::Array{V})
-    m = first(first(v).vars).m
-    @variable(m, aux[1:length(v)] >= 0)
-    @constraint(m, aux .>= v)
-    @constraint(m, aux .>= -v)
-    return aux
-end
 
 #=
 Add input/output constraints to model
 =#
 function add_complementary_output_constraint(model::Model, output::AbstractPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
-    # Needs to take the complementary of output constraint  
+    # Needs to take the complementary of output constraint
     n = length(out_b)
     if n == 1
         # Here the output constraint is a half space
