@@ -13,7 +13,7 @@ function interpret_result(solver::Duality, status, J)
     end
     opt_cost = getvalue(J)
     # println(opt_cost)
-    return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT)) 
+    return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT))
 end
 
 function encode(solver::Duality, model::Model, problem::Problem)

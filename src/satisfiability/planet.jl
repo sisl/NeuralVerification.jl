@@ -3,75 +3,97 @@ struct Planet
     optimizer::AbstractMathProgSolver
 end
 
-
 function solve(solver::Planet, problem::Problem)   
-    # Refine bounds
-    status, bounds = tighten_bounds(solver, problem)
+    # refine bounds
+    status, bounds = tighten_bounds(solver, problem) # 3.1
     if status != :Optimal 
         return Result(:SAT)
     end
 
     # partial assignment
-    p = get_activation(problem.network, bounds)
-    # Infered assignment
-    extra, p = infer_node_phases(problem.network, p, bounds)
+    nnet = problem.network
+    p = get_activation(nnet, bounds)
+    ψ = init_ψ(get_list(p))
 
-    println(p)
-    println(extra)
+    # compute extra conditions
+    extra = infer_node_phases(nnet, p, bounds) # 3.4
+    status, tight = get_tight_clause(nnet, p, bounds) # 3.3
+    if length(tight) > 0
+        append!(extra, Any[tight])
+    end
+    soln = PicoSAT.solve(ψ)
 
-    while satisfy(p)
-        while extra != nothing
-            # Perform unit propagation ...
-        end
-
-        extra = infer_node_phases(problem.network, p, bounds)
-        if extra == nothing
-            status, conflict = elastic_filtering(problem.network, p, bounds)
-            if satisfy(p)
-                if complete(p)
-                    return Result(:UNSAT)
-                end
-                # add a new variable assignment
-                # if p cannot be extended to a satisfying valuation
-                # 
+    # main loop to compute the SAT problem
+    while soln != :unsatisfiable
+        if length(extra) > 0
+            append!(ψ, extra)
+            soln = PicoSAT.solve(ψ)
+            if soln == :unsatisfiable
+                return Result(:SAT)
             end
+        end
+        status, conflict = elastic_filtering(nnet, soln, bounds) # 3.2
+        if status == :Infeasible
+            extra = conflict
+            break
+        else
+            return Result(:UNSAT)
         end
     end
     return Result(:SAT)
 end
 
-function satisfy(p::Vector{Vector{Int64}})
+function get_list(p::Vector{Vector{Int64}})
+    list = Vector{Int64}(0)
     for i in 1:length(p)
         for j in 1:length(p[i])
-            if p[i][j] < -1
-                return false
-            end
+            append!(list, Int64[p[i][j]])
         end
     end
-    return true
+    return list
 end
 
-function complete(p::Vector{Vector{Int64}})
-    for i in 1:length(p)
+function get_assignment(nnet::Network, list::Vector{Int64})
+    p = Vector{Vector{Int64}}(length(nnet.layers))
+    n = 0
+    for (i, layer) in enumerate(nnet.layers)
+        p[i] = fill(0, length(layer.bias))
         for j in 1:length(p[i])
-            if p[i][j] == 0
-                return false
-            end
-        end
+            p[i][j] = ifelse(list[n+j] > 0, 1, -1)
+        end 
+        n += length(p[i])
     end
-    return true
+    return p
 end
 
-function elastic_filtering(nnet::Network, p::Vector{Vector{Int}}, bounds::Vector{Hyperrectangle})
+function get_node_id(nnet::Network, x::Tuple{Int64, Int64})
+    n = 0
+    for i in 1:x[1]-1
+        n += length(nnet.layers[i].bias)
+    end
+    return n + x[2]
+end
+
+function get_node_id(nnet::Network, n::Int64)
+    i = 0
+    j = n
+    while j > length(nnet.layers[i+1].bias)
+        i += 1
+        j = j - length(nnet.layers[i].bias)
+    end
+    return (i, j)
+end
+
+function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
     model = JuMP.Model(solver = optimizer)
 
-    neurons = init_nnet_vars(solver, model, problem.network)
+    neurons = init_nnet_vars(solver, model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_lp_constraint(model, problem.network, bounds, neurons)
-    slack, J = encode_slack_constraint(model, problem.network, p, neurons)
+    encode_lp_constraint(model, nnet, bounds, neurons)
+    slack, J = encode_partial_assignment(model, nnet, p, neurons, true)
 
-    conflict = Vector{Tuple{Int64, Int64}}(0)
+    conflict = Vector{Int64}(0)
     while true
         @objective(model, Min, J)
         status = JuMP.solve(model)
@@ -82,12 +104,55 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int}}, bounds::Vector
         s_value = getvalue(slack)
         (m, index) = max_slack(s_value)
         if m > 0.0
-            add!(conflict, Truple{Int64, Int64}[index])
+            append!(conflict, Any[-p[index[1]][index[2]] * get_node_id(nnet, index)])
             @constraint(model, slack[index[1]][index[2]] == 0.0)
         else
             return (:Feasible, conflict) # partial assignment p is feasible
         end
     end
+end
+
+elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}) = elastic_filtering(nnet, get_assignment(nnet, list), bounds)
+
+function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
+    model = JuMP.Model(solver = optimizer)
+
+    neurons = init_nnet_vars(solver, model, nnet)
+    add_input_constraint(model, problem.input, first(neurons))
+    add_complementary_output_constraint(model, problem.output, last(neurons))
+    encode_lp_constraint(model, nnet, bounds, neurons)
+    encode_partial_assignment(model, nnet, p, neurons, false)
+    
+    J = 0.0
+    for i in 1:length(p)
+        for j in 1:length(p[i])
+            if p[i][j] == 0
+                J += neurons[i+1][j]
+            end
+        end
+    end
+
+    @objective(model, Min, J)
+    status = JuMP.solve(model)
+    if status != :Optimal
+        return (:Infeasible, [])
+    end
+
+    v = getvalue(neurons)
+    tight = Vector{Int64}(0)
+    complete = :Complete
+    for i in 1:length(p)
+        for j in 1:length(p[i])
+            if p[i][j] == 0 
+                if v[i+1][j] > 0
+                    append!(tight, Any[get_node_id(nnet, (i,j))])
+                else
+                    complete = :Incomplete
+                end
+            end
+        end
+    end
+    return (complete, tight)
 end
 
 function max_slack(x::Vector{Vector{Float64}})
@@ -136,7 +201,6 @@ function tighten_bounds(solver::Planet, problem::Problem)
         return (:Infeasible, [])
     end
 
-    println(lower, upper)
     new_bounds = Vector{Hyperrectangle}(n_layer + 1)
     for i in 1:n_layer + 1
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
@@ -183,51 +247,53 @@ function encode_lp_constraint(model::Model, nnet::Network, bounds::Vector{Hyperr
     return nothing
 end
 
-function encode_slack_constraint(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
-    slack = Vector{Vector{Variable}}(length(nnet.layers))
-    sum_slack = 0.0
+function encode_partial_assignment(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons, slack::Bool)
+    if slack
+        slack_var = Vector{Vector{Variable}}(length(nnet.layers))
+        sum_slack = 0.0
+    end
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
-        slack[i] = @variable(model, [1:length(b)])
+        if slack
+            slack_var[i] = @variable(model, [1:length(b)])
+        end
         for j in length(b)
             if p[i][j] != 0
-                sum_slack += slack[i][j]
+                if slack
+                    sum_slack += slack_var[i][j]
+                    before_act[j] -= slack_var[i][j]
+                end
                 if p[i][j] == 1
-                    @constraint(model, neurons[i+1][j] + slack[i][j] >= before_act[j])
+                    @constraint(model, neurons[i+1][j] >= before_act[j])
                 else
                     @constraint(model, neurons[i+1][j] == 0.0)
-                    @constraint(model, slack[i][j] >= before_act[j])
+                    @constraint(model, 0.0 >= before_act[j])
                 end
             end
         end
     end
-    return slack, sum_slack
+    if slack
+        return slack_var, sum_slack
+    else
+        return nothing
+    end
 end
 
-function init_var(nnet::Network)
-    # For every node, there are three modes
-    # 1: activated
-    # 0: unknown
-    # -1: not activated
-    ψ = Vector{Vector{Int64}}(length(nnet.layers))
-    for (i, layer) in enumerate(nnet.layers)
-        ψ[i] = fill(0, length(layer.bias))
+function init_ψ(p_list::Vector{Int64})
+    ψ = Vector{Vector{Int64}}(length(p_list))
+    for i in 1:length(p_list)
+        if p_list[i] == 0
+            ψ[i] = [i, -i]
+        else
+            ψ[i] = [p_list[i]*i]
+        end
     end
     return ψ
 end
 
 # To be implemented
 function infer_node_phases(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
-    new_p = Vector{Vector{Int64}}(length(nnet.layers))
-    extra = Vector{Tuple{Int64, Int64}}()
-    for (i, layer) in enumerate(nnet.layers)
-        new_p[i] = p[i]
-        for j in 1:length(layer.bias)
-            if p[i][j] == 0
-                add!(extra, Tuple{Int64, Int64}[(i, j)])
-            end
-        end
-    end
-    return extra, new_p
+    extra = Vector{Vector{Int64}}(0)
+    return extra
 end
