@@ -36,8 +36,8 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::Variable, b::Variable) = symbolic_max(a.m, a, b)
-symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr) = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::Variable, b::Variable)                                         = symbolic_max(a.m, a, b)
+symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
 symbolic_max(a::Array{<:JuMP.GenericAffExpr}, b::Array{<:JuMP.GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
 
 
