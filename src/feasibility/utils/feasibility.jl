@@ -43,21 +43,26 @@ function init_nnet_vars(solver::Feasibility, model::Model, network::Network)
     return neurons, deltas
 end
 
-function absolute{V<:GenericAffExpr}(v::V)
-    m = first(v).m
-    @variable(m, aux >= 0)
+function symbolic_max(m::Model, a, b)
+    aux = @variable(m)
+    @constraint(m, aux >= a)
+    @constraint(m, aux >= b)
+    return aux
+end
+symbolic_max(a::Variable, b::Variable)                           = symbolic_max(a.m, a, b)
+symbolic_max(a::E, b::E) where E <: JuMP.GenericAffExpr          = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::A, b::A) where A <: Array{<:JuMP.GenericAffExpr} = symbolic_max.(first(first(a).vars).m, a, b)
+
+function symbolic_abs(m::Model, v)
+    aux = @variable(m) #get an anonymous variable
+    @constraint(m, aux >= 0)
     @constraint(m, aux >= v)
     @constraint(m, aux >= -v)
     return aux
 end
-
-function absolute{V<:GenericAffExpr}(v::Array{V})
-    m = first(first(v).vars).m
-    @variable(m, aux[1:length(v)] >= 0)
-    @constraint(m, aux .>= v)
-    @constraint(m, aux .>= -v)
-    return aux
-end
+symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
+symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
 
 #=
 Add input/output constraints to model

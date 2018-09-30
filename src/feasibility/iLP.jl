@@ -47,7 +47,7 @@ function encode(solver::ILP, model::Model, problem::Problem, act_pattern::Vector
     end
 
     # Objective: L∞ norm of the disturbance
-    J = maximum(absolute(neurons[1] - problem.input.center))
+    J = maximum(symbolic_abs(neurons[1] - problem.input.center))
     @objective(model, Min, J)
 
     return neurons[1]

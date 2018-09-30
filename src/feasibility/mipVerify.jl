@@ -32,7 +32,7 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
         for j in 1:length(layer.bias) # For evey node
             if lower[j] >= 0.0
                 @constraint(model, neurons[i+1][j] == before_act[j])
-            elseif upper[j] <= 0.0 
+            elseif upper[j] <= 0.0
                 @constraint(model, neurons[i+1][j] == 0.0)
             else
                 @constraints(model, begin
@@ -46,7 +46,7 @@ function encode(solver::MIPVerify, model::Model, problem::Problem)
     end
 
     # Objective: L∞ norm of the disturbance
-    J = maximum(absolute(neurons[1] - problem.input.center))
+    J = maximum(symbolic_abs(neurons[1] - problem.input.center))
     @objective(model, Min, J)
     println(model)
 
