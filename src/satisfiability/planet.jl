@@ -34,8 +34,7 @@ function solve(solver::Planet, problem::Problem)
         end
         status, conflict = elastic_filtering(nnet, soln, bounds) # 3.2
         if status == :Infeasible
-            extra = conflict
-            break
+            extra = Any[conflict]
         else
             return Result(:UNSAT)
         end
@@ -102,6 +101,7 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
         end
         
         s_value = getvalue(slack)
+
         (m, index) = max_slack(s_value)
         if m > 0.0
             append!(conflict, Any[-p[index[1]][index[2]] * get_node_id(nnet, index)])
@@ -252,23 +252,31 @@ function encode_partial_assignment(model::Model, nnet::Network, p::Vector{Vector
         slack_var = Vector{Vector{Variable}}(length(nnet.layers))
         sum_slack = 0.0
     end
+
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
         if slack
             slack_var[i] = @variable(model, [1:length(b)])
         end
-        for j in length(b)
+        for j in 1:length(b)
             if p[i][j] != 0
                 if slack
                     sum_slack += slack_var[i][j]
-                    before_act[j] -= slack_var[i][j]
-                end
-                if p[i][j] == 1
-                    @constraint(model, neurons[i+1][j] >= before_act[j])
+                    if p[i][j] == 1
+                        @constraint(model, neurons[i+1][j] == before_act[j] + slack_var[i][j])
+                        @constraint(model, before_act[j] + slack_var[i][j] >= 0.0)
+                    else
+                        @constraint(model, neurons[i+1][j] == 0.0)
+                        @constraint(model, 0.0 >= before_act[j] - slack_var[i][j])
+                    end
                 else
-                    @constraint(model, neurons[i+1][j] == 0.0)
-                    @constraint(model, 0.0 >= before_act[j])
+                    if p[i][j] == 1
+                        @constraint(model, neurons[i+1][j] <= before_act[j])
+                    else
+                        @constraint(model, neurons[i+1][j] == 0.0)
+                        @constraint(model, 0.0 >= before_act[j])
+                    end
                 end
             end
         end
