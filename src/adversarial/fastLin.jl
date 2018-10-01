@@ -26,7 +26,11 @@ function solve(solver::FastLin, problem::Problem)
         end
         i = i+1
     end
-    return ifelse(ϵ[i] > minimum(problem.input.radius), Result(:True, ϵ[i]), Result(:False, ϵ[i]))
+    if ϵ[i] > minimum(problem.input.radius)
+        return Result(:True, ϵ[i])
+    else
+        return Result(:False, ϵ[i])
+    end
 end
 
 # To be implemented

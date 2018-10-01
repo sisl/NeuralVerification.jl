@@ -10,7 +10,7 @@ function solve(solver::FastLip, problem::Problem)
 	bounds, act_pattern = get_bounds()
 	result = solve(FastLin(), problem)
 	ϵ_fastLin = result.max_disturbance
-	
+
 	C = problem.network.layers[1].weights
 	L = zeros(size(C))
 	U = zeros(size(C))
@@ -28,19 +28,27 @@ end
 
 function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{Float64})
 	n_input = size(C)
-	n2, n1 = size(W)
-	new_C = zeros(n2, n_input)
-	new_L = zeros(n2, n_input)
-	new_U = zeros(n2, n_input)
+	rows, cols = size(W)
+	new_C = zeros(rows, n_input)
+	new_L = zeros(rows, n_input)
+	new_U = zeros(rows, n_input)
 	for k in 1:n_input
-		for j in 1:n2
-			for i in 1:n1
-				new_C[j,k] += ifelse(D[i] == 1, W[j,i]*C[i,k], 0)
-				new_U[j,k] += ifelse(D[i] == 1, W[j,i]*ifelse(W[j,i] > 0, U[i,k], L[i,k]), 0)
-				new_U[j,k] += ifelse(D[i] == 0 && W[j,i]*(C[i,k]+U[i,k])>0, W[j,i]*(C[i,k]+U[i,k]), 0)
-				new_L[j,k] += ifelse(D[i] == 1, W[j,i]*ifelse(W[j,i] > 0, L[i,k], U[i,k]), 0)
-				new_L[j,k] += ifelse(D[i] == 0 && W[j,i]*(C[i,k]+L[i,k])>0, W[j,i]*(C[i,k]+L[i,k]), 0)
-			end
+		for j in 1:rows, i in 1:cols
+
+            u = U[i, k]
+            l = L[i, k]
+            c = C[i, k]
+            w = W[j, i]
+
+            if D[i] == 1
+                new_C[j,k] += w*c
+                new_U[j,k] += (w > 0) ? u : l
+                new_L[j,k] += (w > 0) ? l : u
+            elseif D[i] == 0 && w*(c+u)>0
+
+                new_U[j,k] += w*(c+u)
+                new_L[j,k] += w*(c+l)
+            end
 		end
 	end
 	return (new_C, new_L, new_U)
