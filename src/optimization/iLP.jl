@@ -11,12 +11,19 @@ function solve(solver::ILP, problem::Problem)
     while i < solver.max_iter
         model = JuMP.Model(solver = solver.optimizer)
         act_pattern = get_activation(problem.network, x)
-        println(act_pattern)
-        input_neurons = encode(solver, model, problem, act_pattern)
+
+        neurons = init_neurons(model, problem.network)
+        add_complementary_output_constraint(model, problem.output, last(neurons))
+        encode_lp_constraint(model, problem.network, act_pattern, neurons)
+        J = max_disturbance(model, first(neurons) - problem.input.center)
+
         status = JuMP.solve(model)
-        x = getvalue(input_neurons)
+        if status != :Optimal
+            return Result(:Unknown)
+        end
+        x = getvalue(first(neurons))
         if satisfy(problem.network, x, act_pattern)
-            radius = maximum(abs.(x - problem.input.center))
+            radius = getvalue(J)
             if radius >= minimum(problem.input.radius)
                 return Result(:SAT, radius)
             else
@@ -26,31 +33,6 @@ function solve(solver::ILP, problem::Problem)
         i += 1
     end
     return Result(:Unknown)
-end
-
-function encode(solver::ILP, model::Model, problem::Problem, act_pattern::Vector{Vector{Bool}})
-    neurons, deltas = init_nnet_vars(solver, model, problem.network)
-    add_complementary_output_constraint(model, problem.output, last(neurons))
-
-    for (i, layer) in enumerate(problem.network.layers)
-        (W, b, act) = (layer.weights, layer.bias, layer.activation)
-        before_act = W * neurons[i] + b
-        for j in 1:length(layer.bias) # For evey node
-            if act_pattern[i][j]
-                # @constraint(model, before_act[j] >= 0.0)
-                @constraint(model, neurons[i+1][j] == before_act[j])
-            else
-                # @constraint(model, before_act[j] <= 0.0)
-                @constraint(model, neurons[i+1][j] == 0.0)
-            end
-        end
-    end
-
-    # Objective: L∞ norm of the disturbance
-    J = maximum(symbolic_abs(neurons[1] - problem.input.center))
-    @objective(model, Min, J)
-
-    return neurons[1]
 end
 
 function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})

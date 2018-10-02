@@ -80,7 +80,7 @@ function compute_LB(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMa
     bounds = get_bounds(nnet, subdom)
     model = JuMP.Model(solver = optimizer)
 
-    neurons = init_nnet_neurons(model, nnet)
+    neurons = init_neurons(model, nnet)
     add_input_constraint(model, subdom, first(neurons))
     encode_lp_constraint(model, nnet, bounds, neurons)
 
@@ -93,20 +93,4 @@ function compute_LB(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMa
     else
         error("Could not find lower bound for subdom: ", subdom)
     end
-end
-
-# To do: merge this function with init_nnet_var with other optimization methods
-function init_nnet_neurons(model::Model, network::Network)
-    layers = network.layers
-    neurons = Vector{Vector{Variable}}(length(layers) + 1)
-
-    input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
-
-    for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n])
-    end
-
-    return neurons
 end

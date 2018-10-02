@@ -22,7 +22,9 @@ function encode(solver::Duality, model::Model, problem::Problem)
     bounds = get_bounds(problem)
     c, d = tosimplehrep(problem.output)
 
-    λ, μ = init_nnet_vars(solver, model, problem.network)
+    λ = init_multipliers(model, problem.network)
+    μ = init_multipliers(model, problem.network)
+    
     ## J the objective function
     J = -d[1]
     # Input constraint
@@ -79,20 +81,4 @@ function input_layer_cost(layer, μ, input)
     J = - μ' * (W * input.center .+ b)
     J += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
     return J
-end
-
-# The variables in Duality are Lagrangian Multipliers
-function init_nnet_vars(solver::Duality, model::Model, network::Network)
-    layers = network.layers
-    λ = Vector{Vector{Variable}}(length(layers))
-    μ = Vector{Vector{Variable}}(length(layers))
-
-    all_layers_n = map(l->length(l.bias), layers)
-
-    for (i, n) in enumerate(all_layers_n)
-        λ[i] = @variable(model, [1:n])
-        μ[i] = @variable(model, [1:n])
-    end
-
-    return λ, μ
 end
