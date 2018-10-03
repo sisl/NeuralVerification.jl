@@ -20,10 +20,12 @@ include("utils/problem.jl")
 include("utils/util.jl")
 
 # TODO: consider creating sub-modules for each of these.
-include("feasibility/utils/feasibility.jl")
-include("feasibility/reverify.jl")
-include("feasibility/convDual.jl")
-include("feasibility/duality.jl")
+include("optimization/utils/constraints.jl")
+include("optimization/utils/objectives.jl")
+include("optimization/utils/variables.jl")
+include("optimization/reverify.jl")
+include("optimization/convDual.jl")
+include("optimization/duality.jl")
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")

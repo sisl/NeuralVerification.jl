@@ -3,14 +3,13 @@
 # This method only works for half space output constraint
 # c y <= d
 # Input constraint needs to be a hyperrectangle with uniform radius
-struct Certify{O<:AbstractMathProgSolver} <: Feasibility
+struct Certify{O<:AbstractMathProgSolver}
     optimizer::O
 end
 
-function encode(solver::Certify, model::Model, problem::Problem)
-    if length(problem.network.layers) > 2
-      error("Network should only contain one hidden layer!")
-    end
+function solve(solver::Certify, problem::Problem)
+    @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
+    model = JuMP.Model(solver = solver.optimizer)
     c, d = tosimplehrep(problem.output)
     v = c * problem.network.layers[2].weights
     W = problem.network.layers[1].weights
@@ -29,8 +28,8 @@ function encode(solver::Certify, model::Model, problem::Problem)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, J[1])
-
-    return J
+    status = JuMP.solve(model)
+    return interpret_result(solver, status, J[1])
 end
 
 # True if J < 0

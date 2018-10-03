@@ -1,6 +1,6 @@
 # Iterative LP
 
-struct ILP{O<:AbstractMathProgSolver} <: Feasibility
+struct ILP{O<:AbstractMathProgSolver}
     optimizer::O
     max_iter::Int64
 end

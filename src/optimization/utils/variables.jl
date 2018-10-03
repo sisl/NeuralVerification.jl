@@ -1,14 +1,4 @@
-abstract type Feasibility end
-
 import JuMP: GenericAffExpr
-
-# General structure for Feasibility Problems
-function solve(solver::Feasibility, problem::Problem)
-    model = JuMP.Model(solver = solver.optimizer)
-    var = encode(solver, model, problem)
-    status = JuMP.solve(model)
-    return interpret_result(solver, status, var)
-end
 
 function init_neurons(model::Model, network::Network)
     layers = network.layers

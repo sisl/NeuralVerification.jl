@@ -3,7 +3,7 @@
 #   Include presolve
 # Only take half space input constraint
 # Computes the allowable radius of input perturbations
-struct MIPVerify{O<:AbstractMathProgSolver} <: Feasibility
+struct MIPVerify{O<:AbstractMathProgSolver}
     optimizer::O
 end
 
