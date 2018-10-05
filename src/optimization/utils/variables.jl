@@ -1,33 +1,20 @@
 import JuMP: GenericAffExpr
 
-function init_neurons(model::Model, network::Network)
+init_neurons(model::Model, network::Network) = init_variables(model, network, :Cont)
+init_deltas(model::Model, network::Network)  = init_variables(model, network, :Bin)
+
+function init_variables(model::Model, network::Network, vartype::Symbol)
     layers = network.layers
-    neurons = Vector{Vector{Variable}}(length(layers) + 1)
+    vars = Vector{Vector{Variable}}(length(layers) + 1)
 
     input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
+    all_layers_n  = n_nodes.(layers)
+    prepend!(all_layers_n, input_layer_n)
 
     for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n])
+        vars[i] = @variable(model, [1:n], category = vartype)
     end
-
-    return neurons
-end
-
-function init_deltas(model::Model, network::Network)
-    layers = network.layers
-    deltas = Vector{Vector{Variable}}(length(layers) + 1)
-
-    input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
-
-    for (i, n) in enumerate(all_layers_n)
-        deltas[i] = @variable(model, [1:n], Bin)
-    end
-
-    return deltas
+    return vars
 end
 
 # Lagrangian Multipliers
@@ -35,7 +22,7 @@ function init_multipliers(model::Model, network::Network)
     layers = network.layers
     λ = Vector{Vector{Variable}}(length(layers))
 
-    all_layers_n = map(l->length(l.bias), layers)
+    all_layers_n = n_nodes.(layers)
 
     for (i, n) in enumerate(all_layers_n)
         λ[i] = @variable(model, [1:n])
