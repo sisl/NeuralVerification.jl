@@ -37,12 +37,10 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::Variable, b::Variable)                                         = symbolic_max(a.m, a, b)
-symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
-symbolic_max(a::Array{<:JuMP.GenericAffExpr}, b::Array{<:JuMP.GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
+symbolic_max(a::Variable, b::Variable)                               = symbolic_max(a.m, a, b)
+symbolic_max(a::GenericAffExpr, b::GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::Array{<:GenericAffExpr}, b::Array{<:GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
 
-
-# NOTE renamed to symbolic_abs to avoid type piracy
 function symbolic_abs(m::Model, v)
     aux = @variable(m) #get an anonymous variable
     @constraint(m, aux >= 0)
@@ -50,6 +48,6 @@ function symbolic_abs(m::Model, v)
     @constraint(m, aux >= -v)
     return aux
 end
-symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
-symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
-symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
+symbolic_abs(v::Variable)                = symbolic_abs(v.m, v)
+symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
