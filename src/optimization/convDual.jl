@@ -7,10 +7,10 @@ end
 function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
-    if J[1] >= 0.0
-        return Result(:True)
+    if J >= 0.0
+        return Result(:SAT)
     end
-    return Result(:Undetermined)
+    return Result(:Unknown)
 end
 
 # compute lower bound of the dual problem.
@@ -20,7 +20,9 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
 
     layers = network.layers
     L, U = get_bounds(network, input.center, input.radius[1])
-    v, J = tosimplehrep(output)
+    v, d = tosimplehrep(output)
+
+    J = d[1]
 
     for i in reverse(1:length(layers))
         J -= v'*layers[i].bias
@@ -116,8 +118,10 @@ end
 
 function input_layer_bounds(input_layer, input, ϵ)
     W, b = input_layer.weights, input_layer.bias
+
     out1 = vec(W * input + b)
     Δ    = ϵ * vec(sum(abs, W, 2))
+
     l = out1 - Δ
     u = out1 + Δ
     return l, u
