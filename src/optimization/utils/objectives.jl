@@ -7,6 +7,8 @@ function max_disturbance(model::Model, var)
     return J
 end
 
+# NOTE: if this is only used in duality, it should probably be  defined there.
+# particularly since dual_cost for convDual is defined differently
 function dual_cost(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
     J = input_layer_cost(nnet.layers[1], μ[1], bounds[1])
     for i in 2:length(nnet.layers)

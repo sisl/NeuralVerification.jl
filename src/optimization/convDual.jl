@@ -56,10 +56,10 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     layers  = nnet.layers
     n_layer = length(layers)
 
-    l = Vector{Vector{Float64}}(0)              ; sizehint!(l, n_layer)
-    u = Vector{Vector{Float64}}(0)              ; sizehint!(u, n_layer)
-    γ = Vector{Vector{Float64}}(0)              ; sizehint!(γ, n_layer)
-    μ = Vector{Vector{Vector{Float64}}}(0)      ; sizehint!(μ, n_layer)
+    l = Vector{Vector{Float64}}(0)
+    u = Vector{Vector{Float64}}(0)
+    γ = Vector{Vector{Float64}}(0)
+    μ = Vector{Vector{Vector{Float64}}}(0)
 
     v1 = layers[1].weights'
     push!(γ, layers[1].bias)
@@ -69,59 +69,47 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     push!(u, u1)
 
     for i in 2:n_layer
-        # NOTE: no good way of mutating v1 inside
-        v1, new_l, new_u = bounds_forward_layer!(layers[i], l, u, μ, v1, γ, ϵ)
-        push!(l, new_l)
-        push!(u, new_u)
+        n_input  = length(layers[i-1].bias)
+        n_output = length(layers[i].bias)
+
+        input_ReLU = relaxed_ReLU.(last(l), last(u))
+        D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
+
+        # Propagate existing terms
+        WD = layers[i].weights*D
+        v1 = v1 * WD' # TODO CHECK
+        map!(g -> WD*g,   γ, γ)
+        for M in μ
+            map!(m -> WD*m,   M, M)
+        end
+        # New terms
+        push!(γ, layers[i].bias)
+        push!(μ, new_μ(n_input, n_output, input_ReLU, WD))
+
+        # Compute bounds
+        ψ = v1' * input + sum(γ)
+        eps_v1_sum = ϵ * vec(sum(abs, v1, 1))
+        neg, pos = all_neg_pos_sums(input_ReLU, l, μ, n_output)
+        push!(l,  ψ - eps_v1_sum + neg )
+        push!(u,  ψ + eps_v1_sum - pos )
     end
 
     return l, u
 end
 
-function bounds_forward_layer!(layer, l, u, μ, v1, γ, ϵ)
-
-    W, b = layer.weights, layer.bias
-    n_in  = length(last(l))
-    n_out = length(b)
-
-    input_ReLU = relaxed_ReLU.(last(l), last(u))
-    D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
-
-    # Propagate existing terms
-    DW = D * W'
-    v1 = v1 * DW
-    map!(g -> DW' * g, γ, γ)
-    for M in μ
-        map!(m -> DW' * m, M, M)
-    end
-    # New terms
-    push!(γ, b)
-    push!(μ, new_μ(n_in, n_out, input_ReLU))
-
-    # Compute bounds
-    ψ = input' * v1 + sum(γ)
-    colsums_v1 = vec(sum(abs, v1, 1)) # sum down the columns after abs
-    colsums_v1 *= ϵ
-    neg, pos = all_neg_pos_sums(input_ReLU, l, μ)
-    new_l = ψ - colsums_v1 + neg
-    new_u = ψ + colsums_v1 - pos
-
-    return v1, new_l, new_u
-end
-
 # TODO rename function and inputs
-function all_neg_pos_sums(slopes, l, mu)
-    n_output = length(first(l))
+function all_neg_pos_sums(slopes, l, μ, n_output)
+    # n_output = length(last(l))
     neg = zeros(n_output)
     pos = zeros(n_output)
     # Need to debug
-    for (j, ℓ) in enumerate(l)          # ℓ::Vector{Float64}
-        for (k, M) in enumerate(mu[j])  # M::Vector{Float64}
-            if 0 < slopes[k] < 1  # if in the triangle region of relaxed ReLU
+    for (i, ℓ) in enumerate(l)                # ℓ::Vector{Float64}
+        for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
+            if 0 < slopes[j] < 1              # if in the triangle region of relaxed ReLU
                 posind = M .> 0
 
-                neg .+= ℓ[k] * -M .* !posind  # multiply by boolean to set the undesired values to 0.0
-                pos .+= ℓ[k] *  M .* posind
+                neg .+= ℓ[j] * -M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                pos .+= ℓ[j] *  M .* posind
             end
         end
     end
@@ -130,24 +118,26 @@ end
 
 function input_layer_bounds(input_layer, input, ϵ)
     W, b = input_layer.weights, input_layer.bias
-    out1 = W * input + b
-    Δ    = ϵ * sum(abs, W, 2)[:, 1]  #TODO check sum(, 1) vs sum(, 2)
+
+    out1 = vec(W * input + b)
+    Δ    = ϵ * vec(sum(abs, W, 2))
+
     l = out1 - Δ
     u = out1 + Δ
     return l, u
 end
 
 
-function new_μ(n_input, n_output, input_ReLU)
-    μ = Vector{Vector{Float64}}(n_input)
+function new_μ(n_input, n_output, input_ReLU, WD)
+    sub_μ = Vector{Vector{Float64}}(n_input)
     for j in 1:n_input
-        if input_ReLU[j] == 0 # negative part
-            μ[j] = W * D[:, j]
+        if input_ReLU[j] == 0 # negative region
+            sub_μ[j] = WD[:, j] # TODO CONFIRM
         else
-            μ[j] = zeros(n_output)
+            sub_μ[j] = zeros(n_output)
         end
     end
-    return μ
+    return sub_μ
 end
 
 function relaxed_ReLU(l::Float64, u::Float64)
