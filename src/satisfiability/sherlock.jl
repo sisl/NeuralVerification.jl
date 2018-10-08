@@ -48,7 +48,7 @@ function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolyt
 
     neurons = init_neurons(solver, model, problem.network)
     add_input_constraint(model, problem.input, first(neurons))
-    encode_lp_constraint(model, problem.network, act_pattern, neurons)
+    encode_lp(model, problem.network, act_pattern, neurons)
 
     J = gradient * neurons[1]
     @objective(model, ifelse(upper, Max, Min), J[1])

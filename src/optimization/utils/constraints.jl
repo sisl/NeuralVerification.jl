@@ -1,17 +1,32 @@
 # This file is for different constraints
+# Default activation: ReLU
 
 # Encode constraint as LP according to the activation pattern
-# This function is called in iLP
-function encode_lp_constraint(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
+# this is used in Sherlock
+function encode_lp(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
     for (i, layer) in enumerate(nnet.layers)
-        (W, b, act) = (layer.weights, layer.bias, layer.activation)
-        before_act = W * neurons[i] + b
-        for j in 1:length(layer.bias) # For evey node
+        before_act = layer.weights * neurons[i] + layer.bias
+        for j in 1:length(layer.bias)
             if act_pattern[i][j]
-                # @constraint(model, before_act[j] >= 0.0)
+                @constraint(model, before_act[j] >= 0.0) 
                 @constraint(model, neurons[i+1][j] == before_act[j])
             else
-                # @constraint(model, before_act[j] <= 0.0)
+                @constraint(model, before_act[j] <= 0.0)
+                @constraint(model, neurons[i+1][j] == 0.0)
+            end
+        end
+    end
+    return nothing
+end
+
+# This function is called in iLP
+function encode_relaxed_lp(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
+    for (i, layer) in enumerate(nnet.layers)
+        before_act = layer.weights * neurons[i] + layer.bias
+        for j in 1:length(layer.bias)
+            if act_pattern[i][j]
+                @constraint(model, neurons[i+1][j] == before_act[j])
+            else
                 @constraint(model, neurons[i+1][j] == 0.0)
             end
         end
@@ -21,7 +36,7 @@ end
 
 # Encode constraint as LP according to the Δ relaxation of ReLU
 # This function is called in planet and bab
-function encode_lp_constraint(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons)
+function encode_Δ_lp(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons)
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
@@ -43,6 +58,26 @@ function encode_lp_constraint(model::Model, nnet::Network, bounds::Vector{Hyperr
         end
     end
     return nothing
+end
+
+function encode_slack_lp(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
+    slack_var = Vector{Vector{Variable}}(length(nnet.layers))
+    sum_slack = 0.0
+    for (i, layer) in enumerate(nnet.layers)
+        before_act = layer.weights * neurons[i] + layer.bias
+        slack_var[i] = @variable(model, [1:length(b)])
+        for j in 1:length(b)
+            sum_slack += slack_var[i][j]
+            if p[i][j] == 1
+                @constraint(model, neurons[i+1][j] == before_act[j] + slack_var[i][j])
+                @constraint(model, before_act[j] + slack_var[i][j] >= 0.0)
+            else
+                @constraint(model, neurons[i+1][j] == 0.0)
+                @constraint(model, 0.0 >= before_act[j] - slack_var[i][j])
+            end
+        end
+    end
+    return slack_var, sum_slack
 end
 
 # Encode constraint as MIP without bounds

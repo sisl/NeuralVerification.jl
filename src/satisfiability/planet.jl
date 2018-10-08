@@ -90,7 +90,7 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
     neurons = init_neurons(solver, model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_lp_constraint(model, nnet, bounds, neurons)
+    encode_Δ_lp(model, nnet, bounds, neurons)
     slack = encode_slack_lp(model, nnet, p, neurons)
     J = sum(sum(slack[i]) for i in 1:n_layer)
     @objective(model, Min, J)
@@ -121,7 +121,7 @@ function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vecto
     neurons = init_neurons(solver, model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_lp_constraint(model, nnet, bounds, neurons)
+    encode_Δ_lp(model, nnet, bounds, neurons)
     encode_partial_assignment(model, nnet, p, neurons, false)
     
     J = 0.0
