@@ -1,9 +1,11 @@
-
 struct MaxSens
     resolution::Float64
+    tight::Bool
 end
 
-MaxSens() = MaxSens(1.0)
+MaxSens() = MaxSens(1.0, false)
+MaxSens(x::Float64) = MaxSens(x, false)
+MaxSens(x::Bool) = MaxSens(1.0, x)
 
 # This is the main function
 function solve(solver::MaxSens, problem::Problem)
@@ -16,14 +18,13 @@ end
 # This function is called by forward_network
 function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
     (W, b, act) = (L.weights, L.bias, L.activation)
-    output = act(W * input.center + b)
-    gamma = Vector{Float64}(size(W, 1))
+    center = fill(0.0, size(W, 1))
+    gamma = fill(0.0, size(W, 1))
     for j in 1:size(W, 1)
         node = Node(W[j,:], b[j], act)
-        gamma[j] = forward_node(solver, node, input)
+        center[j], gamma[j] = forward_node(solver, node, input)
     end
-    # Here we do not require the Hyperrectangle to have equal sides
-    return Hyperrectangle(output, gamma)
+    return Hyperrectangle(center, gamma)
 end
 
 function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
@@ -32,22 +33,19 @@ function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
     β    = node.act(output)  # TODO expert suggestion for variable name. beta? β? O? x?
     βmax = node.act(output + deviation)
     βmin = node.act(output - deviation)
-    return max(abs(βmax - β), abs(βmin - β))
+    if solver.tight
+        return ((βmax + βmin)/2, (βmax - βmin)/2)
+    else
+        return (β, max(abs(βmax - β), abs(βmin - β)))
+    end
 end
 
-# This function needs to be improved
-# Ad hoc implementation for now
-# Assuming the constraint only contains lower and upper bounds
-# [I; -I] x <= [Upper; Lower]
-function partition(input::HPolytope, delta::Float64)
+function partition(input::Hyperrectangle, delta::Float64)
     n_dim = dim(input)
     hyperrectangle_list = Vector{Int64}(n_dim)
     n_hyperrectangle = 1
 
-    # This part is ad hoc
-    inputA, inputb = tosimplehrep(input)
-    upper = inputb[1:n_dim]
-    lower = -inputb[(n_dim+1):(2*n_dim)]
+    lower, upper = low(input), high(input)
 
     for i in 1:n_dim
         hyperrectangle_list[i] = n_hyperrectangle
@@ -69,4 +67,19 @@ function partition(input::HPolytope, delta::Float64)
         hyperrectangles[k] = Hyperrectangle(center, radius)
     end
     return hyperrectangles
+end
+
+# This function needs to be improved
+# Ad hoc implementation for now
+# Assuming the constraint only contains lower and upper bounds
+# [I; -I] x <= [Upper; Lower]
+function partition(input::HPolytope, delta::Float64)
+    n_dim = dim(input)
+    
+    # This part is ad hoc
+    inputA, inputb = tosimplehrep(input)
+    upper = inputb[1:n_dim]
+    lower = -inputb[(n_dim+1):(2*n_dim)]
+
+    return partition(Hyperrectangle(low = lower, high = upper), delta)
 end
