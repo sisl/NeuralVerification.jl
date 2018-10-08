@@ -16,11 +16,13 @@ function solve(solver::Planet, problem::Problem)
     ψ = init_ψ(get_list(p))
 
     # compute extra conditions
+    #=
     extra = infer_node_phases(nnet, p, bounds) # 3.4
     status, tight = get_tight_clause(nnet, p, bounds) # 3.3
     if length(tight) > 0
         append!(extra, Any[tight])
     end
+    =#
     soln = PicoSAT.solve(ψ)
 
     # main loop to compute the SAT problem
@@ -85,16 +87,15 @@ end
 
 function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
     model = JuMP.Model(solver = optimizer)
-
     neurons = init_neurons(solver, model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
     encode_lp_constraint(model, nnet, bounds, neurons)
-    slack, J = encode_partial_assignment(model, nnet, p, neurons, true)
-
+    slack = encode_slack_lp(model, nnet, p, neurons)
+    J = sum(sum(slack[i]) for i in 1:n_layer)
+    @objective(model, Min, J)
     conflict = Vector{Int64}(0)
     while true
-        @objective(model, Min, J)
         status = JuMP.solve(model)
         if status != :Optimal
             return (:Infeasible, conflict) # return the conflicts in p
