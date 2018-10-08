@@ -1,7 +1,7 @@
 #=
 Read in layer from nnet file and return a Layer struct containing its weights/biases
 =#
-function init_layer(model::Model, i::Int64, layerSizes::Array{Int64}, f::IOStream)
+function init_layer(i::Int64, layerSizes::Array{Int64}, f::IOStream)
      bias = Vector{Float64}(layerSizes[i+1])
      weights = Matrix{Float64}(layerSizes[i+1], layerSizes[i])
      # first read in weights
@@ -51,10 +51,9 @@ function read_nnet(fname::String)
     end
 
     # initialize layers
-    model = Model(solver=GLPKSolverMIP())
     layers = Vector{Layer}(nLayers)
     for i = 1:nLayers
-        curr_layer = init_layer(model, i, layerSizes, f)
+        curr_layer = init_layer(i, layerSizes, f)
         layers[i] = curr_layer
     end
 
@@ -150,7 +149,7 @@ end
 # Bounds are computed AFTER activation function
 # Return Vector{Hyperrectangle}
 function get_bounds(nnet::Network, input::Hyperrectangle)
-    solver = MaxSens()
+    solver = MaxSens(0.0, true)
     bounds = Vector{Hyperrectangle}(length(nnet.layers) + 1)
     bounds[1] = input
     for (i, layer) in enumerate(nnet.layers)

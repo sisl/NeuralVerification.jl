@@ -7,10 +7,10 @@ end
 function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
-    if J[1] >= 0.0
-        return Result(:True)
+    if J >= 0.0
+        return Result(:SAT)
     end
-    return Result(:Undetermined)
+    return Result(:Unknown)
 end
 
 # compute lower bound of the dual problem.
@@ -20,7 +20,9 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
 
     layers = network.layers
     L, U = get_bounds(network, input.center, input.radius[1])
-    v, J = tosimplehrep(output)
+    v, d = tosimplehrep(output)
+
+    J = d[1]
 
     for i in reverse(1:length(layers))
         J -= v'*layers[i].bias
@@ -86,11 +88,11 @@ function bounds_forward_layer!(layer, l, u, μ, v1, γ, ϵ)
     D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
 
     # Propagate existing terms
-    DW = D*W'
+    DW = D * W'
     v1 = v1 * DW
-    map!(g -> g*DW,   γ, γ)
+    map!(g -> DW' * g, γ, γ)
     for M in μ
-        map!(m -> m*DW,   M, M)
+        map!(m -> DW' * m, M, M)
     end
     # New terms
     push!(γ, b)
@@ -129,7 +131,7 @@ end
 function input_layer_bounds(input_layer, input, ϵ)
     W, b = input_layer.weights, input_layer.bias
     out1 = W * input + b
-    Δ    = ϵ * sum(abs, W, 2)  #TODO check sum(, 1) vs sum(, 2)
+    Δ    = ϵ * sum(abs, W, 2)[:, 1]  #TODO check sum(, 1) vs sum(, 2)
     l = out1 - Δ
     u = out1 + Δ
     return l, u

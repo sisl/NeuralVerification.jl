@@ -2,8 +2,20 @@
 # c y <= d
 # For this implementation, limit the input constraint to Hyperrectangle
 
-struct Duality{O<:AbstractMathProgSolver} <: Feasibility
+struct Duality{O<:AbstractMathProgSolver}
     optimizer::O
+end
+
+function solve(solver::Duality, problem::Problem)
+    model = JuMP.Model(solver = solver.optimizer)
+    bounds = get_bounds(problem)
+    c, d = tosimplehrep(problem.output)
+    λ = init_multipliers(model, problem.network)
+    μ = init_multipliers(model, problem.network)
+    J = dual_cost(model, problem.network, bounds, λ, μ)
+    @constraint(model, last(λ) .== -c)
+    status = JuMP.solve(model)
+    return interpret_result(solver, status, J - d[1])
 end
 
 # False if J > 0, True if J <= 0
@@ -12,35 +24,7 @@ function interpret_result(solver::Duality, status, J)
         return Result(:Unknown)
     end
     opt_cost = getvalue(J)
-    # println(opt_cost)
     return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT))
-end
-
-function encode(solver::Duality, model::Model, problem::Problem)
-    layers = problem.network.layers
-    n_layer = length(layers)
-    bounds = get_bounds(problem)
-    c, d = tosimplehrep(problem.output)
-
-    λ, μ = init_nnet_vars(solver, model, problem.network)
-    ## J the objective function
-    J = -d[1]
-    # Input constraint
-    J += input_layer_cost(layers[1], μ[1], problem.input)
-    # Cost for all linear layers
-    for i in 2:n_layer
-        J += layer_cost(layers[i], μ[i], λ[i-1], bounds[i])
-    end
-    # Cost for activation
-    for i in 1:n_layer
-        J += activation_cost(layers[i], μ[i], λ[i], bounds[i])
-    end
-
-    # output constraint
-    @constraint(model, λ[n_layer] .== -c)
-    @objective(model, Min, J)
-
-    return J
 end
 
 # For each layer l and node k
@@ -75,24 +59,7 @@ end
 # input belongs to a Hyperrectangle
 function input_layer_cost(layer, μ, input)
     W, b = layer.weights, layer.bias
-
     J = - μ' * (W * input.center .+ b)
     J += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
     return J
-end
-
-# The variables in Duality are Lagrangian Multipliers
-function init_nnet_vars(solver::Duality, model::Model, network::Network)
-    layers = network.layers
-    λ = Vector{Vector{Variable}}(length(layers))
-    μ = Vector{Vector{Variable}}(length(layers))
-
-    all_layers_n = map(l->length(l.bias), layers)
-
-    for (i, n) in enumerate(all_layers_n)
-        λ[i] = @variable(model, [1:n])
-        μ[i] = @variable(model, [1:n])
-    end
-
-    return λ, μ
 end

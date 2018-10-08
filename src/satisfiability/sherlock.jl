@@ -44,31 +44,14 @@ function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolyt
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
 
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
 
-    neurons = init_nnet_vars(solver, model, problem.network)
+    neurons = init_neurons(solver, model, problem.network)
     add_input_constraint(model, problem.input, first(neurons))
-
-    for (i, layer) in enumerate(problem.network.layers)
-        (W, b, act) = (layer.weights, layer.bias, layer.activation)
-        before_act = W * neurons[i] + b
-        for j in 1:length(layer.bias) # For evey node
-            if act_pattern[i][j]
-                @constraint(model, before_act[j] >= 0.0)
-                @constraint(model, neurons[i+1][j] == before_act[j])
-            else
-                @constraint(model, before_act[j] <= 0.0)
-                @constraint(model, neurons[i+1][j] == 0.0)
-            end
-        end
-    end
+    encode_lp_constraint(model, problem.network, act_pattern, neurons)
 
     J = gradient * neurons[1]
-    if upper
-        @objective(model, Max, J[1])
-    else
-        @objective(model, Min, J[1])
-    end
+    @objective(model, ifelse(upper, Max, Min), J[1])
 
     JuMP.solve(model)
 
@@ -96,17 +79,4 @@ function global_search(nnet::Network, bound::Float64, inputSet::AbstractPolytope
     else
         return ([], 0.0, false)
     end
-end
-
-function init_nnet_vars(solver::Sherlock, model::Model, network::Network)
-    layers = network.layers
-    neurons = Vector{Vector{Variable}}(length(layers) + 1) # +1 for input layer
-    # input layer is treated differently from other layers
-    input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
-    for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n]) 
-    end
-    return neurons
 end
