@@ -46,7 +46,7 @@ function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolyt
 
     model = Model(solver = optimizer)
 
-    neurons = init_neurons(solver, model, problem.network)
+    neurons = init_neurons(model, problem.network)
     add_input_constraint(model, problem.input, first(neurons))
     encode_lp(model, problem.network, act_pattern, neurons)
 

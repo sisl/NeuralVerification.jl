@@ -61,23 +61,21 @@ function encode_Δ_lp(model::Model, nnet::Network, bounds::Vector{Hyperrectangle
 end
 
 function encode_slack_lp(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
-    slack_var = Vector{Vector{Variable}}(length(nnet.layers))
-    sum_slack = 0.0
+    slack = Vector{Vector{Variable}}(length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         before_act = layer.weights * neurons[i] + layer.bias
-        slack_var[i] = @variable(model, [1:length(b)])
-        for j in 1:length(b)
-            sum_slack += slack_var[i][j]
+        slack[i] = @variable(model, [1:length(layer.bias)])
+        for j in 1:length(layer.bias)
             if p[i][j] == 1
-                @constraint(model, neurons[i+1][j] == before_act[j] + slack_var[i][j])
-                @constraint(model, before_act[j] + slack_var[i][j] >= 0.0)
+                @constraint(model, neurons[i+1][j] == before_act[j] + slack[i][j])
+                @constraint(model, before_act[j] + slack[i][j] >= 0.0)
             else
                 @constraint(model, neurons[i+1][j] == 0.0)
-                @constraint(model, 0.0 >= before_act[j] - slack_var[i][j])
+                @constraint(model, 0.0 >= before_act[j] - slack[i][j])
             end
         end
     end
-    return slack_var, sum_slack
+    return slack
 end
 
 # Encode constraint as MIP without bounds
