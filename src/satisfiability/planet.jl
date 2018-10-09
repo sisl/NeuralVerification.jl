@@ -1,11 +1,15 @@
 # Planet
 struct Planet
     optimizer::AbstractMathProgSolver
+    eager::Bool # Default false
 end
 
+Planet(x::AbstractMathProgSolver) = Planet(x, false)
+
 function solve(solver::Planet, problem::Problem)   
+    @assert ~solver.eager "Eager implementation not supported yet"
     # refine bounds
-    status, bounds = tighten_bounds(solver, problem) # 3.1
+    status, bounds = tighten_bounds(problem, solver.optimizer) # 3.1
     if status != :Optimal 
         return Result(:SAT)
     end
@@ -27,16 +31,10 @@ function solve(solver::Planet, problem::Problem)
 
     # main loop to compute the SAT problem
     while soln != :unsatisfiable
-        if length(extra) > 0
-            append!(ψ, extra)
-            soln = PicoSAT.solve(ψ)
-            if soln == :unsatisfiable
-                return Result(:SAT)
-            end
-        end
-        status, conflict = elastic_filtering(nnet, soln, bounds) # 3.2
+        status, conflict = elastic_filtering(nnet, soln, bounds, solver.optimizer) # 3.2
         if status == :Infeasible
-            extra = Any[conflict]
+            append!(ψ, Any[conflict])
+            soln = PicoSAT.solve(ψ)
         else
             return Result(:UNSAT)
         end
@@ -85,15 +83,14 @@ function get_node_id(nnet::Network, n::Int64)
     return (i, j)
 end
 
-function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
+function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = JuMP.Model(solver = optimizer)
-    neurons = init_neurons(solver, model, nnet)
+    neurons = init_neurons(model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
     encode_Δ_lp(model, nnet, bounds, neurons)
     slack = encode_slack_lp(model, nnet, p, neurons)
-    J = sum(sum(slack[i]) for i in 1:n_layer)
-    @objective(model, Min, J)
+    J = min_sum_all(model, slack)
     conflict = Vector{Int64}(0)
     while true
         status = JuMP.solve(model)
@@ -113,7 +110,7 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
     end
 end
 
-elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}) = elastic_filtering(nnet, get_assignment(nnet, list), bounds)
+elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
 
 function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
     model = JuMP.Model(solver = optimizer)
@@ -170,22 +167,15 @@ function max_slack(x::Vector{Vector{Float64}})
     return (m, index)
 end
 
-function tighten_bounds(solver::Planet, problem::Problem)
-    # bounds from interval arithmatic (call MaxSens)
+function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     bounds = get_bounds(problem)
-
     model = JuMP.Model(solver = optimizer)
-
-    neurons = init_neurons(solver, model, problem.network)
+    neurons = init_neurons(model, problem.network)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_lp_constraint(model, problem.network, bounds, neurons)
+    encode_Δ_lp(model, problem.network, bounds, neurons)
 
-    n_layer = length(problem.network.layers)
-    J = sum(sum(neurons[i]) for i in 1:n_layer+1)
-
-    # Git tight lower bounds
-    @objective(model, Min, J)
+    J = min_sum_all(model, neurons)
     status = JuMP.solve(model)
     if status == :Optimal
         lower = getvalue(neurons)
@@ -193,8 +183,7 @@ function tighten_bounds(solver::Planet, problem::Problem)
         return (:Infeasible, [])
     end
 
-    # Git tight upper bounds
-    @objective(model, Max, J)
+    J = max_sum_all(model, neurons)
     status = JuMP.solve(model)
     if status == :Optimal
         upper = getvalue(neurons)
@@ -202,8 +191,8 @@ function tighten_bounds(solver::Planet, problem::Problem)
         return (:Infeasible, [])
     end
 
-    new_bounds = Vector{Hyperrectangle}(n_layer + 1)
-    for i in 1:n_layer + 1
+    new_bounds = Vector{Hyperrectangle}(length(neurons))
+    for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
     return (:Optimal, new_bounds)
