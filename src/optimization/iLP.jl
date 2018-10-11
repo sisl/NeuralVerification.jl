@@ -1,5 +1,4 @@
 # Iterative LP
-
 struct ILP{O<:AbstractMathProgSolver}
     optimizer::O
     max_iter::Int64
@@ -14,7 +13,7 @@ function solve(solver::ILP, problem::Problem)
 
         neurons = init_neurons(model, problem.network)
         add_complementary_output_constraint(model, problem.output, last(neurons))
-        encode_lp_constraint(model, problem.network, act_pattern, neurons)
+        encode_relaxed_lp(model, problem.network, act_pattern, neurons)
         J = max_disturbance(model, first(neurons) - problem.input.center)
 
         status = JuMP.solve(model)

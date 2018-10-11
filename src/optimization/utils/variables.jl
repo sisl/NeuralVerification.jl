@@ -1,33 +1,20 @@
 import JuMP: GenericAffExpr
 
-function init_neurons(model::Model, network::Network)
+init_neurons(model::Model, network::Network) = init_variables(model, network, :Cont)
+init_deltas(model::Model, network::Network)  = init_variables(model, network, :Bin)
+
+function init_variables(model::Model, network::Network, vartype::Symbol)
     layers = network.layers
-    neurons = Vector{Vector{Variable}}(length(layers) + 1)
+    vars = Vector{Vector{Variable}}(length(layers) + 1)
 
     input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
+    all_layers_n  = n_nodes.(layers)
+    prepend!(all_layers_n, input_layer_n)
 
     for (i, n) in enumerate(all_layers_n)
-        neurons[i] = @variable(model, [1:n])
+        vars[i] = @variable(model, [1:n], category = vartype)
     end
-
-    return neurons
-end
-
-function init_deltas(model::Model, network::Network)
-    layers = network.layers
-    deltas = Vector{Vector{Variable}}(length(layers) + 1)
-
-    input_layer_n = size(first(layers).weights, 2)
-    all_layers_n  = [length(l.bias) for l in layers]
-    insert!(all_layers_n, 1, input_layer_n)
-
-    for (i, n) in enumerate(all_layers_n)
-        deltas[i] = @variable(model, [1:n], Bin)
-    end
-
-    return deltas
+    return vars
 end
 
 # Lagrangian Multipliers
@@ -35,7 +22,7 @@ function init_multipliers(model::Model, network::Network)
     layers = network.layers
     λ = Vector{Vector{Variable}}(length(layers))
 
-    all_layers_n = map(l->length(l.bias), layers)
+    all_layers_n = n_nodes.(layers)
 
     for (i, n) in enumerate(all_layers_n)
         λ[i] = @variable(model, [1:n])
@@ -50,12 +37,10 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::Variable, b::Variable)                                         = symbolic_max(a.m, a, b)
-symbolic_max(a::JuMP.GenericAffExpr, b::JuMP.GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
-symbolic_max(a::Array{<:JuMP.GenericAffExpr}, b::Array{<:JuMP.GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
+symbolic_max(a::Variable, b::Variable)                               = symbolic_max(a.m, a, b)
+symbolic_max(a::GenericAffExpr, b::GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::Array{<:GenericAffExpr}, b::Array{<:GenericAffExpr}) = symbolic_max.(first(first(a).vars).m, a, b)
 
-
-# NOTE renamed to symbolic_abs to avoid type piracy
 function symbolic_abs(m::Model, v)
     aux = @variable(m) #get an anonymous variable
     @constraint(m, aux >= 0)
@@ -63,6 +48,6 @@ function symbolic_abs(m::Model, v)
     @constraint(m, aux >= -v)
     return aux
 end
-symbolic_abs(v::Variable)                     = symbolic_abs(v.m, v)
-symbolic_abs(v::JuMP.GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
-symbolic_abs(v::Array{<:JuMP.GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)
+symbolic_abs(v::Variable)                = symbolic_abs(v.m, v)
+symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(first(first(v).vars).m, v)

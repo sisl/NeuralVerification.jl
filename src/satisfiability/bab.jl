@@ -82,7 +82,7 @@ function compute_LB(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMa
 
     neurons = init_neurons(model, nnet)
     add_input_constraint(model, subdom, first(neurons))
-    encode_lp_constraint(model, nnet, bounds, neurons)
+    encode_Δ_lp(model, nnet, bounds, neurons)
 
     J = sum(last(neurons))
     @objective(model, Min, J)
