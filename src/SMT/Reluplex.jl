@@ -1,20 +1,7 @@
-using JuMP
-using MathProgBase.SolverInterface
-using GLPKMathProgInterface
-using LazySets
+# Reluplex
+# Minimal implementation of Reluplex
 
-include("../src/utils/activation.jl")
-include("../src/utils/network.jl")
-include("../src/utils/problem.jl")
-include("../src/utils/util.jl")
-
-include("../src/reachability/maxSens.jl")
-
-
-
-
-struct Reluplex{O<:AbstractMathProgSolver} <: SMT
-    optimizer::O
+struct Reluplex
 end
 
 struct ReluplexState
@@ -26,8 +13,7 @@ struct ReluplexState
     depth::Int64
 end
 
-
-function init_nnet_vars(model::Model, network::Network)
+function init_nnet_vars(solver::Reluplex, model::Model, network::Network)
     layers = network.layers
     #input layer and last layer have b_vars because they are unbounded
     b_vars = Vector{Vector{Variable}}(length(layers) + 1) # +1 for input layer
@@ -57,7 +43,6 @@ function relu_to_fix(broken::Array{BitArray{1},1})
     end
 end
 
-
 function check_broken_relus(bs::Array{Array{JuMP.Variable,1},1}, 
         fs::Array{Array{JuMP.Variable,1},1})
     b_values = [getvalue(b) for b in bs[2:length(bs)-1]]
@@ -66,8 +51,8 @@ function check_broken_relus(bs::Array{Array{JuMP.Variable,1},1},
     return [(x[2] .== 0.0) .& (x[1] .> 0.0)  .| (x[2] .> 0.0) .& (x[2] .!= x[1]) for x in zip(b_values, f_values)]
 end
 
-function encode(model::Model, problem::Problem, relu_status::Array{Array{Int64,1},1})
-    bs, fs = init_nnet_vars(model, problem.network)
+function encode(solver::Reluplex, model::Model, problem::Problem, relu_status::Array{Array{Int64,1},1})
+    bs, fs = init_nnet_vars(solver, model, problem.network)
     
     #TEST
     #bs = [[@variable(model, b11)],
@@ -97,8 +82,6 @@ function encode(model::Model, problem::Problem, relu_status::Array{Array{Int64,1
     
     #first layer
     bounds = get_bounds(problem)
-    #@constraint(model, bs[1] .<= bounds[1].center + bounds[1].radius)
-    #@constraint(model, bs[1] .>= bounds[1].center - bounds[1].radius)
     
     for i in 1:length(bs)
         @constraint(model, bs[i] .<= bounds[i].center + bounds[i].radius)
@@ -123,7 +106,7 @@ function encode(model::Model, problem::Problem, relu_status::Array{Array{Int64,1
         end
     end
     
-    @objective(m, Max, 0)
+    @objective(model, Max, 0)
     return (bs, fs)
 end
 
@@ -149,22 +132,41 @@ function add_output_constraint(model::Model, output::AbstractPolytope, neuron_va
 end
 
 function reluplexStep(step::ReluplexState)
+    print("depth: ")
     print(step.depth)
     print("\n")
     status = JuMP.solve(step.model)
-    #print(step.model)
     
     if status == :Optimal
         #CHECK THAT RELUS ARE CORRECT, OTHERWISE START FIXING, CALL AGAIN
         found_broken_relu = false
         broken = check_broken_relus(step.b_vars, step.f_vars)
-
+        
+        RELUTEST = false
+        for i in 1:length(broken)
+           for j in 1:length(broken[i])
+                RELUTEST = RELUTEST | broken[i][j]
+            end
+        end
+        
+        if !RELUTEST
+            print("No broken ReLUs - SHOULD RETURN VALUE NOW\n")
+            print(broken)
+            print("\n input: ")
+            print(getvalue(first(step.b_vars)))
+            print("\n")
+            #return ("SAT", first(step.b_vars))
+            return Result(:SAT, getvalue(first(step.b_vars)))
+        end
+                
         for i in 1:length(broken)
            for j in 1:length(broken[i])
                 if broken[i][j]
-                    print("Broken Relu: ")
-                    print(i)
-                    print(j)
+                    #print("Broken Relu: ")
+                    #print(i)
+                    #print(", ")
+                    #print(j)
+                    #print("\n")
                     # Found a broken ReLU
                     found_broken_relu = true
                     # Can still try to fix
@@ -179,44 +181,42 @@ function reluplexStep(step::ReluplexState)
                         new_relus_left_to_fix = deepcopy(step.relus_left_to_fix)
                         new_relus_left_to_fix[i][j] = false
                         
-                        
-                        
+                        # fix type 1
                         relu_status1[i][j] = 1
-                        bs1, fs1 = encode(m1, problem, relu_status1)
+                        bs1, fs1 = encode(Reluplex(), m1, problem, relu_status1)
                         newStep1 = ReluplexState(m1, bs1, fs1, relu_status1, new_relus_left_to_fix, step.depth +1)
-                        #print("GOT TO NEW STEP 1")
-                        reluplexStep(newStep1)
-                        
+                        res1 = reluplexStep(newStep1)
+                        if res1.status == :SAT
+                            return res1
+                        end
+
+                        # fix type 2
                         relu_status2[i][j] = 2
-                        bs2, fs2 = encode(m2, problem, relu_status2)
+                        bs2, fs2 = encode(Reluplex(), m2, problem, relu_status2)
                         newStep2 = ReluplexState(m2, bs2, fs2, relu_status2, new_relus_left_to_fix, step.depth +1)
-                        break
-                        #print("GOT TO NEW STEP 2")
-                        reluplexStep(newStep2)
+                        res2 = reluplexStep(newStep2)
+                        if res2.status == :SAT
+                            return res2
+                        end
                         
+                        break
                     else
                     # No relus left to fix
-                        return "UNSAT"
+                        return Result(:UNSAT)
                     end
                 end  
             end
-            if !found_broken_relu
-                print("AAAAA")
-                return ("SAT", first(step.b_vars))
-            end
         end
-        
     elseif status == :Infeasible
-        return "UNSAT"
-        
+        return Result(:UNSAT)
     end
 end
 
-function solveReluplex(problem::Problem)
+function solve(solver::Reluplex, problem::Problem)
     relu_shape = [length(x.bias) for x in problem.network.layers[1:length(problem.network.layers)-1]]
     first_m = Model(solver = GLPKSolverLP(method=:Exact))
     relu_status = [zeros(Int, x) for x in relu_shape]
-    first_bs, first_fs = encode(first_m, problem, relu_status)
+    first_bs, first_fs = encode(solver, first_m, problem, relu_status)
     relus_left_to_fix = [trues(x) for x in relu_shape]
     firstStep = ReluplexState(first_m, first_bs, first_fs, relu_status, relus_left_to_fix, 1)
     
