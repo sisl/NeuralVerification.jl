@@ -5,7 +5,7 @@ init_deltas(model::Model, network::Network)  = init_variables(model, network, :B
 
 function init_variables(model::Model, network::Network, vartype::Symbol)
     layers = network.layers
-    vars = Vector{Vector{Variable}}(length(layers) + 1)
+    vars = Depth2Vec{Variable}(length(layers) + 1)
 
     input_layer_n = size(first(layers).weights, 2)
     all_layers_n  = n_nodes.(layers)
@@ -20,7 +20,7 @@ end
 # Lagrangian Multipliers
 function init_multipliers(model::Model, network::Network)
     layers = network.layers
-    λ = Vector{Vector{Variable}}(length(layers))
+    λ = Depth2Vec{Variable}(length(layers))
 
     all_layers_n = n_nodes.(layers)
 

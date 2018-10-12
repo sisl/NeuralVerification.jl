@@ -34,17 +34,15 @@ function solve(solver::ILP, problem::Problem)
     return Result(:Unknown)
 end
 
-function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
+function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Depth2Vec{Bool}})
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
-        for j in 1:length(curr_value)
-            if act_pattern[i][j] && curr_value[j] < 0.0
-                return false
-            end
-            if ~act_pattern[i][j] && curr_value[j] > 0.0
-                return false
-            end
+        for (j, val) in enumerate(curr_value)
+            act = act_pattern[i][j]
+
+            act  && val < 0.0 && return false
+            !act && val > 0.0 && return false
         end
         curr_value = layer.activation(curr_value)
     end
