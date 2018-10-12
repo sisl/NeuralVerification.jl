@@ -33,6 +33,13 @@ function zero_objective(model::Model)
     @objective(model, Max, 0.0)
 end
 
+function linear_objective(mode::Model, map::HPolytope, var)
+    c, d = tosimplehrep(map)
+    J = c * var - d
+    @objective(model, Min, J)
+    return J
+end
+
 # NOTE: if this is only used in duality, it should probably be  defined there.
 # particularly since dual_cost for convDual is defined differently
 function dual_cost(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
