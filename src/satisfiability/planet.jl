@@ -6,11 +6,11 @@ end
 
 Planet(x::AbstractMathProgSolver) = Planet(x, false)
 
-function solve(solver::Planet, problem::Problem)   
+function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # refine bounds
     status, bounds = tighten_bounds(problem, solver.optimizer) # 3.1
-    if status != :Optimal 
+    if status != :Optimal
         return Result(:SAT)
     end
 
@@ -42,7 +42,7 @@ function solve(solver::Planet, problem::Problem)
     return Result(:SAT)
 end
 
-function get_list(p::Vector{Vector{Int64}})
+function get_list(p::Depth2Vec{Int64})
     list = Vector{Int64}(0)
     for i in 1:length(p)
         for j in 1:length(p[i])
@@ -53,13 +53,13 @@ function get_list(p::Vector{Vector{Int64}})
 end
 
 function get_assignment(nnet::Network, list::Vector{Int64})
-    p = Vector{Vector{Int64}}(length(nnet.layers))
+    p = Depth2Vec{Int64}(length(nnet.layers))
     n = 0
     for (i, layer) in enumerate(nnet.layers)
         p[i] = fill(0, length(layer.bias))
         for j in 1:length(p[i])
             p[i][j] = ifelse(list[n+j] > 0, 1, -1)
-        end 
+        end
         n += length(p[i])
     end
     return p
@@ -83,7 +83,7 @@ function get_node_id(nnet::Network, n::Int64)
     return (i, j)
 end
 
-function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
+function elastic_filtering(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles, optimizer::AbstractMathProgSolver)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
@@ -97,7 +97,7 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
         if status != :Optimal
             return (:Infeasible, conflict) # return the conflicts in p
         end
-        
+
         s_value = getvalue(slack)
 
         (m, index) = max_slack(s_value)
@@ -110,9 +110,9 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
     end
 end
 
-elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
+elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Hyperrectangles, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
 
-function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
+function get_tight_clause(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles)
     model = JuMP.Model(solver = optimizer)
 
     neurons = init_neurons(solver, model, nnet)
@@ -120,7 +120,7 @@ function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vecto
     add_complementary_output_constraint(model, problem.output, last(neurons))
     encode_Δ_lp(model, nnet, bounds, neurons)
     encode_partial_assignment(model, nnet, p, neurons, false)
-    
+
     J = 0.0
     for i in 1:length(p)
         for j in 1:length(p[i])
@@ -141,7 +141,7 @@ function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vecto
     complete = :Complete
     for i in 1:length(p)
         for j in 1:length(p[i])
-            if p[i][j] == 0 
+            if p[i][j] == 0
                 if v[i+1][j] > 0
                     append!(tight, Any[get_node_id(nnet, (i,j))])
                 else
@@ -153,7 +153,7 @@ function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vecto
     return (complete, tight)
 end
 
-function max_slack(x::Vector{Vector{Float64}})
+function max_slack(x::Depth2Vec{Float64})
     m = 0.0
     index = (0, 0)
     for i in 1:length(x)
@@ -191,16 +191,16 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
         return (:Infeasible, [])
     end
 
-    new_bounds = Vector{Hyperrectangle}(length(neurons))
+    new_bounds = Hyperrectangles(length(neurons))
     for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
     return (:Optimal, new_bounds)
 end
 
-function encode_partial_assignment(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons, slack::Bool)
+function encode_partial_assignment(model::Model, nnet::Network, p::Depth2Vec{Int64}, neurons, slack::Bool)
     if slack
-        slack_var = Vector{Vector{Variable}}(length(nnet.layers))
+        slack_var = Depth2Vec{Variable}(length(nnet.layers))
         sum_slack = 0.0
     end
 
@@ -240,7 +240,7 @@ function encode_partial_assignment(model::Model, nnet::Network, p::Vector{Vector
 end
 
 function init_ψ(p_list::Vector{Int64})
-    ψ = Vector{Vector{Int64}}(length(p_list))
+    ψ = Depth2Vec{Int64}(length(p_list))
     for i in 1:length(p_list)
         if p_list[i] == 0
             ψ[i] = [i, -i]
@@ -252,7 +252,7 @@ function init_ψ(p_list::Vector{Int64})
 end
 
 # To be implemented
-function infer_node_phases(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
-    extra = Vector{Vector{Int64}}(0)
+function infer_node_phases(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles)
+    extra = Depth2Vec{Int64}(0)
     return extra
 end
