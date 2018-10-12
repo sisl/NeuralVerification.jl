@@ -53,7 +53,7 @@ function partition(input::Hyperrectangle, delta::Float64)
     end
     n_hyperrectangle = trunc(Int, n_hyperrectangle)
 
-    hyperrectangles = Vector{Hyperrectangle}(n_hyperrectangle)
+    hyperrectangles = Hyperrectangles(n_hyperrectangle)
     for k in 1:n_hyperrectangle
         number = k
         center = Vector{Float64}(n_dim)
@@ -75,7 +75,7 @@ end
 # [I; -I] x <= [Upper; Lower]
 function partition(input::HPolytope, delta::Float64)
     n_dim = dim(input)
-    
+
     # This part is ad hoc
     inputA, inputb = tosimplehrep(input)
     upper = inputb[1:n_dim]
