@@ -2,6 +2,7 @@
 
 # This function performs layer-by-layer propagation
 # It is called by all solvers under reachability
+# TODO: also called by ReluVal and FastLin, so move to general utils (or to network.jl)
 function forward_network(solver, nnet::Network, input::AbstractPolytope)
     reach = input
     for layer in nnet.layers

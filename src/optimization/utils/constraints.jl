@@ -36,7 +36,7 @@ end
 
 # Encode constraint as LP according to the Δ relaxation of ReLU
 # This function is called in planet and bab
-function encode_Δ_lp(model::Model, nnet::Network, bounds::Hyperrectangles, neurons)
+function encode_Δ_lp(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons)
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
@@ -99,7 +99,7 @@ end
 
 # Encode constraint as MIP with bounds
 # This function is called in MIPVerify
-function encode_mip_constraint(model::Model, nnet::Network, bounds::Hyperrectangles, neurons, deltas)
+function encode_mip_constraint(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons, deltas)
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b

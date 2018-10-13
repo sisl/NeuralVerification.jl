@@ -83,7 +83,7 @@ function get_node_id(nnet::Network, n::Int64)
     return (i, j)
 end
 
-function elastic_filtering(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles, optimizer::AbstractMathProgSolver)
+function elastic_filtering(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
@@ -110,9 +110,9 @@ function elastic_filtering(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrect
     end
 end
 
-elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Hyperrectangles, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
+elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
 
-function get_tight_clause(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles)
+function get_tight_clause(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle})
     model = JuMP.Model(solver = optimizer)
 
     neurons = init_neurons(solver, model, nnet)
@@ -191,7 +191,7 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
         return (:Infeasible, [])
     end
 
-    new_bounds = Hyperrectangles(length(neurons))
+    new_bounds = Vector{Hyperrectangle}(length(neurons))
     for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
@@ -252,7 +252,7 @@ function init_ψ(p_list::Vector{Int64})
 end
 
 # To be implemented
-function infer_node_phases(nnet::Network, p::Depth2Vec{Int64}, bounds::Hyperrectangles)
+function infer_node_phases(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle})
     extra = Depth2Vec{Int64}(0)
     return extra
 end
