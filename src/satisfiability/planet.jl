@@ -42,7 +42,7 @@ function solve(solver::Planet, problem::Problem)
     return Result(:SAT)
 end
 
-function get_list(p::Depth2Vec{Int64})
+function get_list(p::Vector{Vector{Int64}})
     list = Vector{Int64}(0)
     for i in 1:length(p)
         for j in 1:length(p[i])
@@ -53,7 +53,7 @@ function get_list(p::Depth2Vec{Int64})
 end
 
 function get_assignment(nnet::Network, list::Vector{Int64})
-    p = Depth2Vec{Int64}(length(nnet.layers))
+    p = Vector{Vector{Int64}}(length(nnet.layers))
     n = 0
     for (i, layer) in enumerate(nnet.layers)
         p[i] = fill(0, length(layer.bias))
@@ -83,7 +83,7 @@ function get_node_id(nnet::Network, n::Int64)
     return (i, j)
 end
 
-function elastic_filtering(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
+function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
@@ -112,7 +112,7 @@ end
 
 elastic_filtering(nnet::Network, list::Vector{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver) = elastic_filtering(nnet, get_assignment(nnet, list), bounds, optimizer)
 
-function get_tight_clause(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle})
+function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
     model = JuMP.Model(solver = optimizer)
 
     neurons = init_neurons(solver, model, nnet)
@@ -153,7 +153,7 @@ function get_tight_clause(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyp
     return (complete, tight)
 end
 
-function max_slack(x::Depth2Vec{Float64})
+function max_slack(x::Vector{Vector{Float64}})
     m = 0.0
     index = (0, 0)
     for i in 1:length(x)
@@ -198,9 +198,9 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     return (:Optimal, new_bounds)
 end
 
-function encode_partial_assignment(model::Model, nnet::Network, p::Depth2Vec{Int64}, neurons, slack::Bool)
+function encode_partial_assignment(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons, slack::Bool)
     if slack
-        slack_var = Depth2Vec{Variable}(length(nnet.layers))
+        slack_var = Vector{Vector{Variable}}(length(nnet.layers))
         sum_slack = 0.0
     end
 
@@ -240,7 +240,7 @@ function encode_partial_assignment(model::Model, nnet::Network, p::Depth2Vec{Int
 end
 
 function init_ψ(p_list::Vector{Int64})
-    ψ = Depth2Vec{Int64}(length(p_list))
+    ψ = Vector{Vector{Int64}}(length(p_list))
     for i in 1:length(p_list)
         if p_list[i] == 0
             ψ[i] = [i, -i]
@@ -252,7 +252,7 @@ function init_ψ(p_list::Vector{Int64})
 end
 
 # To be implemented
-function infer_node_phases(nnet::Network, p::Depth2Vec{Int64}, bounds::Vector{Hyperrectangle})
-    extra = Depth2Vec{Int64}(0)
+function infer_node_phases(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
+    extra = Vector{Vector{Int64}}(0)
     return extra
 end

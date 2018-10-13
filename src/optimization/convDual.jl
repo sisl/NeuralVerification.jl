@@ -56,10 +56,10 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     layers  = nnet.layers
     n_layer = length(layers)
 
-    l = Depth2Vec{Float64}(0)
-    u = Depth2Vec{Float64}(0)
-    γ = Depth2Vec{Float64}(0)
-    μ = Depth3Vec{Float64}(0)
+    l = Vector{Vector{Float64}}(0)
+    u = Vector{Vector{Float64}}(0)
+    γ = Vector{Vector{Float64}}(0)
+    μ = Vector{Vector{Vector{Float64}}}(0)
 
     v1 = layers[1].weights'
     push!(γ, layers[1].bias)
@@ -129,7 +129,7 @@ end
 
 
 function new_μ(n_input, n_output, input_ReLU, WD)
-    sub_μ = Depth2Vec{Float64}(n_input)
+    sub_μ = Vector{Vector{Float64}}(n_input)
     for j in 1:n_input
         if input_ReLU[j] == 0 # negative region
             sub_μ[j] = WD[:, j] # TODO CONFIRM

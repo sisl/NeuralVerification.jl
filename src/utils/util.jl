@@ -91,9 +91,9 @@ end
 
 # Given a network, find the activation pattern of all neurons at a given point x
 # Assume ReLU
-# return Depth2Vec{Bool}
+# return Vector{Vector{Bool}}
 function get_activation(nnet::Network, x::Vector{Float64})
-    act_pattern = Depth2Vec{Bool}(length(nnet.layers))
+    act_pattern = Vector{Vector{Bool}}(length(nnet.layers))
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
@@ -114,7 +114,7 @@ function get_activation(nnet::Network, input::Hyperrectangle)
 end
 
 function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
-    act_pattern = Depth2Vec{Int}(length(nnet.layers))
+    act_pattern = Vector{Vector{Int}}(length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         before_act_bound = linear_transformation(layer, bounds[i])
         lower = low(before_act_bound)

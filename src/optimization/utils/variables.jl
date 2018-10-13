@@ -1,12 +1,16 @@
 import JuMP: GenericAffExpr
 
-init_neurons(model::Model, network::Network)     = init_variables(model, network, :Cont, true)
-init_deltas(model::Model, network::Network)      = init_variables(model, network, :Bin, true)
-init_multipliers(model::Model, network::Network) = init_variables(model, network, :Cont, false)
+init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, :Cont, input_is_special = true)
+init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin,  input_is_special = true)
+init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
 
-function init_variables(model::Model, network::Network, vartype::Symbol, input_is_special::Bool)
-    layers = network.layers
-    vars = Depth2Vec{Variable}(length(layers) )
+# Allow ::Network input also (NOTE for legacy purposes mostly...)
+init_neurons(m,     network::Network) = init_neurons(m, network.layers)
+init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
+init_multipliers(m, network::Network) = init_multipliers(m, network.layers)
+
+function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol; input_is_special::Bool = false)
+    vars = Vector{Vector{Variable}}(length(layers) )
     all_layers_n  = n_nodes.(layers)
 
     if input_is_special
