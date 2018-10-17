@@ -28,7 +28,7 @@ function solve(solver::BAB, problem::Problem)
         end
         global_lb = doms[1][1]
     end
-    # The minimum is smaller than global_up 
+    # The minimum is smaller than global_up
     if global_ub < d[1]
         return Result(:SAT)
     else
@@ -86,7 +86,7 @@ function compute_LB(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMa
 
     J = sum(last(neurons))
     @objective(model, Min, J)
-    status = JuMP.solve(model)
+    status = solve(model)
 
     if status == :Optimal
         return getvalue(J)

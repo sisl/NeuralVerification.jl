@@ -28,7 +28,7 @@ function solve(solver::Certify, problem::Problem)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, J[1])
-    status = JuMP.solve(model)
+    status = solve(model)
     return interpret_result(solver, status, J[1])
 end
 

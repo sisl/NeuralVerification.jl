@@ -3,7 +3,6 @@ module NeuralVerification
 using Reexport
 # for Feasibility
 @reexport using JuMP
-solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
 @reexport using MathProgBase.SolverInterface
 @reexport using GLPKMathProgInterface
 # for Reachability
@@ -28,6 +27,10 @@ export
     solve,
     forward_network,
     check_inclusion
+
+solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
+export
+    solve
 
 # TODO: consider creating sub-modules for each of these.
 include("optimization/utils/constraints.jl")

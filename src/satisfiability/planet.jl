@@ -93,7 +93,7 @@ function elastic_filtering(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vect
     J = min_sum_all(model, slack)
     conflict = Vector{Int64}(0)
     while true
-        status = JuMP.solve(model)
+        status = solve(model)
         if status != :Optimal
             return (:Infeasible, conflict) # return the conflicts in p
         end
@@ -131,7 +131,7 @@ function get_tight_clause(nnet::Network, p::Vector{Vector{Int64}}, bounds::Vecto
     end
 
     @objective(model, Min, J)
-    status = JuMP.solve(model)
+    status = solve(model)
     if status != :Optimal
         return (:Infeasible, [])
     end
@@ -176,7 +176,7 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     encode_Δ_lp(model, problem.network, bounds, neurons)
 
     J = min_sum_all(model, neurons)
-    status = JuMP.solve(model)
+    status = solve(model)
     if status == :Optimal
         lower = getvalue(neurons)
     else
@@ -184,7 +184,7 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     end
 
     J = max_sum_all(model, neurons)
-    status = JuMP.solve(model)
+    status = solve(model)
     if status == :Optimal
         upper = getvalue(neurons)
     else

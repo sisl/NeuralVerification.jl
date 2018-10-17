@@ -53,7 +53,7 @@ function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolyt
     J = gradient * neurons[1]
     @objective(model, ifelse(upper, Max, Min), J[1])
 
-    JuMP.solve(model)
+    solve(model)
 
     x_new = getvalue(neurons[1])
     bound_new = compute_output(nnet, x_new)

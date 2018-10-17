@@ -14,7 +14,7 @@ function solve(solver::Duality, problem::Problem)
     μ = init_multipliers(model, problem.network)
     J = dual_cost(model, problem.network, bounds, λ, μ)
     @constraint(model, last(λ) .== -c)
-    status = JuMP.solve(model)
+    status = solve(model)
     return interpret_result(solver, status, J - d[1])
 end
 

@@ -16,7 +16,7 @@ function solve(solver::ILP, problem::Problem)
         encode_relaxed_lp(model, problem.network, act_pattern, neurons)
         J = max_disturbance(model, first(neurons) - problem.input.center)
 
-        status = JuMP.solve(model)
+        status = solve(model)
         if status != :Optimal
             return Result(:Unknown)
         end
