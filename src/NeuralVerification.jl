@@ -3,6 +3,7 @@ module NeuralVerification
 using Reexport
 # for Feasibility
 @reexport using JuMP
+solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
 @reexport using MathProgBase.SolverInterface
 @reexport using GLPKMathProgInterface
 # for Reachability
@@ -13,11 +14,20 @@ import LazySets.dim # necessary to avoid conflict with Polyhedra.dim
 
 abstract type Solver end
 
-# NOTE: the first 3 can be unified in one file.
+# NOTE: the first 3 can probably be unified in one file.
 include("utils/activation.jl")
 include("utils/network.jl")
 include("utils/problem.jl")
 include("utils/util.jl")
+export
+    Solver,
+    Network,
+    Problem,
+    Result,
+    read_nnet,
+    solve,
+    forward_network,
+    check_inclusion
 
 # TODO: consider creating sub-modules for each of these.
 include("optimization/utils/constraints.jl")
@@ -26,30 +36,19 @@ include("optimization/utils/variables.jl")
 include("optimization/reverify.jl")
 include("optimization/convDual.jl")
 include("optimization/duality.jl")
+export
+    Reverify,
+    ConvDual,
+    Duality
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
 include("reachability/reluVal.jl")
 include("reachability/ai2.jl")
-
-
 export
-    Solver,
-    Network,
-    Problem,
-    Result,
-    #potentially belong in sub-modules:
-    Reverify,
-    MaxSens,
     ExactReach,
+    MaxSens,
     ReluVal,
-    Ai2,
-    ConvDual,
-    Duality,
-    # necessary functions:
-    read_nnet,
-    solve,
-    forward_network,
-    check_inclusion
+    Ai2
 end
