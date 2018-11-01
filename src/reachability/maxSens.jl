@@ -53,7 +53,7 @@ function partition(input::Hyperrectangle, delta::Float64)
     end
     n_hyperrectangle = trunc(Int, n_hyperrectangle)
 
-    hyperrectangles = Hyperrectangles(n_hyperrectangle)
+    Vector{Hyperrectangle} = Vector{Hyperrectangle}(n_hyperrectangle)
     for k in 1:n_hyperrectangle
         number = k
         center = Vector{Float64}(n_dim)
@@ -64,9 +64,9 @@ function partition(input::Hyperrectangle, delta::Float64)
             center[i] = lower[i] + delta/2 + delta * id;
             radius[i] = delta;
         end
-        hyperrectangles[k] = Hyperrectangle(center, radius)
+        Vector{Hyperrectangle}[k] = Hyperrectangle(center, radius)
     end
-    return hyperrectangles
+    return Vector{Hyperrectangle}
 end
 
 # This function needs to be improved

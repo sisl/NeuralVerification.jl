@@ -16,7 +16,7 @@ function solve(solver::ILP, problem::Problem)
         encode_relaxed_lp(model, problem.network, act_pattern, neurons)
         J = max_disturbance(model, first(neurons) - problem.input.center)
 
-        status = JuMP.solve(model)
+        status = solve(model)
         if status != :Optimal
             return Result(:Unknown)
         end
@@ -34,7 +34,7 @@ function solve(solver::ILP, problem::Problem)
     return Result(:Unknown)
 end
 
-function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Depth2Vec{Bool}})
+function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias

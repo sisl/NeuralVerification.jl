@@ -13,7 +13,7 @@ function solve(solver::Reverify, problem::Problem)
     add_complementary_output_constraint(model, problem.output, last(neurons))
     encode_mip_constraint(model, problem.network, solver.m, neurons, deltas)
     zero_objective(model)
-    status = JuMP.solve(model)
+    status = solve(model)
     if status == :Optimal
         return Result(:UNSAT, getvalue(first(neurons)))
     end

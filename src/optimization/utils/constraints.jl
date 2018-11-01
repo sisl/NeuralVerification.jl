@@ -3,7 +3,7 @@
 
 # Encode constraint as LP according to the activation pattern
 # this is used in Sherlock
-function encode_lp(model::Model, nnet::Network, act_pattern::Depth2Vec{Bool}, neurons)
+function encode_lp(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
     for (i, layer) in enumerate(nnet.layers)
         before_act = layer.weights * neurons[i] + layer.bias
         for j in 1:length(layer.bias)
@@ -20,7 +20,7 @@ function encode_lp(model::Model, nnet::Network, act_pattern::Depth2Vec{Bool}, ne
 end
 
 # This function is called in iLP
-function encode_relaxed_lp(model::Model, nnet::Network, act_pattern::Depth2Vec{Bool}, neurons)
+function encode_relaxed_lp(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
     for (i, layer) in enumerate(nnet.layers)
         before_act = layer.weights * neurons[i] + layer.bias
         for j in 1:length(layer.bias)
@@ -36,7 +36,7 @@ end
 
 # Encode constraint as LP according to the Δ relaxation of ReLU
 # This function is called in planet and bab
-function encode_Δ_lp(model::Model, nnet::Network, bounds::Hyperrectangles, neurons)
+function encode_Δ_lp(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons)
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b
@@ -60,8 +60,8 @@ function encode_Δ_lp(model::Model, nnet::Network, bounds::Hyperrectangles, neur
     return nothing
 end
 
-function encode_slack_lp(model::Model, nnet::Network, p::Depth2Vec{Int64}, neurons)
-    slack = Depth2Vec{Variable}(length(nnet.layers))
+function encode_slack_lp(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
+    slack = Vector{Vector{Variable}}(length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         before_act = layer.weights * neurons[i] + layer.bias
         slack[i] = @variable(model, [1:length(layer.bias)])
@@ -99,7 +99,7 @@ end
 
 # Encode constraint as MIP with bounds
 # This function is called in MIPVerify
-function encode_mip_constraint(model::Model, nnet::Network, bounds::Hyperrectangles, neurons, deltas)
+function encode_mip_constraint(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons, deltas)
     for (i, layer) in enumerate(nnet.layers)
         (W, b, act) = (layer.weights, layer.bias, layer.activation)
         before_act = W * neurons[i] + b

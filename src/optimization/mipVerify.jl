@@ -15,7 +15,7 @@ function solve(solver::MIPVerify, problem::Problem)
     bounds = get_bounds(problem)
     encode_mip_constraint(model, problem.network, bounds, neurons, deltas)
     J = max_disturbance(model, first(neurons) - problem.input.center)
-    status = JuMP.solve(model)
+    status = solve(model)
 
     if status == :Infeasible
         return Result(:SAT)

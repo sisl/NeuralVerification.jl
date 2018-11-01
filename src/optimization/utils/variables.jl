@@ -1,34 +1,28 @@
 import JuMP: GenericAffExpr
 
-init_neurons(model::Model, network::Network) = init_variables(model, network, :Cont)
-init_deltas(model::Model, network::Network)  = init_variables(model, network, :Bin)
+init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, :Cont, input_is_special = true)
+init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin,  input_is_special = true)
+init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
 
-function init_variables(model::Model, network::Network, vartype::Symbol)
-    layers = network.layers
-    vars = Depth2Vec{Variable}(length(layers) + 1)
+# Allow ::Network input also (NOTE for legacy purposes mostly...)
+init_neurons(m,     network::Network) = init_neurons(m, network.layers)
+init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
+init_multipliers(m, network::Network) = init_multipliers(m, network.layers)
 
-    input_layer_n = size(first(layers).weights, 2)
+function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol; input_is_special::Bool = false)
+    vars = Vector{Vector{Variable}}(length(layers) )
     all_layers_n  = n_nodes.(layers)
-    prepend!(all_layers_n, input_layer_n)
+
+    if input_is_special
+        input_layer_n = size(first(layers).weights, 2)
+        prepend!(all_layers_n, input_layer_n)  # input layer gets special treatment
+        push!(vars, Vector{Variable}())        # expand vars by one also
+    end
 
     for (i, n) in enumerate(all_layers_n)
         vars[i] = @variable(model, [1:n], category = vartype)
     end
     return vars
-end
-
-# Lagrangian Multipliers
-function init_multipliers(model::Model, network::Network)
-    layers = network.layers
-    λ = Depth2Vec{Variable}(length(layers))
-
-    all_layers_n = n_nodes.(layers)
-
-    for (i, n) in enumerate(all_layers_n)
-        λ[i] = @variable(model, [1:n])
-    end
-
-    return λ
 end
 
 function symbolic_max(m::Model, a, b)

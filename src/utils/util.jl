@@ -91,9 +91,9 @@ end
 
 # Given a network, find the activation pattern of all neurons at a given point x
 # Assume ReLU
-# return Depth2Vec{Bool}
+# return Vector{Vector{Bool}}
 function get_activation(nnet::Network, x::Vector{Float64})
-    act_pattern = Depth2Vec{Bool}(length(nnet.layers))
+    act_pattern = Vector{Vector{Bool}}(length(nnet.layers))
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
@@ -113,8 +113,8 @@ function get_activation(nnet::Network, input::Hyperrectangle)
     return get_activation(nnet, bounds)
 end
 
-function get_activation(nnet::Network, bounds::Hyperrectangles)
-    act_pattern = Depth2Vec{Int}(length(nnet.layers))
+function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
+    act_pattern = Vector{Vector{Int}}(length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         before_act_bound = linear_transformation(layer, bounds[i])
         lower = low(before_act_bound)
@@ -147,10 +147,10 @@ end
 # Presolve to determine the bounds of variables
 # This function calls maxSens to compute the bounds
 # Bounds are computed AFTER activation function
-# Return Hyperrectangles
+# Return Vector{Hyperrectangle}
 function get_bounds(nnet::Network, input::Hyperrectangle)
     solver = MaxSens(0.0, true)
-    bounds = Hyperrectangles(length(nnet.layers) + 1)
+    bounds = Vector{Hyperrectangle}(length(nnet.layers) + 1)
     bounds[1] = input
     for (i, layer) in enumerate(nnet.layers)
         bounds[i+1] = forward_layer(solver, layer, bounds[i])
