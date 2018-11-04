@@ -83,7 +83,7 @@ end
 function encode_mip_constraint(model::Model, nnet::Network, M::Float64, neurons, deltas)
     for (i, layer) in enumerate(nnet.layers)
         lbounds = layer.weights * neurons[i] + layer.bias
-        dy = M*(deltas[i+1])  # TODO rename variable
+        dy = M*(deltas[i])  # TODO rename variable
         ubounds = lbounds + dy
         for j in 1:length(layer.bias)
             @constraints(model, begin
@@ -114,9 +114,9 @@ function encode_mip_constraint(model::Model, nnet::Network, bounds::Vector{Hyper
             else
                 @constraints(model, begin
                                     neurons[i+1][j] >= before_act[j]
-                                    neurons[i+1][j] <= upper[j] * deltas[i+1][j]
+                                    neurons[i+1][j] <= upper[j] * deltas[i][j]
                                     neurons[i+1][j] >= 0.0
-                                    neurons[i+1][j] <= before_act[j] - lower[j] * (1 - deltas[i+1][j])
+                                    neurons[i+1][j] <= before_act[j] - lower[j] * (1 - deltas[i][j])
                                 end)
             end
         end
