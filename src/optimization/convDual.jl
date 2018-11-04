@@ -8,9 +8,9 @@ function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
     if J >= 0.0
-        return Result(:SAT)
+        return BasicResult(:SAT)
     end
-    return Result(:Unknown)
+    return BasicResult(:Unknown)
 end
 
 # compute lower bound of the dual problem.

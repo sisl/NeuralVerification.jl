@@ -31,7 +31,7 @@ function solve(solver::ReluVal, problem::Problem)
     # Compute the reachable set without splitting the interval
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network)
-    if result.status != :Undertermined
+    if result.status != :Unknown
         return result
     end
 
@@ -40,7 +40,7 @@ function solve(solver::ReluVal, problem::Problem)
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
         if length(reach_list) == 0
-            return Result(:True)
+            return BasicResult(:SAT) # previously :True
         end
         if solver.tree_search == :BFS
             reach = reach_list[1]
@@ -55,14 +55,14 @@ function solve(solver::ReluVal, problem::Problem)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            if result.status == :False # If counter_example found
+            if result.status == :UNSAT # If counter_example found
                 return result
-            elseif result.status == :Undertermined # If undertermined, need to split
+            elseif result.status == :Unknown # If undertermined, need to split
                 reach_list = vcat(reach_list, reach)
             end
         end
     end
-    return Result(:Undertermined) # undetermined
+    return BasicResult(:Unknown) # undetermined
 end
 
 # This overwrites check_inclusion in utils/reachability.jl
@@ -79,18 +79,18 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     reachable = Hyperrectangle(low = lower, high = upper)
 
     if issubset(reachable, output)
-        return Result(:True)
+        return BasicResult(:SAT)
     end
     if is_intersection_empty(reachable, output)
-        return Result(:False)
+        return BasicResult(:UNSAT)
     end
     # Sample the middle point
     middle_point = (high(reach.interval) + low(reach.interval))./2
     if ~∈(compute_output(nnet, middle_point), output)
-        return Result(:False, middle_point)
+        return BasicResult(:UNSAT, middle_point)
     end
 
-    return Result(:Undertermined)
+    return BasicResult(:Unknown)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})

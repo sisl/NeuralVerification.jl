@@ -38,12 +38,6 @@ CounterExampleResult(s)     = CounterExampleResult(s, Float[])
 AdversarialResult(s)        = AdversarialResult(s, -1.0)
 ReachabilityResult(s)       = ReachabilityResult(s, [])
 
-Result(x) = BasicResult(x)
-Result(x, y::Vector{Float64}) = CounterExampleResult(x, y)
-Result(x, y::Float64) = AdversarialResult(x, y)
-Result(x, y::AbstractPolytope) = ReachabilityResult(x, [y])
-Result(x, y::Vector{<:AbstractPolytope}) = ReachabilityResult(x, y)
-
 function status(result::Result)
 	return result.status
 end

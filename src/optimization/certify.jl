@@ -37,9 +37,9 @@ end
 function interpret_result(solver::Certify, status, J)
     # println("Upper bound: ", getvalue(J[1]))
     if getvalue(J[1]) <= 0
-        return Result(:True)
+        return BasicResult(:SAT) # previously :True
     else
-        return Result(:Undetermined)
+        return BasicResult(:Unknown)
     end
 end
 

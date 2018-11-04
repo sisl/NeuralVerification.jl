@@ -37,6 +37,17 @@ function type_two_repair!(m::Model, b::Variable, f::Variable)
     return nothing
 end
 
+# function repair!(m, b, f, ::TypeOne)
+#     @constraint(m, b == f)
+#     @constraint(m, b >= 0.0)
+#     return nothing
+# end
+# function repair!(m, b, f, ::TypeTwo)
+#     @constraint(m, b <= 0.0)
+#     @constraint(m, f == 0.0)
+#     return nothing
+# end
+
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
     fs = init_neurons(model, layers)  # alias can be init_forward_facing_vars
@@ -63,18 +74,17 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
 end
 
 
-# function reluplexStep(step::ReluplexState)
 function reluplex_step(model)
     status = solve(model)
 
     if status == :Infeasible
-        return Result(:UNSAT)
+        return AdversarialResult(:UNSAT)
 
     elseif status == :Optimal
         b_vars, f_vars = extract_bs_fs(model)
         i, j = find_relu_to_fix(b_vars, f_vars)
 
-        i == 0 && return Result(:SAT, getvalue.(first(b_vars)))
+        i == 0 && return AdversarialResult(:SAT, getvalue.(first(b_vars)))
 
         for repair! in (type_one_repair!, type_two_repair!)
             new_m = deepcopy(model)
@@ -87,8 +97,6 @@ function reluplex_step(model)
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    layers = problem.network.layers[1:end-1]
-
     basic_model = Model(solver = GLPKSolverLP(method = :Exact))
     encode(solver, basic_model, problem)
 

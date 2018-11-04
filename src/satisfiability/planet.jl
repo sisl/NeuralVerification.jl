@@ -11,7 +11,7 @@ function solve(solver::Planet, problem::Problem)
     # refine bounds
     status, bounds = tighten_bounds(problem, solver.optimizer) # 3.1
     if status != :Optimal
-        return Result(:SAT)
+        return BasicResult(:SAT)
     end
 
     # partial assignment
@@ -36,10 +36,10 @@ function solve(solver::Planet, problem::Problem)
             append!(ψ, Any[conflict])
             soln = PicoSAT.solve(ψ)
         else
-            return Result(:UNSAT)
+            return BasicResult(:UNSAT)
         end
     end
-    return Result(:SAT)
+    return BasicResult(:SAT)
 end
 
 function get_list(p::Vector{Vector{Int64}})
