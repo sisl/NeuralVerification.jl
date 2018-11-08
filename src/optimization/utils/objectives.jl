@@ -1,5 +1,8 @@
 # This contains several objectives
 
+##
+# TODO make objectives have ! names
+##
 # Objective: L∞ norm of the disturbance
 function max_disturbance(model::Model, var)
     J = maximum(symbolic_abs(var))

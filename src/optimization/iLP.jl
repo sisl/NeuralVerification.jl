@@ -18,20 +18,20 @@ function solve(solver::ILP, problem::Problem)
 
         status = solve(model)
         if status != :Optimal
-            return Result(:Unknown)
+            return AdversarialResult(:Unknown)
         end
         x = getvalue(first(neurons))
         if satisfy(problem.network, x, act_pattern)
             radius = getvalue(J)
             if radius >= minimum(problem.input.radius)
-                return Result(:SAT, radius)
+                return AdversarialResult(:SAT, radius)
             else
-                return Result(:UNSAT, radius)
+                return AdversarialResult(:UNSAT, radius)
             end
         end
         i += 1
     end
-    return Result(:Unknown)
+    return AdversarialResult(:Unknown)
 end
 
 function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})

@@ -21,10 +21,10 @@ end
 # False if J > 0, True if J <= 0
 function interpret_result(solver::Duality, status, J)
     if status != :Optimal
-        return Result(:Unknown)
+        return BasicResult(:Unknown)
     end
     opt_cost = getvalue(J)
-    return ifelse(opt_cost <= 0.0, Result(:SAT), Result(:UNSAT))
+    return ifelse(opt_cost <= 0.0, BasicResult(:SAT), BasicResult(:UNSAT))
 end
 
 # For each layer l and node k

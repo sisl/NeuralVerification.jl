@@ -10,14 +10,14 @@ function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, true) # true for upper bound, false for lower bound
     (x_l, l) = output_bound(solver, problem, false)
 
-    uh = u - high(problem.output)[1]
+    uh = u - high(problem.output)[1] # TODO: doesn't this assume 1-d input?
     ll = l - low(problem.output)[1]
 
-    uh <= 0 && ll >= 0     && return Result(:SAT)
-    uh > solver.delta      && return Result(:UNSAT, x_u)
-    ll < solver.delta      && return Result(:UNSAT, x_l)
+    uh <= 0 && ll >= 0     && return AdversarialResult(:SAT)
+    uh > solver.delta      && return AdversarialResult(:UNSAT, x_u)
+    ll < solver.delta      && return AdversarialResult(:UNSAT, x_l)
 
-    return Result(:UNKNOWN)
+    return AdversarialResult(:UNKNOWN)
 end
 
 function output_bound(solver::Sherlock, problem::Problem, upper::Bool)

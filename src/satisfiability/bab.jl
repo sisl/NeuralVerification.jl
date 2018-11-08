@@ -30,9 +30,9 @@ function solve(solver::BAB, problem::Problem)
     end
     # The minimum is smaller than global_up
     if global_ub < d[1]
-        return Result(:SAT)
+        return AdversarialResult(:SAT)
     else
-        return Result(:UNSAT, global_ub_point)
+        return AdversarialResult(:UNSAT, global_ub_point)
     end
 end
 

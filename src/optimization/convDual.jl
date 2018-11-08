@@ -8,9 +8,9 @@ function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
     if J >= 0.0
-        return Result(:SAT)
+        return BasicResult(:SAT)
     end
-    return Result(:Unknown)
+    return BasicResult(:Unknown)
 end
 
 # compute lower bound of the dual problem.
@@ -38,7 +38,7 @@ end
 #=
 modifies v and returns J
 =#
-function backprop!(v, u, l)
+function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
     J = 0.0
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
@@ -131,7 +131,7 @@ end
 function new_μ(n_input, n_output, input_ReLU, WD)
     sub_μ = Vector{Vector{Float64}}(n_input)
     for j in 1:n_input
-        if input_ReLU[j] == 0 # negative region
+        if 0 < input_ReLU[j] < 1 # negative region  ## TODO CONFIRM. Previously input_ReLU[j] == 0
             sub_μ[j] = WD[:, j] # TODO CONFIRM
         else
             sub_μ[j] = zeros(n_output)
