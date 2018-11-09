@@ -8,7 +8,7 @@ end
 
 abstract type Result end
 
-validate_status(st::Symbol) = st ∈ (:SAT, :UNSAT, :Unknown) ? st : error("unexpected status code: `$st`.\nOnly (:SAT, :UNSAT, :Unknown) are accepted")
+validate_status(st::Symbol) = st ∈ (:SAT, :UNSAT, :Unknown) ? st : error("unexpected status code: `:$st`.\nOnly (:SAT, :UNSAT, :Unknown) are accepted")
 
 struct BasicResult <: Result
     status::Symbol
@@ -34,9 +34,9 @@ CounterExampleResult(s, ce) = CounterExampleResult(validate_status(s), ce)
 AdversarialResult(s, md)    = AdversarialResult(validate_status(s), md)
 ReachabilityResult(s, r)    = ReachabilityResult(validate_status(s), r)
 
-CounterExampleResult(s)     = CounterExampleResult(s, Float[])
-AdversarialResult(s)        = AdversarialResult(s, -1.0)
-ReachabilityResult(s)       = ReachabilityResult(s, [])
+CounterExampleResult(s)     = CounterExampleResult(validate_status(s), Float64[])
+AdversarialResult(s)        = AdversarialResult(validate_status(s), -1.0)
+ReachabilityResult(s)       = ReachabilityResult(validate_status(s), [])
 
 function status(result::Result)
 	return result.status

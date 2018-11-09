@@ -9,6 +9,3 @@ struct Id <: ActivationFunction end
 (f::ReLU)(x) = max.(x,0)
 (f::Max)(x) = max(maximum(x),0)
 (f::Id)(x) = x
-
-
-
