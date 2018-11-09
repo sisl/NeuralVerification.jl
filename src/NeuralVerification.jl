@@ -1,5 +1,7 @@
 module NeuralVerification
 
+__precompile__(false)
+
 using Reexport
 # for Feasibility
 @reexport using JuMP
@@ -7,11 +9,13 @@ using Reexport
 @reexport using GLPKMathProgInterface
 # for Reachability
 @reexport using LazySets
-import LazySets.dim # necessary to avoid conflict with Polyhedra.dim
 @reexport using Polyhedra
 @reexport using CDDLib
+@reexport using LinearAlgebra
 
-abstract type Solver end
+import LazySets.dim # necessary to avoid conflict with Polyhedra.dim
+
+abstract type Solver end # no longer needed
 
 # NOTE: the first 3 can probably be unified in one file.
 include("utils/activation.jl")
@@ -23,6 +27,10 @@ export
     Network,
     Problem,
     Result,
+    BasicResult,
+    CounterExampleResult,
+    AdversarialResult,
+    ReachabilityResult,
     read_nnet,
     solve,
     forward_network,
@@ -47,11 +55,15 @@ export
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
-include("reachability/reluVal.jl")
 include("reachability/ai2.jl")
 export
     ExactReach,
     MaxSens,
-    ReluVal,
     Ai2
+
+# include("adversarial/reluVal.jl")
+# include("adversarial/FastLin.jl")
+# include("adversarial/FastLip.jl")
+# export
+#     ReluVal
 end
