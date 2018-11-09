@@ -17,26 +17,25 @@ end
 struct CounterExampleResult <: Result
     status::Symbol
     counter_example::Vector{Float64}
+    CounterExampleResult(s, ce) = new(validate_status(s), ce)
 end
 
 struct AdversarialResult <: Result
 	status::Symbol
 	max_disturbance::Float64
+    AdversarialResult(s, md) = new(validate_status(s), md)
 end
 
 struct ReachabilityResult <: Result
 	status::Symbol
 	reachable::Vector{<:AbstractPolytope}
+    ReachabilityResult(s, r) = new(validate_status(s), r)
 end
 
 # Additional constructors:
-CounterExampleResult(s, ce) = CounterExampleResult(validate_status(s), ce)
-AdversarialResult(s, md)    = AdversarialResult(validate_status(s), md)
-ReachabilityResult(s, r)    = ReachabilityResult(validate_status(s), r)
-
-CounterExampleResult(s)     = CounterExampleResult(validate_status(s), Float64[])
-AdversarialResult(s)        = AdversarialResult(validate_status(s), -1.0)
-ReachabilityResult(s)       = ReachabilityResult(validate_status(s), [])
+CounterExampleResult(s) = CounterExampleResult(s, Float64[])
+AdversarialResult(s)    = AdversarialResult(s, -1.0)
+ReachabilityResult(s)   = ReachabilityResult(s, AbstractPolytope[])
 
 function status(result::Result)
 	return result.status
@@ -67,7 +66,7 @@ CounterExampleResult
 """
     AdversarialResult(status, max_disturbance)
 
-Like `BasicResult`, but also returns a the maximum allowable disturbance in the input (if :UNSAT).
+Like `BasicResult`, but also returns the maximum allowable disturbance in the input (if :UNSAT).
 """
 AdversarialResult
 
