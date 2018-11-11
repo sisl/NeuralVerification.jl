@@ -13,7 +13,7 @@ using Reexport
 @reexport using CDDLib
 @reexport using LinearAlgebra
 
-import LazySets.dim # necessary to avoid conflict with Polyhedra.dim
+import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 
 abstract type Solver end # no longer needed
 
@@ -37,8 +37,7 @@ export
     check_inclusion
 
 solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
-export
-    solve
+export solve
 
 # TODO: consider creating sub-modules for each of these.
 include("optimization/utils/constraints.jl")
@@ -47,19 +46,19 @@ include("optimization/utils/variables.jl")
 include("optimization/reverify.jl")
 include("optimization/convDual.jl")
 include("optimization/duality.jl")
-export
-    Reverify,
-    ConvDual,
-    Duality
+export Reverify, ConvDual, Duality
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
 include("reachability/ai2.jl")
-export
-    ExactReach,
-    MaxSens,
-    Ai2
+export ExactReach, MaxSens, Ai2
+
+include("satisfiability/bab.jl")
+include("satisfiability/planet.jl")
+include("satisfiability/sherlock.jl")
+include("satisfiability/reluplex.jl")
+export BAB, Planet, Sherlock, Reluplex
 
 # include("adversarial/reluVal.jl")
 # include("adversarial/FastLin.jl")
