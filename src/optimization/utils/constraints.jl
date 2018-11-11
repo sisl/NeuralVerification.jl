@@ -61,7 +61,7 @@ function encode_Δ_lp(model::Model, nnet::Network, bounds::Vector{Hyperrectangle
 end
 
 function encode_slack_lp(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
-    slack = Vector{Vector{Variable}}(length(nnet.layers))
+    slack = Vector{Vector{Variable}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         before_act = layer.weights * neurons[i] + layer.bias
         slack[i] = @variable(model, [1:length(layer.bias)])
@@ -113,11 +113,11 @@ function encode_mip_constraint(model::Model, nnet::Network, bounds::Vector{Hyper
                 @constraint(model, neurons[i+1][j] == 0.0)
             else
                 @constraints(model, begin
-                                    neurons[i+1][j] >= before_act[j]
-                                    neurons[i+1][j] <= upper[j] * deltas[i][j]
-                                    neurons[i+1][j] >= 0.0
-                                    neurons[i+1][j] <= before_act[j] - lower[j] * (1 - deltas[i][j])
-                                end)
+                                        neurons[i+1][j] >= before_act[j]
+                                        neurons[i+1][j] <= upper[j] * deltas[i][j]
+                                        neurons[i+1][j] >= 0.0
+                                        neurons[i+1][j] <= before_act[j] - lower[j] * (1 - deltas[i][j])
+                                    end)
             end
         end
     end
@@ -128,7 +128,7 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_complementary_output_constraint(model::Model, output::AbstractPolytope, neuron_vars::Vector{Variable})
+function add_complementary_output_constraint(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
     # Needs to take the complementary of output constraint
     n = length(out_b)
@@ -145,6 +145,12 @@ function add_complementary_output_constraint(model::Model, output::AbstractPolyt
             @constraint(model, -out_A[i, :]' * neuron_vars * out_deltas[i] <= -out_b[i] * out_deltas[i])
         end
     end
+    return nothing
+end
+
+function add_complementary_output_constraint(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
+    @constraint(model, neuron_vars .>= -high(output))
+    @constraint(model, neuron_vars .<= -low(output))
     return nothing
 end
 

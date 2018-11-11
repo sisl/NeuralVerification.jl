@@ -11,23 +11,25 @@ function max_disturbance(model::Model, var)
 end
 
 function min_sum_all(model::Model, var)
-    J = 0.0
-    for i in 1:length(var)
-        for j in 1:length(var[i])
-            J += var[i][j]
-        end
-    end
+    # J = 0.0
+    # for i in 1:length(var)
+    #     for j in 1:length(var[i])
+    #         J += var[i][j]
+    #     end
+    # end
+    J = sum(sum((var)))
     @objective(model, Min, J)
     return J
 end
 
 function max_sum_all(model::Model, var)
-    J = 0.0
-    for i in 1:length(var)
-        for j in 1:length(var[i])
-            J += var[i][j]
-        end
-    end
+    # J = 0.0
+    # for i in 1:length(var)
+    #     for j in 1:length(var[i])
+    #         J += var[i][j]
+    #     end
+    # end
+    J = sum(sum((var)))
     @objective(model, Max, J)
     return J
 end
