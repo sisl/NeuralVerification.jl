@@ -21,29 +21,35 @@ function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
 end
 
 function transform(f::ReLU, P::AbstractPolytope)
-    pos = meet(P, true)
-    neg = meet(P, false)
+    hull::VPolytope
+    # check if 1:2^n relus is tighter range than relu(relu(...to the n))
+    for i in dim(P)
+        pos = meet(P, i, true)
+        neg = meet(P, i, false)
+        Vneg = VPolytope([f(v) for v in vertices_list(neg)]) #dimensional relu
 
-    Vneg = VPolytope([f(v) for v in vertices_list(neg)])
+        hull = convex_hull(hull, pos)
+        hull = convex_hull(hull, Vneg)
+    end
 
-    return convex_hull(pos, Vneg)
+    return hull
 end
 
-meet(V::VPolytope, pos) = tovrep(meet(tohrep(V), side))
+meet(V::VPolytope, pos::Bool) = meet(tohrep(V), pos)
 
-function meet(H::HPolytope, pos)
+function meet(H::HPolytope, pos::Bool)
     HH = deepcopy(H)
     meet!(HH, pos)
     return HH
 end
 function meet!(H::HPolytope{T}, pos::Bool) where T
     # constraints are given by ax <= b so (-) is required for a positive constraint
-    if (pos)  d = -eye(dim(H))
-    else      d =  eye(dim(H))
+    if (pos)  d = Matrix(-1.0I, dim(H), dim(H))
+    else      d = Matrix(1.0I, dim(H), dim(H))
     end
 
     for i in size(d, 1)
-        new_hs = HalfSpace(d[i, :], zero(T))
+        new_hs = LazySets.HalfSpace(d[i, :], zero(T))
         addconstraint!(H, new_hs)
     end
 end
@@ -51,7 +57,7 @@ end
 
 
 shiftcenter(zono::Zonotope, shift::Vector)         = Zonotope(zono.center + shift, zono.generators)
-shiftcenter(poly::AbstractPolytope, shift::Vector) = shiftcenter(VPolytope(vertices_list(poly)), shift)
+shiftcenter(poly::AbstractPolytope, shift::Vector) = shiftcenter(tovrep(poly), shift)
 
 function shiftcenter(V::VPolytope, shift::Vector)
     shifted = [v + shift for v in vertices_list(V)]
