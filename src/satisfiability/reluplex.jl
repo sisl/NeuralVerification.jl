@@ -18,11 +18,11 @@ end
 type_one_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0) # NOTE should this be >= ?
 type_two_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)  # NOTE changed to >=
 
-function type_one_repair!(m, i::Int, j::Int)
+function type_one_repair!(m::Model, i::Int, j::Int)
     bs, fs = extract_bs_fs(m)
     type_one_repair!(m, bs[i+1][j], fs[i][j])
 end
-function type_two_repair!(m, i::Int, j::Int)
+function type_two_repair!(m::Model, i::Int, j::Int)
     bs, fs = extract_bs_fs(m)
     type_two_repair!(m, bs[i+1][j], fs[i][j])
 end
@@ -37,31 +37,22 @@ function type_two_repair!(m::Model, b::Variable, f::Variable)
     return nothing
 end
 
-# function repair!(m, b, f, ::TypeOne)
-#     @constraint(m, b == f)
-#     @constraint(m, b >= 0.0)
-#     return nothing
-# end
-# function repair!(m, b, f, ::TypeTwo)
-#     @constraint(m, b <= 0.0)
-#     @constraint(m, f == 0.0)
-#     return nothing
-# end
-
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
     fs = init_neurons(model, layers)  # alias can be init_forward_facing_vars
     bs = init_back_facing_vars(model, layers)
 
-    # each layer get an input constraint
-    bounds = get_bounds(problem) # maxSens? TODO get_bounds methods should require the solver as input to clarify
-    add_input_constraint.(model, bs, bounds)  # NOTE: length(bs) == length(bounds) ?  otherwise do a for loop etc.
+    # each hidden layer get an input constraint
+    bounds = get_bounds(problem)
+    for i in 1:length(bs)
+        add_input_constraint(model,  bounds[i+1], bs[i])  # TODO: Chris confirm [i+1]
+    end
 
     for (i, L) in enumerate(layers)
         (W, b, act) = (L.weights, L.bias, L.activation)
 
         vars = (i == 1) ? bs[i] : fs[i-1] # ternary is uglier than if?
-        @constraint(model, -bs[i+1] .+  W*vars .== -b)
+        @constraint(model, -bs[i+1] .+  W'*vars .== -b) ## NOTE added transpose of W to make dims work.
     end
 
     # positivity contraint for f variables
@@ -84,7 +75,7 @@ function reluplex_step(model)
         b_vars, f_vars = extract_bs_fs(model)
         i, j = find_relu_to_fix(b_vars, f_vars)
 
-        i == 0 && return AdversarialResult(:SAT, getvalue.(first(b_vars)))
+        i == 0 && return AdversarialResult(:SAT, getvalue.(first(b_vars)))  # NOTE: isn't this backwards? In the SAT case we don't return values, no?
 
         for repair! in (type_one_repair!, type_two_repair!)
             new_m = deepcopy(model)
