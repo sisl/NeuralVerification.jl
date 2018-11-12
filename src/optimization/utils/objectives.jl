@@ -17,7 +17,7 @@ function min_sum_all(model::Model, var)
     #         J += var[i][j]
     #     end
     # end
-    J = sum(sum((var)))
+    J = sum(sum.(var))
     @objective(model, Min, J)
     return J
 end
@@ -29,7 +29,7 @@ function max_sum_all(model::Model, var)
     #         J += var[i][j]
     #     end
     # end
-    J = sum(sum((var)))
+    J = sum(sum.(var))
     @objective(model, Max, J)
     return J
 end

@@ -18,11 +18,11 @@ function solve(solver::MIPVerify, problem::Problem)
     status = solve(model)
 
     if status == :Infeasible
-        return Result(:SAT)
+        return AdversarialResult(:SAT)
     end
     if getvalue(J) >= minimum(problem.input.radius)
-        return Result(:SAT)
+        return AdversarialResult(:SAT)
     else
-        return Result(:UNSAT, J)
+        return AdversarialResult(:UNSAT, getvalue(J))
     end
 end
