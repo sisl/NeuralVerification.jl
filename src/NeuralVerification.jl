@@ -7,6 +7,8 @@ using Reexport
 @reexport using JuMP
 @reexport using MathProgBase.SolverInterface
 @reexport using GLPKMathProgInterface
+@reexport using PicoSAT # needed for Planet
+@reexport using SCS     # needed for Certify and Duality
 # for Reachability
 @reexport using LazySets
 @reexport using Polyhedra
@@ -46,7 +48,10 @@ include("optimization/utils/variables.jl")
 include("optimization/reverify.jl")
 include("optimization/convDual.jl")
 include("optimization/duality.jl")
-export Reverify, ConvDual, Duality
+include("optimization/certify.jl")
+include("optimization/iLP.jl")
+include("optimization/mipVerify.jl")
+export Reverify, ConvDual, Duality, Certify, ILP, MIPVerify
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
@@ -60,9 +65,9 @@ include("satisfiability/sherlock.jl")
 include("satisfiability/reluplex.jl")
 export BAB, Planet, Sherlock, Reluplex
 
-# include("adversarial/reluVal.jl")
-# include("adversarial/FastLin.jl")
-# include("adversarial/FastLip.jl")
-# export
-#     ReluVal
+include("adversarial/reluVal.jl")
+include("adversarial/FastLin.jl")
+include("adversarial/FastLip.jl")
+export ReluVal, FastLin, FastLip
+
 end

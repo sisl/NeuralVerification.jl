@@ -58,10 +58,10 @@ function forward_network(ϵ::Float64, nnet::Network, input::Hyperrectangle)
 
     len = length(nnet.layers)
 
-    A = Vector{Matrix{Float64}}(0)
-    act_pattern = Vector{Float64}(0)
-    l = Vector{Vector{Float64}}(0)
-    u = Vector{Vector{Float64}}(0)
+    A = Vector{Matrix{Float64}}()
+    act_pattern = Vector{Float64}()
+    l = Vector{Vector{Float64}}()
+    u = Vector{Vector{Float64}}()
 
     x0 = input.center
     println("in FN")
@@ -110,8 +110,8 @@ function get_next_bounds(layers, input_center, ϵ, A, l, act_pattern)
 end
 
 function get_TH(l, A, act_pattern)
-    T = Vector{SparseMatrixCSC{Float64}}(length(l))
-    H = Vector{SparseMatrixCSC{Float64}}(length(l))
+    T = Vector{SparseMatrixCSC{Float64}}(undef, length(l))
+    H = Vector{SparseMatrixCSC{Float64}}(undef, length(l))
 
     for k in 1:length(l)  # for all previous layers, (current one not included)
 
