@@ -5,7 +5,7 @@ using Base.Test
 at = @__DIR__
 
 small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
-A = Matrix{Float64}(2,1)
+A = Matrix{Float64}(undef, 2,1)
 A[1] = 1
 A[2] = -1
 
