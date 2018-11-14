@@ -166,6 +166,12 @@ function add_input_constraint(model::Model, input::Hyperrectangle, neuron_vars::
     return nothing
 end
 
+function add_output_constraint(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
+    @constraint(model,  neuron_vars .<= high(output))
+    @constraint(model,  neuron_vars .>= low(output))
+    return nothing
+end
+
 function add_output_constraint(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
     @constraint(model, out_A * neuron_vars .<= out_b)

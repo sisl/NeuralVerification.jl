@@ -25,3 +25,10 @@ end
 function zero_objective(model::Model)
     @objective(model, Max, 0.0)
 end
+
+function linear_objective(mode::Model, map::HPolytope, var)
+    c, d = tosimplehrep(map)
+    J = c * var - d
+    @objective(model, Min, J)
+    return J
+end
