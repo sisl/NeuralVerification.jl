@@ -68,6 +68,7 @@ export BAB, Planet, Sherlock, Reluplex
 include("adversarial/reluVal.jl")
 include("adversarial/FastLin.jl")
 include("adversarial/FastLip.jl")
-export ReluVal, FastLin, FastLip
+include("adversarial/dlv.jl")
+export ReluVal, FastLin, FastLip, DLV
 
 end
