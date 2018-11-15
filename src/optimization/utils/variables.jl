@@ -4,23 +4,21 @@ init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, la
 init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin)
 init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
 # for reluplex:
-init_back_facing_vars(model::Model, layers::Vector{Layer})    = init_variables(model, layers, :Cont)[1:end-1] #discard the last one
+init_forward_facing_vars(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)[1:end-1] #discard the last one
 # Allow ::Network input also (NOTE for legacy purposes mostly...)
 init_neurons(m,     network::Network) = init_neurons(m, network.layers)
 init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
 init_multipliers(m, network::Network) = init_multipliers(m, network.layers)
 
 function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol; include_input::Bool = false)
-    # vars = Vector{Vector{Variable}}(length(layers) )
-
     # TODO: only neurons get offset array
     vars = Vector{Vector{Variable}}(undef, length(layers))
-    all_layers_n  = n_nodes.(layers)
+    all_layers_n = n_nodes.(layers)
 
     if include_input
-        input_layer_n = size(first(layers).weights, 2)
-        prepend!(all_layers_n, input_layer_n)  # input layer gets special treatment
-        push!(vars, Vector{Variable}())        # expand vars by one also
+        input_layer_n = size(first(layers).weights, 2) # input layer gets special treatment
+        prepend!(all_layers_n, input_layer_n)
+        push!(vars, Vector{Variable}())        # expand vars by one to account
     end
 
     for (i, n) in enumerate(all_layers_n)

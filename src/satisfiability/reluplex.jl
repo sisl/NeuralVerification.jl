@@ -5,27 +5,21 @@ struct Reluplex end
 
 function find_relu_to_fix(b_vars, f_vars)
     for i in 1:length(f_vars), j in 1:length(f_vars[i])
-        b, f = b_vars[i+1][j], f_vars[i][j]
-        if  type_one_broken(b, f) ||
-            type_two_broken(b, f)
+        b = getvalue(b_vars[i+1][j])
+        f = getvalue(f_vars[i][j])
 
-            return (i, j)
+        if type_one_broken(b, f) ||
+           type_two_broken(b, f)
+            (i, j)
         end
     end
     return (0, 0)
 end
 
-type_one_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0) # NOTE should this be >= ?
-type_two_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)  # NOTE changed to >=
+type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)
+type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 
-function type_one_repair!(m::Model, i::Int, j::Int)
-    bs, fs = extract_bs_fs(m)
-    type_one_repair!(m, bs[i+1][j], fs[i][j])
-end
-function type_two_repair!(m::Model, i::Int, j::Int)
-    bs, fs = extract_bs_fs(m)
-    type_two_repair!(m, bs[i+1][j], fs[i][j])
-end
+# NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
 function type_one_repair!(m::Model, b::Variable, f::Variable)
     @constraint(m, b == f)
     @constraint(m, b >= 0.0)
@@ -39,68 +33,110 @@ end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    fs = init_neurons(model, layers)  # alias can be init_forward_facing_vars
-    bs = init_back_facing_vars(model, layers)
+    bs = init_neurons(model, layers)
+    fs = init_forward_facing_vars(model, layers)
 
-    # each hidden layer get an input constraint
-    bounds = get_bounds(problem)
-    for i in 1:length(bs)
-        add_input_constraint(model,  bounds[i+1], bs[i])  # TODO: Chris confirm [i+1]
-    end
-
-    for (i, L) in enumerate(layers)
-        (W, b, act) = (L.weights, L.bias, L.activation)
-
-        vars = (i == 1) ? bs[i] : fs[i-1] # ternary is uglier than if?
-        @constraint(model, -bs[i+1] .+  W'*vars .== -b) ## NOTE added transpose of W to make dims work.
-    end
-
-    # positivity contraint for f variables
+    # Positivity contraint for forward-facing variables
     for i in 1:length(fs)
         @constraint(model, fs[i] .>= 0.0)
     end
 
+    # All layers (input and hidden) get an "input" constraint
+    # In addition, each set of back-facing and forward-facing
+    # variables are related to each other by a constraint.
+    bounds = get_bounds(problem)
+    for (i, L) in enumerate(layers)
+        ## layerwise input constraint
+        add_input_constraint(model, bounds[i], bs[i])
+
+        ## b<——>f[next] constraint
+        # first layer technically has only vars which are forward facing,
+        # but they behave like b-vars, so they are treated as such.
+        W, bias = L.weights, L.bias
+        if (i == 1)
+            @constraint(model, -bs[i+1] .+ W*bs[i] .== -bias)
+        else
+            @constraint(model, -bs[i+1] .+ W*fs[i-1] .== -bias)
+        end
+
+        ## f >= b always, by definition
+        if i <= length(fs)
+            @constraint(model, fs[i] .>= bs[i+1])
+        end
+    end
+    add_output_constraint(model, problem.output, last(bs))
+
     zero_objective(model)
-    return nothing
+
+    return bs, fs
 end
 
+function enforce_repairs!(model::Model, bs, fs, relu_status)
+    for i in 1:length(relu_status), j in 1:length(relu_status[i])
+        b = bs[i+1][j]
+        f = fs[i][j]
+        if relu_status[i][j] == 1
+            type_one_repair(m, b, f)
+        elseif relu_status[i][j] == 2
+            type_two_repair(m, b, f)
+        end
+    end
+end
 
-function reluplex_step(model)
+function reluplex_step(solver::Reluplex,
+                       model::Model,
+                       b_vars::Vector{Vector{Variable}},
+                       f_vars::Vector{Vector{Variable}},
+                       relu_status::Vector{Vector{Int}})
+
     status = solve(model)
 
     if status == :Infeasible
-        return AdversarialResult(:UNSAT)
+        return CounterExampleResult(:SAT)
 
     elseif status == :Optimal
-        b_vars, f_vars = extract_bs_fs(model)
         i, j = find_relu_to_fix(b_vars, f_vars)
 
-        i == 0 && return AdversarialResult(:SAT, getvalue.(first(b_vars)))  # NOTE: isn't this backwards? In the SAT case we don't return values, no?
+        # in case no broken relus could be found, return the "input" as a countereexample
+        i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
 
-        for repair! in (type_one_repair!, type_two_repair!)
-            new_m = deepcopy(model)
-            repair!(new_m, i, j)
-            result = reluplex_step(new_m)
-            result.status == :SAT && return result
+        for repair_type in 1:2
+            relu_status[i][j] = repair_type
+
+            new_m  = new_model(solver)
+            bs, fs = encode(solver, new_m, problem)
+            enforce_repairs!(model, bs, fs, relu_status)
+
+            result = reluplex_step(solver, new_m, bs, fs, relu_status)
+
+            relu_status[i][j] = 0
+            result.status == :UNSAT && return result
         end
+    else
+        error("unexpected status $status") # are there alternatives to the if and elseif?
     end
-    # are there alternatives to the if and elseif?
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    basic_model = Model(solver = GLPKSolverLP(method = :Exact))
-    encode(solver, basic_model, problem)
+    basic_model = new_model(solver)
+    bs, fs = encode(solver, basic_model, problem)
+    layers = problem.network.layers
+    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
 
-    return reluplex_step(basic_model)
+    return reluplex_step(solver, basic_model, bs, fs, initial_status)
 end
 
-function extract_bs_fs(m::Model)
+# for convenience:
+new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
 
-    vars = collect(keys(m.varData))
-    L1, L2 = map(length, vars)
-    # "b_vars" is the longer of the two, and should be returned first
-    if L1 < L2
-        reverse!(vars)
-    end
-    return vars
-end
+
+# doesn't do what it should! TODO open feature requestion issue on JuMP
+# function extract_bs_fs(m::Model)
+#     vars = collect(keys(m.varData))
+#     L1, L2 = map(length, vars)
+#     # "b_vars" is the longer of the two, and should be returned first
+#     if L1 < L2
+#         reverse!(vars)
+#     end
+#     return vars
+# end
