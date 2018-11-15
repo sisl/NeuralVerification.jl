@@ -20,16 +20,11 @@ function solve(solver::DLV, problem::Problem)
     for (i, layer) in enumerate(problem.network.layers)
         δ[i+1] = get_manipulation(layer, δ[i], η[i+1])
         if i == length(problem.network.layers)
-            # mapping = x -> x ∈ problem.output
             var, y = bounded_variation(η[i+1], x->(x∈problem.output), δ[i+1])
         else
             forward_nnet = Network(problem.network.layers[i+1:end])
-            # mapping = x -> compute_output(forward_nnet, x) ∈ problem.output
             var, y = bounded_variation(η[i+1], x->(compute_output(forward_nnet, x)∈problem.output), δ[i+1])
         end
-
-        # var, y = bounded_variation(η[i+1], mapping, δ[i+1])
-
         if var > 0
             backward_nnet = Network(problem.network.layers[1:i])
             status, x = backward_map(y, backward_nnet, η[1:i+1])
@@ -79,9 +74,9 @@ function bounded_variation(bound, mapping, δ)
 
         y[i] -= 2 * bound.radius[i]
         !mapping(y) && return (1, y)
-
         y[i] += bound.radius[i]
     end
+  
     # step 2: check the 0-variation in all dimension
     for i = 1:dim(bound)
         z = y
