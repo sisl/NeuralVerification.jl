@@ -19,9 +19,10 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
     @assert all(iszero.(input.radius .- input.radius[1])) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
-    L, U = get_bounds(network, input.center, input.radius[1])
-    v, d = tosimplehrep(output)
+    L, U  = get_bounds(network, input.center, input.radius[1])
+    v0, d = tosimplehrep(output)
 
+    v = vec(v0)
     J = d[1]
 
     for i in reverse(1:length(layers))
@@ -31,7 +32,7 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
             J += backprop!(v, U[i-1], L[i-1])
         end
     end
-    J -= input.center * v + input.radius[1] * sum(abs.(v))
+    J -= input.center' * v + input.radius[1] * sum(abs.(v))
     return J
 end
 
