@@ -15,11 +15,11 @@ function solve(solver::Reverify, problem::Problem)
     zero_objective(model)
     status = solve(model)
     if status == :Optimal
-        return AdversarialResult(:UNSAT, getvalue(first(neurons)))
+        return CounterExampleResult(:UNSAT, getvalue(first(neurons)))
     end
     if status == :Infeasible
-        return AdversarialResult(:SAT)
+        return CounterExampleResult(:SAT)
     end
-    return AdversarialResult(:Unknown)
+    return CounterExampleResult(:Unknown)
 end
 

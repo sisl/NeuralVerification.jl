@@ -7,7 +7,7 @@ function solve(solver::DLV, problem::Problem)
     # The list of etas
     η = get_bounds(problem)
     # The list of sample intervals
-    δ = Vector{Vector{Float64}}(length(η))
+    δ = Vector{Vector{Float64}}(undef,length(η))
     δ[1] = fill(solver.ϵ, dim(η[1]))
 
     output = compute_output(problem.network, problem.input.center)
@@ -44,16 +44,16 @@ end
 
 # Try to find an input x that arrives at output y
 function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrectangle})
-    output = Hyperrectangle(y, zeros(y))
+    output = Hyperrectangle(y, zeros(size(y)))
     input = first(bounds)
-    model = JuMP.Model(solver = GLPKSolverMIP())
+    model = Model(solver = GLPKSolverMIP())
     neurons = init_neurons(model, nnet)
     deltas = init_deltas(model, nnet)
     add_input_constraint(model, input, first(neurons))
     add_output_constraint(model, output, last(neurons))
     encode_mip_constraint(model, nnet, bounds, neurons, deltas)
     J = max_disturbance(model, first(neurons) - input.center)
-    status = JuMP.solve(model)
+    status = solve(model)
     if status == :Optimal
         return (true, getvalue(first(neurons)))
     else
@@ -63,36 +63,31 @@ end
 
 # Here we implement single-path search (greedy)
 # For simplicity, we partition the reachable set by dimension
-function bounded_variation(bound, map, δ)
+function bounded_variation(bound, mapping, δ)
     var = 0
     y = bound.center
     # step 1: check whether the boundary points have the same class
     for i = 1:dim(bound)
+
         y[i] += bound.radius[i]
-        if ~map(y)
-            return (1, y)
-        end
+        !mapping(y) && return (1, y)
+
         y[i] -= 2 * bound.radius[i]
-        if ~map(y)
-            return (1, y)
-        end
+        !mapping(y) && return (1, y)
         y[i] += bound.radius[i]
     end
+  
     # step 2: check the 0-variation in all dimension
     for i = 1:dim(bound)
         z = y
         while maximum(z - high(bound)) < 0
             z[i] += δ[i]
-            if ~map(z)
-                return (1, y)
-            end
+            !mapping(z) && return (1, y)
         end
         z = y
         while minimum(z - high(bound)) > 0
             z[i] -= δ[i]
-            if ~map(z)
-                return (1, y)
-            end
+            !mapping(z) && return (1, y)
         end
     end
     return (0, [])

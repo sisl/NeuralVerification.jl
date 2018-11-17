@@ -40,7 +40,7 @@ function solve(solver::ReluVal, problem::Problem)
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
         if length(reach_list) == 0
-            return BasicResult(:SAT) # previously :True
+            return BasicResult(:SAT)
         end
         if solver.tree_search == :BFS
             reach = reach_list[1]

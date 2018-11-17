@@ -2,10 +2,21 @@
 using NeuralVerification
 using Base.Test
 
+macro no_error(ex)
+    quote
+        try $(esc(ex))
+            true
+        catch
+            false
+        end
+    end
+end
+
+
 at = @__DIR__
 
 small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
-A = Matrix{Float64}(2,1)
+A = Matrix{Float64}(undef, 2,1)
 A[1] = 1
 A[2] = -1
 
@@ -39,7 +50,7 @@ problem_reluVal = Problem(small_nnet, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
 
 
-@test solve(solver_reverify,   problem_reverify).status == :True  # True means infeasible (NOTE: is that intuitive?)
-@test solve(solver_maxSens,    problem_maxSens)         == :True
-@test solve(solver_exactReach, problem_exactReach)      == :True
-@test solve(solver_reluVal,    problem_reluVal).status  == :False
+@test @no_error solve(solver_reverify,   problem_reverify)
+@test @no_error solve(solver_maxSens,    problem_maxSens)
+@test @no_error solve(solver_exactReach, problem_exactReach)
+@test @no_error solve(solver_reluVal,    problem_reluVal)

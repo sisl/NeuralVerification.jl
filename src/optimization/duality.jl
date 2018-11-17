@@ -12,7 +12,7 @@ function solve(solver::Duality, problem::Problem)
     c, d = tosimplehrep(problem.output)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
-    J = dual_cost(model, problem.network, bounds, λ, μ)
+    J = dual_cost(solver, model, problem.network, bounds, λ, μ)
     @constraint(model, last(λ) .== -c)
     status = solve(model)
     return interpret_result(solver, status, J - d[1])
@@ -20,11 +20,10 @@ end
 
 # False if J > 0, True if J <= 0
 function interpret_result(solver::Duality, status, J)
-    if status != :Optimal
-        return BasicResult(:Unknown)
-    end
-    opt_cost = getvalue(J)
-    return ifelse(opt_cost <= 0.0, BasicResult(:SAT), BasicResult(:UNSAT))
+    status != :Optimal && return BasicResult(:Unknown)
+    getvalue(J) <= 0.0 && return BasicResult(:SAT)
+
+    return BasicResult(:UNSAT)
 end
 
 # For each layer l and node k
@@ -61,5 +60,20 @@ function input_layer_cost(layer, μ, input)
     W, b = layer.weights, layer.bias
     J = - μ' * (W * input.center .+ b)
     J += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
+    return J
+end
+
+
+function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
+    layers = problem.nnet.layers
+    # input layer
+    J = input_layer_cost(layers[1], μ[1], bounds[1])
+    J += activation_cost(layers[1], μ[1], λ[1], bounds[1])
+    # other layers
+    for i in 2:length(layers)
+        J += layer_cost(layers[i], μ[i], λ[i-1], bounds[i])
+        J += activation_cost(layers[i], μ[i], λ[i], bounds[i])
+    end
+    @objective(model, Min, J)
     return J
 end

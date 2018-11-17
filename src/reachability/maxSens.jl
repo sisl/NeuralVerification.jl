@@ -3,9 +3,9 @@ struct MaxSens
     tight::Bool
 end
 
-MaxSens() = MaxSens(1.0, false)
+MaxSens()           = MaxSens(1.0, false)
 MaxSens(x::Float64) = MaxSens(x, false)
-MaxSens(x::Bool) = MaxSens(1.0, x)
+MaxSens(x::Bool)    = MaxSens(1.0, x)
 
 # This is the main function
 function solve(solver::MaxSens, problem::Problem)
@@ -18,8 +18,8 @@ end
 # This function is called by forward_network
 function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
     (W, b, act) = (L.weights, L.bias, L.activation)
-    center = fill(0.0, size(W, 1))
-    gamma = fill(0.0, size(W, 1))
+    center = zeros(size(W, 1))
+    gamma  = zeros(size(W, 1))
     for j in 1:size(W, 1)
         node = Node(W[j,:], b[j], act)
         center[j], gamma[j] = forward_node(solver, node, input)
@@ -42,7 +42,7 @@ end
 
 function partition(input::Hyperrectangle, delta::Float64)
     n_dim = dim(input)
-    hyperrectangle_list = Vector{Int64}(n_dim)
+    hyperrectangle_list = Vector{Int64}(undef, n_dim)
     n_hyperrectangle = 1
 
     lower, upper = low(input), high(input)
@@ -53,20 +53,20 @@ function partition(input::Hyperrectangle, delta::Float64)
     end
     n_hyperrectangle = trunc(Int, n_hyperrectangle)
 
-    Vector{Hyperrectangle} = Vector{Hyperrectangle}(n_hyperrectangle)
+    hyperrectangles = Vector{Hyperrectangle}(undef, n_hyperrectangle)
     for k in 1:n_hyperrectangle
         number = k
-        center = Vector{Float64}(n_dim)
-        radius = Vector{Float64}(n_dim)
+        center = Vector{Float64}(undef, n_dim)
+        radius = Vector{Float64}(undef, n_dim)
         for i in n_dim:-1:1
             id = div(number-1, hyperrectangle_list[i])
             number = mod(number-1, hyperrectangle_list[i])+1
             center[i] = lower[i] + delta/2 + delta * id;
             radius[i] = delta;
         end
-        Vector{Hyperrectangle}[k] = Hyperrectangle(center, radius)
+        hyperrectangles[k] = Hyperrectangle(center, radius)
     end
-    return Vector{Hyperrectangle}
+    return hyperrectangles
 end
 
 # This function needs to be improved

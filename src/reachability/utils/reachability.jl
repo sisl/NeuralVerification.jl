@@ -16,13 +16,13 @@ end
 # Note vertices_list is not defined for HPolytope: to be defined
 function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
     for poly in reach
-        issubset(poly, output) || return ReachabilityResult(:UNSAT, reach)
+        issubset(poly, output) || return ReachabilityResult(:UNSAT, reach) # TODO shouldn't this be poly, not the full reach?
     end
     return ReachabilityResult(:SAT, reach)
 end
 function check_inclusion(reach::AbstractPolytope, output::AbstractPolytope)
     if issubset(reach, output)
-        return ReachabilityResult(:SAT, reach)
+        return ReachabilityResult(:SAT, [reach])
     end
-    return ReachabilityResult(:UNSAT, reach)
+    return ReachabilityResult(:UNSAT, [reach])
 end

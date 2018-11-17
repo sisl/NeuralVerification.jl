@@ -16,12 +16,13 @@ end
 # compute lower bound of the dual problem.
 function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
 
-    @assert iszero(input.radius - input.radius[1]) "input.radius must be uniform. Got $(input.radius)"
+    @assert all(iszero.(input.radius .- input.radius[1])) "input.radius must be uniform. Got $(input.radius)"
 
     layers = network.layers
-    L, U = get_bounds(network, input.center, input.radius[1])
-    v, d = tosimplehrep(output)
+    L, U  = get_bounds(network, input.center, input.radius[1])
+    v0, d = tosimplehrep(output)
 
+    v = vec(v0)
     J = d[1]
 
     for i in reverse(1:length(layers))
@@ -31,7 +32,7 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
             J += backprop!(v, U[i-1], L[i-1])
         end
     end
-    J -= input.center * v + input.radius[1] * sum(abs.(v))
+    J -= input.center' * v + input.radius[1] * sum(abs.(v))
     return J
 end
 
@@ -56,10 +57,10 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     layers  = nnet.layers
     n_layer = length(layers)
 
-    l = Vector{Vector{Float64}}(0)
-    u = Vector{Vector{Float64}}(0)
-    γ = Vector{Vector{Float64}}(0)
-    μ = Vector{Vector{Vector{Float64}}}(0)
+    l = Vector{Vector{Float64}}()
+    u = Vector{Vector{Float64}}()
+    γ = Vector{Vector{Float64}}()
+    μ = Vector{Vector{Vector{Float64}}}()
 
     v1 = layers[1].weights'
     push!(γ, layers[1].bias)
@@ -73,7 +74,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         n_output = length(layers[i].bias)
 
         input_ReLU = relaxed_ReLU.(last(l), last(u))
-        D = diagm(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
+        D = Diagonal(input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
 
         # Propagate existing terms
         WD = layers[i].weights*D
@@ -88,7 +89,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
 
         # Compute bounds
         ψ = v1' * input + sum(γ)
-        eps_v1_sum = ϵ * vec(sum(abs, v1, 1))
+        eps_v1_sum = ϵ * vec(sum(abs, v1, dims = 1))
         neg, pos = all_neg_pos_sums(input_ReLU, l, μ, n_output)
         push!(l,  ψ - eps_v1_sum + neg )
         push!(u,  ψ + eps_v1_sum - pos )
@@ -120,7 +121,7 @@ function input_layer_bounds(input_layer, input, ϵ)
     W, b = input_layer.weights, input_layer.bias
 
     out1 = vec(W * input + b)
-    Δ    = ϵ * vec(sum(abs, W, 2))
+    Δ    = ϵ * vec(sum(abs, W, dims = 2))
 
     l = out1 - Δ
     u = out1 + Δ
@@ -129,7 +130,7 @@ end
 
 
 function new_μ(n_input, n_output, input_ReLU, WD)
-    sub_μ = Vector{Vector{Float64}}(n_input)
+    sub_μ = Vector{Vector{Float64}}(undef, n_input)
     for j in 1:n_input
         if 0 < input_ReLU[j] < 1 # negative region  ## TODO CONFIRM. Previously input_ReLU[j] == 0
             sub_μ[j] = WD[:, j] # TODO CONFIRM

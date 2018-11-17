@@ -10,22 +10,22 @@ function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, true) # true for upper bound, false for lower bound
     (x_l, l) = output_bound(solver, problem, false)
 
-    uh = u - high(problem.output)[1] # TODO: doesn't this assume 1-d input?
-    ll = l - low(problem.output)[1]
+    udiff = u - high(problem.output)[1] # TODO: doesn't this assume 1-d input?
+    ldiff = l - low(problem.output)[1]
 
-    uh <= 0 && ll >= 0     && return AdversarialResult(:SAT)
-    uh > solver.delta      && return AdversarialResult(:UNSAT, x_u)
-    ll < solver.delta      && return AdversarialResult(:UNSAT, x_l)
+    udiff <= 0 <= ldiff       && return CounterExampleResult(:SAT)
+    udiff > solver.delta      && return CounterExampleResult(:UNSAT, x_u)
+    ldiff < solver.delta      && return CounterExampleResult(:UNSAT, x_l)
 
-    return AdversarialResult(:UNKNOWN)
+    return CounterExampleResult(:UNKNOWN)
 end
 
 function output_bound(solver::Sherlock, problem::Problem, upper::Bool)
     x = sample(problem.input)
     while true
-        (x, bound) = local_search(problem.network, x, problem.input, solver.global_solver, upper)
+        (x, bound) = local_search(solver, problem, x, upper)
         bound += ifelse(upper, solver.delta, -solver.delta)
-        (x_new, bound_new, feasibile) = global_search(problem.network, bound, problem.input, solver.global_solver, upper)
+        (x_new, bound_new, feasibile) = global_search(problem, solver, bound, upper)
         if feasibile
             (x, bound) = (x_new, bound_new)
         else
@@ -40,18 +40,25 @@ function sample(set::AbstractPolytope)
     return x[1]
 end
 
-function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolytope, optimizer::AbstractMathProgSolver, upper::Bool)
+function local_search(solver::Sherlock, problem::Problem, x::Vector{Float64}, upper::Bool)
+    nnet = problem.network
+
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
 
-    model = Model(solver = optimizer)
+    model = Model(solver = solver.global_solver)
 
-    neurons = init_neurons(model, problem.network)
+    neurons = init_neurons(model, nnet)
     add_input_constraint(model, problem.input, first(neurons))
-    encode_lp(model, problem.network, act_pattern, neurons)
+    encode_lp(model, nnet, act_pattern, neurons)
 
     J = gradient * neurons[1]
-    @objective(model, ifelse(upper, Max, Min), J[1])
+    if upper
+        @objective(model, Max, J[1])
+    else
+        @objective(model, Min, J[1])
+    end
+
 
     solve(model)
 
@@ -60,17 +67,19 @@ function local_search(nnet::Network, x::Vector{Float64}, inputSet::AbstractPolyt
     return (x_new, bound_new[1])
 end
 
-function global_search(nnet::Network, bound::Float64, inputSet::AbstractPolytope, optimizer::AbstractMathProgSolver, upper::Bool)
+global_search(problem::Problem, solver::Sherlock, bound::Float64, upper::Bool) = global_search(problem.network, problem.input, solver.global_solver, bound, upper)
+
+function global_search(nnet::Network, input::AbstractPolytope, optimizer::AbstractMathProgSolver, bound::Float64, upper::Bool)
     # Call Reverify for global search
     if (upper)    h = HalfSpace([1.0], bound)
     else          h = HalfSpace([-1.0], -bound)
     end
-    outputSet = HPolytope([h])
+    output_set = HPolytope([h])
 
-    problem = Problem(nnet, inputSet, outputSet)
+    problem = Problem(nnet, input, output_set)
     solver  = Reverify(optimizer)
     result  = solve(solver, problem)
-    if result.status == :SAT
+    if result.status == :UNSAT
         x = result.counter_example
         bound = compute_output(nnet, x)
         return (x, bound[1], true)

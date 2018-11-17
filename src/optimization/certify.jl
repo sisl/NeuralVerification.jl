@@ -21,7 +21,7 @@ function solve(solver::Certify, problem::Problem)
 
     # Compute cost
     Tr = M * P
-    output = c * compute_output(problem.network, problem.input.center) - d[1]
+    output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
     J = output + epsilon/4 * sum(Tr[i, i] for i in 1:n)
 
@@ -36,8 +36,8 @@ end
 # Undertermined if otherwise
 function interpret_result(solver::Certify, status, J)
     # println("Upper bound: ", getvalue(J[1]))
-    if getvalue(J[1]) <= 0
-        return BasicResult(:SAT) # previously :True
+    if getvalue(J) <= 0
+        return BasicResult(:SAT)
     else
         return BasicResult(:Unknown)
     end
@@ -45,10 +45,14 @@ end
 
 # M is used in the semidefinite program
 function get_M(v::Vector{Float64}, W::Matrix{Float64})
-    m = W' * diagm(v)
+    m = W' * Diagonal(v)
+    mxs, mys = size(m)
     o = ones(size(W, 2), 1)
-    M = [zeros(1, 1+size(m, 1)) o'*m;
-         zeros(size(m,1), 1+size(m, 1)) m;
-         m'*o m' zeros(size(m, 2), size(m, 2))]
+    # TODO Mrow2 and Mrow3 look suspicious (dims don't match in the general case).
+    Mrow1 = [zeros(1, 1+mxs)    o'*m]
+    Mrow2 = [zeros(mxs, 1+mxs)     m]
+    Mrow3 = [m'*o  m' zeros(mys, mys)]
+
+    M = [Mrow1; Mrow2; Mrow3]
     return M
 end
