@@ -10,12 +10,14 @@ function find_relu_to_fix(b_vars, f_vars)
 
         if type_one_broken(b, f) ||
            type_two_broken(b, f)
-            (i, j)
+
+            return (i, j)
         end
     end
     return (0, 0)
 end
 
+# NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
 type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)
 type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 
@@ -83,6 +85,41 @@ function enforce_repairs!(model::Model, bs, fs, relu_status)
     end
 end
 
+# function reluplex_step(solver::Reluplex,
+#                        model::Model,
+#                        b_vars::Vector{Vector{Variable}},
+#                        f_vars::Vector{Vector{Variable}},
+#                        relu_status::Vector{Vector{Int}})
+
+#     status = solve(model)
+
+#     if status == :Infeasible
+#         return CounterExampleResult(:SAT)
+
+#     elseif status == :Optimal
+#         i, j = find_relu_to_fix(b_vars, f_vars)
+
+#         # in case no broken relus could be found, return the "input" as a countereexample
+#         i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
+
+#         for repair_type in 1:2
+#             relu_status[i][j] = repair_type
+
+#             new_m  = new_model(solver)
+#             bs, fs = encode(solver, new_m, problem)
+#             enforce_repairs!(model, bs, fs, relu_status)
+
+#             result = reluplex_step(solver, new_m, bs, fs, relu_status)
+
+#             relu_status[i][j] = 0
+#             result.status == :UNSAT && return result
+#         end
+#     else
+#         error("unexpected status $status") # are there alternatives to the if and elseif?
+#     end
+# end
+
+# IF return codes other than Optimal and Infeasible don't ever happen:
 function reluplex_step(solver::Reluplex,
                        model::Model,
                        b_vars::Vector{Vector{Variable}},
@@ -90,32 +127,26 @@ function reluplex_step(solver::Reluplex,
                        relu_status::Vector{Vector{Int}})
 
     status = solve(model)
+    status == :Infeasible && CounterExampleResult(:SAT)
 
-    if status == :Infeasible
-        return CounterExampleResult(:SAT)
+    i, j = find_relu_to_fix(b_vars, f_vars)
+    # in case no broken relus could be found, return the "input" as a countereexample
+    i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
 
-    elseif status == :Optimal
-        i, j = find_relu_to_fix(b_vars, f_vars)
+    for repair_type in 1:2
+        relu_status[i][j] = repair_type
 
-        # in case no broken relus could be found, return the "input" as a countereexample
-        i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
+        new_m  = new_model(solver)
+        bs, fs = encode(solver, new_m, problem)
+        enforce_repairs!(model, bs, fs, relu_status)
 
-        for repair_type in 1:2
-            relu_status[i][j] = repair_type
+        result = reluplex_step(solver, new_m, bs, fs, relu_status)
 
-            new_m  = new_model(solver)
-            bs, fs = encode(solver, new_m, problem)
-            enforce_repairs!(model, bs, fs, relu_status)
-
-            result = reluplex_step(solver, new_m, bs, fs, relu_status)
-
-            relu_status[i][j] = 0
-            result.status == :UNSAT && return result
-        end
-    else
-        error("unexpected status $status") # are there alternatives to the if and elseif?
+        relu_status[i][j] = 0
+        result.status == :UNSAT && return result
     end
 end
+
 
 function solve(solver::Reluplex, problem::Problem)
     basic_model = new_model(solver)
