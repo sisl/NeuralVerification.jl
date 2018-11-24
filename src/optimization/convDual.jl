@@ -44,7 +44,7 @@ function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
         if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
-            v[j] = abs(v[j]) * val
+            v[j] = v[j] * val
             J += v[j] * l[j]
         end
     end
