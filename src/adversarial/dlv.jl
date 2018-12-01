@@ -2,6 +2,7 @@
 struct DLV
     ϵ::Float64
 end
+# TODO: create types for the two mapping cases, since they are now both unstable and boxed
 
 function solve(solver::DLV, problem::Problem)
     # The list of etas
@@ -20,17 +21,14 @@ function solve(solver::DLV, problem::Problem)
     for (i, layer) in enumerate(problem.network.layers)
         δ[i+1] = get_manipulation(layer, δ[i], η[i+1])
         if i == length(problem.network.layers)
-            # mapping = x -> x ∈ problem.output
-            var, y = bounded_variation(η[i+1], x->(x∈problem.output), δ[i+1])
+            mapping = x -> (x ∈ problem.output)
         else
             forward_nnet = Network(problem.network.layers[i+1:end])
-            # mapping = x -> compute_output(forward_nnet, x) ∈ problem.output
-            var, y = bounded_variation(η[i+1], x->(compute_output(forward_nnet, x)∈problem.output), δ[i+1])
+            mapping = x -> (compute_output(forward_nnet, x) ∈ problem.output)
         end
+        var, y = bounded_variation(η[i+1], mapping, δ[i+1])  # TODO rename "var"
 
-        # var, y = bounded_variation(η[i+1], mapping, δ[i+1])
-
-        if var > 0
+        if var
             backward_nnet = Network(problem.network.layers[1:i])
             status, x = backward_map(y, backward_nnet, η[1:i+1])
             if status
@@ -53,7 +51,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     input = first(bounds)
     model = Model(solver = GLPKSolverMIP())
     neurons = init_neurons(model, nnet)
-    deltas = init_deltas(model, nnet)
+    deltas  = init_deltas(model, nnet)
     add_input_constraint(model, input, first(neurons))
     add_output_constraint(model, output, last(neurons))
     encode_mip_constraint(model, nnet, bounds, neurons, deltas)
@@ -66,34 +64,48 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     end
 end
 
-# Here we implement single-path search (greedy)
-# For simplicity, we partition the reachable set by dimension
-function bounded_variation(bound, mapping, δ)
-    var = 0
-    y = bound.center
+function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
     # step 1: check whether the boundary points have the same class
+    var, y = uniform_boundary_class(bound, mapping)
+    var && return (var, y)
+    # step 2: check the 0-variation in all dimension
+    var, y = zero_variation(bound, mapping, δ)
+    var && return (var, y)
+
+    return (false, similar(y, 0))
+end
+
+function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
+    y = bound.center
     for i = 1:dim(bound)
 
         y[i] += bound.radius[i]
-        !mapping(y) && return (1, y)
+        mapping(y) || return (true, y)
 
         y[i] -= 2 * bound.radius[i]
-        !mapping(y) && return (1, y)
+        mapping(y) || return (true, y)
 
         y[i] += bound.radius[i]
     end
-    # step 2: check the 0-variation in all dimension
+    return (false, similar(y, 0))
+end
+
+function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+    y = deepcopy(bound.center)
     for i = 1:dim(bound)
-        z = y
+
+        z = deepcopy(y)
         while maximum(z - high(bound)) < 0
             z[i] += δ[i]
-            !mapping(z) && return (1, y)
+            mapping(z) || return (true, z)
         end
-        z = y
+
+        z = deepcopy(y)
         while minimum(z - high(bound)) > 0
             z[i] -= δ[i]
-            !mapping(z) && return (1, y)
+            mapping(z) || return (true, z)
         end
+
     end
-    return (0, [])
+    return (false, similar(y, 0))
 end
