@@ -7,7 +7,7 @@ end
 Planet(x::AbstractMathProgSolver) = Planet(x, false)
 
 function solve(solver::Planet, problem::Problem)
-    @assert ~solver.eager "Eager implementation not supported yet"
+    @assert !solver.eager "Eager implementation not supported yet"
     # refine bounds
     status, bounds = tighten_bounds(problem, solver.optimizer) # 3.1
     if status != :Optimal
@@ -17,7 +17,7 @@ function solve(solver::Planet, problem::Problem)
     # partial assignment
     nnet = problem.network
     p = get_activation(nnet, bounds)
-    ψ = init_ψ(get_list(p))
+    ψ = init_ψ(vcat(p...))
 
     # compute extra conditions
     #=
@@ -42,27 +42,28 @@ function solve(solver::Planet, problem::Problem)
     return BasicResult(:SAT)
 end
 
-function get_list(p::Vector{Vector{Int64}})
-    list = Vector{Int64}()
-    for i in 1:length(p)
-        for j in 1:length(p[i])
-            append!(list, Int64[p[i][j]])
-        end
-    end
-    return list
-end
+# function get_list(p::Vector{Vector{Int64}})
+#     list = Vector{Int64}()
+#     for i in 1:length(p)
+#         for j in 1:length(p[i])
+#             append!(list, Int64[p[i][j]])
+#         end
+#     end
+#     return list
+# end
 
 function get_assignment(nnet::Network, list::Vector{Int64})
-    p = Vector{Vector{Int64}}(undef, length(nnet.layers))
+    P = [ones(Int, n_nodes(L)) for L in nnet.layers]
     n = 0
-    for (i, layer) in enumerate(nnet.layers)
-        p[i] = fill(0, length(layer.bias))
-        for j in 1:length(p[i])
-            p[i][j] = ifelse(list[n+j] > 0, 1, -1)
+    for p in P
+        for j in 1:length(p)
+            if list[n+j] <= 0
+                p[j] = -1
+            end
         end
-        n += length(p[i])
+        n += length(p)
     end
-    return p
+    return P
 end
 
 function get_node_id(nnet::Network, x::Tuple{Int64, Int64})
@@ -157,11 +158,11 @@ function max_slack(x::Vector{Vector{Float64}})
     m = 0.0
     index = (0, 0)
     for i in 1:length(x)
-        for j in 1:length(x[i])
-            if x[i][j] > m
-                m = x[i][j]
-                index = (i, j)
-            end
+        max, j = findmax(x[i])
+
+        if max > m
+            m = max
+            index = (i, j)
         end
     end
     return (m, index)
@@ -174,8 +175,8 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     add_input_constraint(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
     encode_Δ_lp(model, problem.network, bounds, neurons)
-
     J = min_sum_all(model, neurons)
+
     status = solve(model)
     if status == :Optimal
         lower = getvalue(neurons)
