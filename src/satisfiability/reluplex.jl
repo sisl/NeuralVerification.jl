@@ -49,7 +49,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         ## layerwise input constraint
-        add_input_constraint(model, bounds[i], bs[i])
+        add_set_constraint!(model, bounds[i], bs[i])
 
         ## b<——>f[next] constraint
         # first layer technically has only vars which are forward facing,
@@ -66,7 +66,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
             @constraint(model, fs[i] .>= bs[i+1])
         end
     end
-    add_output_constraint(model, problem.output, last(bs))
+    add_set_constraint!(model, problem.output, last(bs))
 
     zero_objective(model)
 

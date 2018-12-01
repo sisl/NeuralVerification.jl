@@ -81,7 +81,7 @@ function compute_LB(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMa
     model = JuMP.Model(solver = optimizer)
 
     neurons = init_neurons(model, nnet)
-    add_input_constraint(model, subdom, first(neurons))
+    add_set_constraint!(model, subdom, first(neurons))
     encode_Δ_lp(model, nnet, bounds, neurons)
 
     J = sum(last(neurons))

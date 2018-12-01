@@ -49,7 +49,7 @@ function local_search(solver::Sherlock, problem::Problem, x::Vector{Float64}, up
     model = Model(solver = solver.global_solver)
 
     neurons = init_neurons(model, nnet)
-    add_input_constraint(model, problem.input, first(neurons))
+    add_set_constraint!(model, problem.input, first(neurons))
     encode_lp(model, nnet, act_pattern, neurons)
 
     J = gradient * neurons[1]

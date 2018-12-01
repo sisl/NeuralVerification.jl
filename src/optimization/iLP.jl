@@ -12,7 +12,7 @@ function solve(solver::ILP, problem::Problem)
         act_pattern = get_activation(problem.network, x)
 
         neurons = init_neurons(model, problem.network)
-        add_complementary_output_constraint(model, problem.output, last(neurons))
+        add_complementary_output_constraint!(model, problem.output, last(neurons))
         encode_relaxed_lp(model, problem.network, act_pattern, neurons)
         J = max_disturbance(model, first(neurons) - problem.input.center)
 

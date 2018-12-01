@@ -33,33 +33,12 @@ function solve(solver::FastLin, problem::Problem)
     end
 end
 
-
-# function forward_network(solver::FastLin, nnet::Network, input::Hyperrectangle)
-
-#     len = length(nnet.layers)
-
-#     A = Vector{Matrix{Float64}}(len)
-#     act_pattern = Vector{Float64}(len)
-#     l = Vector{Vector{Float64}}(len)
-#     u = Vector{Vector{Float64}}(len)
-
-#     l[1], u[1] = CAN_BE_ANYTHING
-#     for m in 2:len # NOTE Paper is probably using 0-based indexing
-#         act_pattern[m] = relaxed_ReLU.(l[m-1], u[m-1])
-#         update_A!(A, m, l[m-1], u[m-1])
-#         T, H = get_TH(T, H, m, l, A, layers, act_pattern)
-#         l[m], u[m] = get_bounds(layers, input, ϵ, m, A, T, H)
-#     end
-
-#     return Hyperrectangle(lower = last(l), upper = last(u))
-# end
-
 function forward_network(ϵ::Float64, nnet::Network, input::Hyperrectangle)
 
     len = length(nnet.layers)
 
-    A = Vector{Matrix{Float64}}()
     act_pattern = Vector{Float64}()
+    A = Vector{Matrix{Float64}}()
     l = Vector{Vector{Float64}}()
     u = Vector{Vector{Float64}}()
 
@@ -75,7 +54,7 @@ function forward_network(ϵ::Float64, nnet::Network, input::Hyperrectangle)
         push!(u, new_u)
     end
 
-    return Hyperrectangle(lower = last(l), upper = last(u))
+    return Hyperrectangle(low = last(l), high = last(u))
 end
 
 #=
@@ -154,7 +133,7 @@ end
 #     end
 # end
 function update_A!(A, l, u)
-    D = diagm(relaxed_ReLU.(l, u))  # diagonal matrix according to Eq. 5
+    D = Diagonal(relaxed_ReLU.(l, u))  # diagonal matrix according to Eq. 5
     WD = layers[m].weights * D
 
     map!(a->WD*a, A, A)

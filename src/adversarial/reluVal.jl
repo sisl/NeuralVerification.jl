@@ -29,13 +29,13 @@ end
 
 function solve(solver::ReluVal, problem::Problem)
     # Compute the reachable set without splitting the interval
-    reach = forward_network(solver, problem.network, problem.input)
+    reach  = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network)
     if result.status != :Unknown
         return result
     end
 
-    # If undertermined, split the interval
+    # If undetermined, split the interval
     # Bisection tree. Defult DFS.
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
@@ -220,7 +220,7 @@ function back_prop(nnet::Network, R::Vector{GradientMask})
         output_L = zeros(n_node, n_output)
         for i in 1:n_node
 
-            output_U[i, :]  = ifelse(R[k].upper[i] > 0, U[i, :],  zeros(1, size(U, 2)))
+            output_U[i, :] = ifelse(R[k].upper[i] > 0, U[i, :],  zeros(1, size(U, 2)))
             output_L[i, :] = ifelse(R[k].lower[i] > 0, L[i, :], zeros(1, size(L,2)))
         end
         # back through weight matrix

@@ -128,7 +128,7 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_complementary_output_constraint(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
+function add_complementary_output_constraint!(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
     # Needs to take the complementary of output constraint
     n = length(out_b)
@@ -148,32 +148,20 @@ function add_complementary_output_constraint(model::Model, output::HPolytope, ne
     return nothing
 end
 
-function add_complementary_output_constraint(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
+function add_complementary_output_constraint!(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
     @constraint(model, neuron_vars .>= -high(output))
     @constraint(model, neuron_vars .<= -low(output))
     return nothing
 end
 
-function add_input_constraint(model::Model, input::HPolytope, neuron_vars::Vector{Variable})
-    in_A,  in_b  = tosimplehrep(input)
-    @constraint(model,  in_A * neuron_vars .<= in_b)
+function add_set_constraint!(model::Model, set::HPolytope, neuron_vars::Vector{Variable})
+    A, b = tosimplehrep(set)
+    @constraint(model,  A * neuron_vars .<= b)
     return nothing
 end
 
-function add_input_constraint(model::Model, input::Hyperrectangle, neuron_vars::Vector{Variable})
-    @constraint(model,  neuron_vars .<= high(input))
-    @constraint(model,  neuron_vars .>= low(input))
-    return nothing
-end
-
-function add_output_constraint(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
-    @constraint(model,  neuron_vars .<= high(output))
-    @constraint(model,  neuron_vars .>= low(output))
-    return nothing
-end
-
-function add_output_constraint(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
-    out_A, out_b = tosimplehrep(output)
-    @constraint(model, out_A * neuron_vars .<= out_b)
+function add_set_constraint!(model::Model, set::Hyperrectangle, neuron_vars::Vector{Variable})
+    @constraint(model,  neuron_vars .<= high(set))
+    @constraint(model,  neuron_vars .>= low(set))
     return nothing
 end
