@@ -144,6 +144,30 @@ function get_gradient(nnet::Network, x::Vector{Float64})
     return gradient
 end
 
+function get_gradient(nnet::Network, input::AbstractPolytope)
+    LΛ, UΛ = act_gradient_bounds(nnet, input)
+    return get_gradient(nnet, LΛ, UΛ)
+end
+
+function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
+    n_input = size(nnet.layers[1].weights, 2)
+    LG = Matrix(1.0I, n_input, n_input)
+    UG = Matrix(1.0I, n_input, n_input)
+    for (i, layer) in enumerate(nnet.layers)
+        LG_hat, UG_hat = interval_map(layer.weights, LG, UG)
+        LG = LΛ[i] * max.(LG_hat, 0) + UΛ[i] * min.(LG_hat, 0)
+        UG = LΛ[i] * min.(UG_hat, 0) + UΛ[i] * max.(UG_hat, 0)
+    end
+    return (LG, UG)
+end
+
+# Simple linear mapping on intervals
+function interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N
+    l_new = max.(W, 0) * l + min.(W, 0) * u
+    u_new = max.(W, 0) * u + min.(W, 0) * l
+    return (l_new, u_new)
+end
+
 # Presolve to determine the bounds of variables
 # This function calls maxSens to compute the bounds
 # Bounds are computed AFTER activation function
@@ -165,4 +189,16 @@ function linear_transformation(layer::Layer, input::Hyperrectangle)
     before_act_center = W * input.center + b
     before_act_radius = abs.(W) * input.radius
     return Hyperrectangle(before_act_center, before_act_radius)
+end
+
+function split_interval(dom::Hyperrectangle, index::Int64)
+    input_lower, input_upper = low(dom), high(dom)
+
+    input_upper[index] = dom.center[index]
+    input_split_left = Hyperrectangle(low = input_lower, high = input_upper)
+
+    input_lower[index] = dom.center[index]
+    input_upper[index] = dom.center[index] + dom.radius[index]
+    input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
+    return (input_split_left, input_split_right)
 end

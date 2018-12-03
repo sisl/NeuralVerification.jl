@@ -56,15 +56,7 @@ end
 # To do: merge with "split_input" in reluVal
 function split_dom(dom::Hyperrectangle)
     max_value, index_to_split = findmax(dom.radius)
-    input_lower, input_upper = low(dom), high(dom)
-
-    input_upper[index_to_split] = dom.center[index_to_split]
-    input_split_left = Hyperrectangle(low = input_lower, high = input_upper)
-
-    input_lower[index_to_split] = dom.center[index_to_split]
-    input_upper[index_to_split] = dom.center[index_to_split] + dom.radius[index_to_split]
-    input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
-    return (input_split_left, input_split_right)
+    return split_interval(dom, index_to_split)
 end
 
 # For simplicity

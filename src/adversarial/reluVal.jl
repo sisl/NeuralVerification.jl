@@ -256,15 +256,7 @@ function split_input(nnet::Network, input::Hyperrectangle, g::SymbolicInterval)
             feature = i
         end
     end
-    input_upper = high(input)
-    input_lower = low(input)
-    input_upper[feature] = input.center[feature]
-    input_split_left = Hyperrectangle(low = input_lower, high = input_upper)
-
-    input_lower[feature] = input.center[feature]
-    input_upper[feature] = input.center[feature] + input.radius[feature]
-    input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
-    return (input_split_left, input_split_right)
+    return split_interval(input, feature)
 end
 
 # Get upper bound in concretization
