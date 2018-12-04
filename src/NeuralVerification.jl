@@ -13,7 +13,7 @@ using Reexport
 @reexport using LazySets
 @reexport using Polyhedra
 @reexport using CDDLib
-#@reexport using LinearAlgebra
+@reexport using LinearAlgebra
 
 import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 

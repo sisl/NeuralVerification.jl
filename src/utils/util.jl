@@ -144,9 +144,29 @@ function get_gradient(nnet::Network, x::Vector{Float64})
     return gradient
 end
 
+# Get lower and upper bounds on gradients
+# Input: network, input set
+# Return: lower and upper bounds of gradient (Jacobian)
 function get_gradient(nnet::Network, input::AbstractPolytope)
     LΛ, UΛ = act_gradient_bounds(nnet, input)
     return get_gradient(nnet, LΛ, UΛ)
+end
+
+# Assume ReLU
+function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
+    bounds = get_bounds(nnet, input)
+    LΛ = Vector{Matrix}(undef, 0) 
+    UΛ = Vector{Matrix}(undef, 0)
+    for (i, layer) in enumerate(nnet.layers)
+        before_act_bound = linear_transformation(layer, bounds[i])
+        lower = low(before_act_bound)
+        upper = high(before_act_bound)
+        l = [ifelse(lower[j]>0, 1, 0) for j in 1:length(lower)]
+        u = [ifelse(upper[j]>0, 1, 0) for j in 1:length(upper)]
+        push!(LΛ, Diagonal(l))
+        push!(UΛ, Diagonal(u))
+    end
+    return (LΛ, UΛ)
 end
 
 function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
@@ -161,12 +181,31 @@ function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
     return (LG, UG)
 end
 
+function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+    n_input = size(nnet.layers[1].weights, 2)
+    LG = Matrix(1.0I, n_input, n_input)
+    UG = Matrix(1.0I, n_input, n_input)
+    for (i, layer) in enumerate(nnet.layers)
+        LG_hat, UG_hat = interval_map(layer.weights, LG, UG)
+        LG = Diagonal(LΛ[i]) * max.(LG_hat, 0) + Diagonal(UΛ[i]) * min.(LG_hat, 0)
+        UG = Diagonal(LΛ[i]) * min.(UG_hat, 0) + Diagonal(UΛ[i]) * max.(UG_hat, 0)
+    end
+    return (LG, UG)
+end
+
 # Simple linear mapping on intervals
 function interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N
     l_new = max.(W, 0) * l + min.(W, 0) * u
     u_new = max.(W, 0) * u + min.(W, 0) * l
     return (l_new, u_new)
 end
+
+function interval_map(W::Matrix{N}, l::Matrix{N}, u::Matrix{N}) where N
+    l_new = max.(W, 0) * l + min.(W, 0) * u
+    u_new = max.(W, 0) * u + min.(W, 0) * l
+    return (l_new, u_new)
+end
+
 
 # Presolve to determine the bounds of variables
 # This function calls maxSens to compute the bounds
@@ -183,6 +222,11 @@ function get_bounds(nnet::Network, input::Hyperrectangle) # NOTE there is anothe
 end
 
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
+
+# Compute bounds before or after activation by interval arithmetic
+function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool)
+    # to be implemented
+end
 
 function linear_transformation(layer::Layer, input::Hyperrectangle)
     (W, b, act) = (layer.weights, layer.bias, layer.activation)
