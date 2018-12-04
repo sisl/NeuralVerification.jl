@@ -14,12 +14,6 @@ end
 
 SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
-# Gradient mask for a single layer
-# struct GradientMask
-#     lower::Vector{Int64}
-#     upper::Vector{Int64}
-# end
-
 # Data to be passed during forward_layer
 struct SymbolicIntervalMask
     sym::SymbolicInterval
@@ -28,78 +22,70 @@ struct SymbolicIntervalMask
 end
 
 function solve(solver::ReluVal, problem::Problem)
-    # Compute the reachable set without splitting the interval
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network)
-    if result.status != :Unknown
-        return result
-    end
-
-    # If undertermined, split the interval
-    # Bisection tree. Defult DFS.
+    result.status == :Unknown || return result
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
-        if length(reach_list) == 0
-            return BasicResult(:SAT)
-        end
-        if solver.tree_search == :BFS
-            reach = reach_list[1]
-            deleteat!(reach_list, 1)
-        else
-            n = length(reach_list)
-            reach = reach_list[n]
-            deleteat!(reach_list, n)
-        end
+        length(reach_list) > 0 || return BasicResult(:SAT)
+        reach = pick_out!(reach_list, solver.tree_search)
         LG, UG = get_gradient(problem.network, reach.LΛ, reach.UΛ)
         feature = get_smear_index(problem.network, reach.sym.interval, LG, UG)
         intervals = split_interval(reach.sym.interval, feature)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            if result.status == :UNSAT # If counter_example found
-                return result
-            elseif result.status == :Unknown # If undertermined, need to split
-                reach_list = vcat(reach_list, reach)
-            end
+            result.status == :UNSAT && return result
+            result.status == :SAT || (push!(reach_list, reach))
         end
     end
-    return BasicResult(:Unknown) # undetermined
+    return BasicResult(:Unknown)
 end
 
-# This overwrites check_inclusion in utils/reachability.jl
-function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
-    n_output = dim(output)
-    n_input = dim(reach.interval)
+function pick_out!(reach_list, tree_search)
+    if tree_search == :BFS
+        reach = reach_list[1]
+        deleteat!(reach_list, 1)
+    else
+        n = length(reach_list)
+        reach = reach_list[n]
+        deleteat!(reach_list, n)
+    end
+    return reach
+end
+
+function symbol_to_concrete(reach::SymbolicInterval)
+    n_output = size(reach.Low, 1)
     upper = fill(0.0, n_output)
     lower = fill(0.0, n_output)
-
     for i in 1:n_output
         lower[i] = lower_bound(reach.Low[i, :], reach.interval)
         upper[i] = upper_bound(reach.Low[i, :], reach.interval)
     end
-    reachable = Hyperrectangle(low = lower, high = upper)
+    return Hyperrectangle(low = lower, high = upper)
+end
 
-    if issubset(reachable, output)
-        return BasicResult(:SAT)
-    end
-    if is_intersection_empty(reachable, output)
-        return BasicResult(:UNSAT)
-    end
+# This overwrites check_inclusion in utils/reachability.jl
+function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
+    reachable = symbol_to_concrete(reach)
+    issubset(reachable, output) && return BasicResult(:SAT)
+    is_intersection_empty(reachable, output) && return BasicResult(:UNSAT)
+
     # Sample the middle point
     middle_point = (high(reach.interval) + low(reach.interval))./2
-    if ~∈(compute_output(nnet, middle_point), output)
-        return CounterExampleResult(:UNSAT, middle_point)
-    end
+    y = compute_output(nnet, middle_point)
+    ∈(y, output) || return CounterExampleResult(:UNSAT, middle_point)
 
     return BasicResult(:Unknown)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
-    return forward_act(forward_linear(input, layer.weights, layer.bias))
+    return forward_act(forward_linear(input, layer))
 end
 
 # Symbolic forward_linear for the first layer
-function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
+function forward_linear(input::Hyperrectangle, layer::Layer)
+    (W, b) = (layer.weights, layer.bias)
     sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
     LΛ = Vector{Vector{Int64}}(undef, 0)
     UΛ = Vector{Vector{Int64}}(undef, 0)
@@ -107,54 +93,37 @@ function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Flo
 end
 
 # Symbolic forward_linear
-function forward_linear(input::SymbolicIntervalMask, W::Matrix{Float64}, b::Vector{Float64})
-    n_output, n_input = size(W)
-    n_symbol = size(input.sym.Low, 2) - 1
-    output_Low = zeros(n_output, n_symbol + 1)
-    output_Up = zeros(n_output, n_symbol + 1)
-    for k in 1:n_symbol + 1
-        for j in 1:n_output
-            for i in 1:n_input
-                output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * input.sym.Up[i, k], W[j, i] * input.sym.Low[i, k])
-                output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * input.sym.Low[i, k], W[j, i] * input.sym.Up[i, k])
-            end
-            if k > n_symbol
-                output_Up[j, k] += b[j]
-                output_Low[j, k] += b[j]
-            end
-        end
-    end
+function forward_linear(input::SymbolicIntervalMask, layer::Layer)
+    (W, b) = (layer.weights, layer.bias)
+    output_Up = max.(W, 0) * input.sym.Up + min.(W, 0) * input.sym.Low
+    output_Low = max.(W, 0) * input.sym.Low + min.(W, 0) * input.sym.Up
+    output_Up[:, end] += b
+    output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     return SymbolicIntervalMask(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalMask)
-    n_output, n_input = size(input.sym.Up)
-    input_upper = high(input.sym.interval)
-    input_lower = low(input.sym.interval)
-    output_Up = input.sym.Up[:, :]
-    output_Low = input.sym.Low[:, :]
-    mask_upper = fill(1, n_output)
-    mask_lower = fill(0, n_output)
-    for i in 1:n_output
+    n_node, n_input = size(input.sym.Up)
+    output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
+    mask_lower, mask_upper = fill(0, n_node), fill(1, n_node)
+    for i in 1:n_node
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
-            mask_upper[i] = 0
-            mask_lower[i] = 0
+            mask_lower[i], mask_upper[i] = 0, 0
             output_Up[i, :] = fill(0.0, n_input)
             output_Low[i, :] = fill(0.0, n_input)
         elseif lower_bound(input.sym.Low[i, :], input.sym.interval) >= 0
             # Keep dependency
-            mask_upper[i] = 1
-            mask_lower[i] = 1
+            mask_lower[i], mask_upper[i] = 1, 1
         else
             # Concretization
-            mask_upper[i] = 1
-            mask_lower[i] = 0
-            output_Low[i, :] = zeros(1, n_input)
+            mask_lower[i], mask_upper[i] = 0, 1
+            output_Low[i, :] = fill(0.0, n_input)
             if lower_bound(input.sym.Up[i, :], input.sym.interval) <= 0
-                output_Up[i, :] = hcat(zeros(1, n_input - 1), upper_bound(input.sym.Up[i, :], input.sym.interval))
+                output_Up[i, :] = fill(0.0, n_input)
+                output_Up[i, end] = upper_bound(input.sym.Up[i, :], input.sym.interval)
             end
         end
     end
