@@ -1,4 +1,3 @@
-
 struct ReluVal
     max_iter::Int64
     tree_search::Symbol
@@ -16,15 +15,16 @@ end
 SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
 # Gradient mask for a single layer
-struct GradientMask
-    lower::Vector{Int64}
-    upper::Vector{Int64}
-end
+# struct GradientMask
+#     lower::Vector{Int64}
+#     upper::Vector{Int64}
+# end
 
 # Data to be passed during forward_layer
 struct SymbolicIntervalMask
     sym::SymbolicInterval
-    mask::Vector{GradientMask}
+    LΛ::Vector{Vector{Int64}}
+    UΛ::Vector{Vector{Int64}}
 end
 
 function solve(solver::ReluVal, problem::Problem)
@@ -50,8 +50,9 @@ function solve(solver::ReluVal, problem::Problem)
             reach = reach_list[n]
             deleteat!(reach_list, n)
         end
-        gradient = back_prop(problem.network, reach.mask)
-        intervals = split_input(problem.network, reach.sym.interval, gradient)
+        LG, UG = get_gradient(problem.network, reach.LΛ, reach.UΛ)
+        feature = get_smear_index(problem.network, reach.sym.interval, LG, UG)
+        intervals = split_interval(reach.sym.interval, feature)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
@@ -87,7 +88,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     # Sample the middle point
     middle_point = (high(reach.interval) + low(reach.interval))./2
     if ~∈(compute_output(nnet, middle_point), output)
-        return BasicResult(:UNSAT, middle_point)
+        return CounterExampleResult(:UNSAT, middle_point)
     end
 
     return BasicResult(:Unknown)
@@ -97,31 +98,18 @@ function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicInter
     return forward_act(forward_linear(input, layer.weights, layer.bias))
 end
 
-# Concrete forward_linear
-function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
-    n_output = size(W, 1)
-    output_upper = fill(0.0, n_output)
-    output_lower = fill(0.0, n_output)
-    for j in 1:n_output
-        output_upper[j] = upper_bound(W[j, :], input) + b[j]
-        output_lower[j] = lower_bound(W[j, :], input) + b[j]
-    end
-    output = Hyperrectangle(low = output_lower, high = output_upper)
-    return output
-end
-
 # Symbolic forward_linear for the first layer
 function forward_linear(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
     sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
-    mask = GradientMask[]
-    return SymbolicIntervalMask(sym, mask)
+    LΛ = Vector{Vector{Int64}}(undef, 0)
+    UΛ = Vector{Vector{Int64}}(undef, 0)
+    return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
 # Symbolic forward_linear
 function forward_linear(input::SymbolicIntervalMask, W::Matrix{Float64}, b::Vector{Float64})
     n_output, n_input = size(W)
     n_symbol = size(input.sym.Low, 2) - 1
-
     output_Low = zeros(n_output, n_symbol + 1)
     output_Up = zeros(n_output, n_symbol + 1)
     for k in 1:n_symbol + 1
@@ -137,44 +125,18 @@ function forward_linear(input::SymbolicIntervalMask, W::Matrix{Float64}, b::Vect
         end
     end
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    mask = input.mask
-    return SymbolicIntervalMask(sym, mask)
-end
-
-# Concrete forward_act
-function forward_act(input::Hyperrectangle)
-    input_upper = high(input)
-    input_lower = low(input)
-    output_upper = fill(0.0, dim(input))
-    output_lower = fill(0.0, dim(input))
-    mask_upper = fill(1, dim(input))
-    mask_lower = fill(0, dim(input))
-    for i in 1:dim(input)
-        if input_upper[i] <= 0
-            mask_upper[i] = mask_lower[i] = 0
-            output_upper[i] = output_lower[i] = 0.0
-        elseif input_lower[i] >= 0
-            mask_upper[i] = mask_lower[i] = 1
-        else
-            output_lower[i] = 0.0
-        end
-    end
-    return (output_lower, output_upper, mask_lower, mask_upper)
+    return SymbolicIntervalMask(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalMask)
     n_output, n_input = size(input.sym.Up)
-
     input_upper = high(input.sym.interval)
     input_lower = low(input.sym.interval)
-
     output_Up = input.sym.Up[:, :]
     output_Low = input.sym.Low[:, :]
-
     mask_upper = fill(1, n_output)
     mask_lower = fill(0, n_output)
-
     for i in 1:n_output
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
@@ -197,66 +159,24 @@ function forward_act(input::SymbolicIntervalMask)
         end
     end
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    mask = vcat(input.mask, GradientMask(mask_lower, mask_upper))
-    return SymbolicIntervalMask(sym, mask)
-end
-
-# To be tested
-function back_prop(nnet::Network, R::Vector{GradientMask})
-    n_layer = length(nnet.layers)
-    n_output = length(nnet.layers[n_layer].bias)
-    # For now, assume the last layer is identity
-    Up = eye(n_output)
-    Low = eye(n_output)
-
-
-    for k in n_layer:-1:1
-        # back through activation function using the gradient mask
-        n_node = length(nnet.layers[k].bias)
-        output_Up = zeros(n_node, n_output)
-        output_Low = zeros(n_node, n_output)
-        for i in 1:n_node
-            output_Up[i, :] = ifelse(R[k].upper[i] > 0, Up[i, :], zeros(1, size(Up,2)))
-            output_Low[i, :] = ifelse(R[k].lower[i] > 0, Low[i, :], zeros(1, size(Low,2)))
-        end
-        # back through weight matrix
-        (Low, Up) = backward_linear(output_Low, output_Up, pinv(nnet.layers[k].weights))
-    end
-
-    return SymbolicInterval(Low, Up)
-end
-
-# This function is similar to forward_linear
-function backward_linear(Low::Matrix{Float64}, Up::Matrix{Float64}, W::Matrix{Float64})
-    n_output, n_input = size(W)
-    n_symbol = size(Low, 2) - 1
-
-    output_Low = zeros(n_output, n_symbol + 1)
-    output_Up = zeros(n_output, n_symbol + 1)
-    for k in 1:n_symbol + 1
-        for j in 1:n_output
-            for i in 1:n_input
-                output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * Up[i, k], W[j, i] * Low[i, k])
-                output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * Low[i, k], W[j, i] * Up[i, k])
-            end
-        end
-    end
-    return (output_Low, output_Up)
+    LΛ = push!(input.LΛ, mask_lower)
+    UΛ = push!(input.UΛ, mask_upper)
+    return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
 # Return the splited intervals
-function split_input(nnet::Network, input::Hyperrectangle, g::SymbolicInterval)
+function get_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
     largest_smear = - Inf
     feature = 0
-    r = input.radius .* 2
+    r = input.radius
     for i in 1:dim(input)
-        smear = sum(ifelse(g.Up[i, j] - g.Low[i, j] > 0, g.Up[i, j] * r[i], -g.Low[i, j] * r[i]) for j in 1:size(g.Up, 2))
+        smear = sum(max.(abs.(UG[:, i]), abs.(LG[:, i]))) * r[i]
         if smear > largest_smear
             largest_smear = smear
             feature = i
         end
     end
-    return split_interval(input, feature)
+    return feature 
 end
 
 # Get upper bound in concretization
@@ -280,3 +200,55 @@ function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
     end
     return bound
 end
+
+# Concrete forward_linear
+# function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
+#     n_output = size(W, 1)
+#     output_upper = fill(0.0, n_output)
+#     output_lower = fill(0.0, n_output)
+#     for j in 1:n_output
+#         output_upper[j] = upper_bound(W[j, :], input) + b[j]
+#         output_lower[j] = lower_bound(W[j, :], input) + b[j]
+#     end
+#     output = Hyperrectangle(low = output_lower, high = output_upper)
+#     return output
+# end
+
+# Concrete forward_act
+# function forward_act(input::Hyperrectangle)
+#     input_upper = high(input)
+#     input_lower = low(input)
+#     output_upper = fill(0.0, dim(input))
+#     output_lower = fill(0.0, dim(input))
+#     mask_upper = fill(1, dim(input))
+#     mask_lower = fill(0, dim(input))
+#     for i in 1:dim(input)
+#         if input_upper[i] <= 0
+#             mask_upper[i] = mask_lower[i] = 0
+#             output_upper[i] = output_lower[i] = 0.0
+#         elseif input_lower[i] >= 0
+#             mask_upper[i] = mask_lower[i] = 1
+#         else
+#             output_lower[i] = 0.0
+#         end
+#     end
+#     return (output_lower, output_upper, mask_lower, mask_upper)
+# end
+
+# This function is similar to forward_linear
+# function backward_linear(Low::Matrix{Float64}, Up::Matrix{Float64}, W::Matrix{Float64})
+#     n_output, n_input = size(W)
+#     n_symbol = size(Low, 2) - 1
+
+#     output_Low = zeros(n_output, n_symbol + 1)
+#     output_Up = zeros(n_output, n_symbol + 1)
+#     for k in 1:n_symbol + 1
+#         for j in 1:n_output
+#             for i in 1:n_input
+#                 output_Up[j, k] += ifelse(W[j, i]>0, W[j, i] * Up[i, k], W[j, i] * Low[i, k])
+#                 output_Low[j, k] += ifelse(W[j, i]>0, W[j, i] * Low[i, k], W[j, i] * Up[i, k])
+#             end
+#         end
+#     end
+#     return (output_Low, output_Up)
+# end
