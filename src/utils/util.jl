@@ -130,18 +130,23 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
     end
     return act_pattern
 end
+
 # Given a network, find the gradient at the input x
-# Assume ReLU
-function get_gradient(nnet::Network, x::Vector{Float64})
-    curr_value = x
+function get_gradient(nnet::Network, x::Vector{N}) where N
+    z = x
     gradient = Matrix(1.0I, length(x), length(x))
     for (i, layer) in enumerate(nnet.layers)
-        curr_value = layer.weights * curr_value + layer.bias
-        act_pattern = curr_value .>= 0.0
-        gradient = Diagonal(act_pattern) * layer.weights * gradient
-        curr_value = layer.activation(curr_value)
+        z_hat = layer.weights * z + layer.bias
+        σ_gradient = act_gradient(layer.activation, z_hat)
+        gradient = Diagonal(σ_gradient) * layer.weights * gradient
+        z = layer.activation(z_hat)
     end
     return gradient
+end
+
+# Currently only support ReLU
+function act_gradient(act::ReLU, z_hat::Vector{N}) where N
+    return z_hat .>= 0.0
 end
 
 # Get lower and upper bounds on gradients
@@ -152,7 +157,6 @@ function get_gradient(nnet::Network, input::AbstractPolytope)
     return get_gradient(nnet, LΛ, UΛ)
 end
 
-# Assume ReLU
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     bounds = get_bounds(nnet, input)
     LΛ = Vector{Matrix}(undef, 0) 
@@ -161,8 +165,8 @@ function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
         before_act_bound = linear_transformation(layer, bounds[i])
         lower = low(before_act_bound)
         upper = high(before_act_bound)
-        l = [ifelse(lower[j]>0, 1, 0) for j in 1:length(lower)]
-        u = [ifelse(upper[j]>0, 1, 0) for j in 1:length(upper)]
+        l = act_gradient(layer.activation, lower)
+        u = act_gradient(layer.activation, upper)
         push!(LΛ, Diagonal(l))
         push!(UΛ, Diagonal(u))
     end
