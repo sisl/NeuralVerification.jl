@@ -30,9 +30,9 @@ function solve(solver::BAB, problem::Problem)
     end
     # The minimum is smaller than global_up
     if global_ub < d[1]
-        return AdversarialResult(:SAT)
+        return CounterExampleResult(:SAT)
     else
-        return AdversarialResult(:UNSAT, global_ub_point)
+        return CounterExampleResult(:UNSAT, global_ub_point)
     end
 end
 
@@ -62,7 +62,10 @@ end
 # For simplicity
 function compute_UB(nnet::Network, subdom::Hyperrectangle)
     points = [subdom.center, low(subdom), high(subdom)]
-    values = sum.(compute_output.(nnet, points))
+    values = Vector{Float64}(undef, 0)
+    for p in points
+        push!(values, sum(compute_output(nnet, p)))
+    end
     value, index = findmin(values)
     return (value, points[index])
 end
