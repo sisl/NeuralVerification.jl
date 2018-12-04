@@ -105,7 +105,7 @@ function reluplex_step(solver::Reluplex,
 
             new_m  = new_model(solver)
             bs, fs = encode(solver, new_m, problem)
-            enforce_repairs!(model, bs, fs, relu_status)
+            enforce_repairs!(new_m, bs, fs, relu_status)
 
             result = reluplex_step(solver, new_m, bs, fs, relu_status)
 
