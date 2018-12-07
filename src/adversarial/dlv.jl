@@ -92,6 +92,7 @@ end
 
 function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
     y = deepcopy(bound.center)
+
     for i = 1:dim(bound)
 
         z = deepcopy(y)
