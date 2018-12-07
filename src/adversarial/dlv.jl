@@ -3,6 +3,7 @@ struct DLV
     ϵ::Float64
 end
 # TODO: create types for the two mapping cases, since they are now both unstable and boxed
+# also check out how to get performance out of closures, since that can be an issue in julia
 
 function solve(solver::DLV, problem::Problem)
     # The list of etas
@@ -91,8 +92,7 @@ function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
 end
 
 function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
-    y = deepcopy(bound.center)
-
+    y = bound.center
     for i = 1:dim(bound)
 
         z = deepcopy(y)
