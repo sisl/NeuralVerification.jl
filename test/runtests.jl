@@ -17,26 +17,22 @@ at = @__DIR__
 
 small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
 A = Matrix{Float64}(undef, 2,1)
-A[1] = 1
-A[2] = -1
+A[1:2] = [1, -1]
 
 # TODO can we unify all of the reachability test conditions?
 ### reverify
-inputSet  = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A, [1.0,1.0])
+inputSet  = HPolytope(A, [1.0, 1.0])
+outputSet = HPolytope(A, [1.0, 1.0])
 problem_reverify = Problem(small_nnet, inputSet, outputSet)
 solver_reverify = Reverify(GLPKSolverMIP(), 1000.0)
 
 ### maxSens
-inputSet  = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A, [100.0,1.0])
-resolution = 0.3
+inputSet  = HPolytope(A, [1.0, 1.0])
+outputSet = HPolytope(A, [100.0, 1.0])
 problem_maxSens = Problem(small_nnet, inputSet, outputSet)
-solver_maxSens = MaxSens(resolution)
+solver_maxSens = MaxSens(0.3)
 
 ### exactReach
-# inputSet = Constraints(eye(1),[1.0],[1.0],[-1.0])        => [1, -1]x <= [0, 2]
-# outputSet = Constraints(zeros(1,1),[0],[100.0],[-1.0])   => [0, -0]x <= [100, 1] NOTE is this correct?
 inputSet  = HPolytope(A,           [0.0, 2.0])
 outputSet = HPolytope(zeros(2, 1), [100.0, 1.0])
 problem_exactReach = Problem(small_nnet, inputSet, outputSet)
@@ -54,9 +50,9 @@ output = HPolytope(A, [100.0, 0.0])
 problem_ai2 = Problem(small_nnet, input, output)
 solver_ai2 = Ai2()
 
-### BAB
+### BaB
 inputSet  = Hyperrectangle([-1.0], [0.5])
-outputSet = HPolytope(A[1:1, :], [18.5])
+outputSet = HPolytope(ones(1,1), [18.5])
 problem_bab = Problem(small_nnet, inputSet, outputSet)
 solver_bab = BAB(0.1, GLPKSolverMIP())
 
