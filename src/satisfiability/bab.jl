@@ -1,6 +1,6 @@
 # BaB
 # Input: Hyperrectangle
-# Output: Half space
+# Output: Hyperrectangle
 # BaB estimate whether the half space constraint can be violated or not
 
 struct BaB
@@ -11,31 +11,44 @@ end
 BaB() = BaB(0.1, GLPKSolverMIP())
 
 function solve(solver::BaB, problem::Problem)
-    # Modify the network to output c y - d
-    # Constraint needs to satisfy max(c y - d) < 0
-    c, d = tosimplehrep(problem.output)
-    last_layer = Layer(c, -d, Id())
-    nnet = Network(vcat(problem.network.layers, last_layer))
+    (u_approx, u, x_u) = output_bound(solver, problem, :max)
+    (l_approx, l, x_l) = output_bound(solver, problem, :min)
+    bound = Hyperrectangle(low = [l], high = [u])
+    reach = Hyperrectangle(low = [l_approx], high = [u_approx])
+    return interpret_result(reach, bound, problem.output, x_l, x_u)
+end
 
-    global_lb, x_star = concrete_bound(nnet, problem.input, :max)
-    global_ub = approx_bound(nnet, problem.input, solver.optimizer, :max)
-    
-    doms = Tuple{Any, Hyperrectangle}[(global_ub, problem.input)]
-    while global_ub - global_lb > solver.ϵ && global_up > 0 && global_lb <= 0
+function interpret_result(reach, bound, output, x_l, x_u)
+    if high(reach) > high(output) && low(reach) < low(output) 
+        return ReachabilityResult(:SAT, reach)
+    end
+    high(bound) > high(output)    && return CounterExampleResult(:UNSAT, x_u)
+    low(bound) < low(output)      && return CounterExampleResult(:UNSAT, x_l)
+    return RechabilityResult(:Unknown, reach)
+end
+
+function output_bound(solver::BaB, problem::Problem, type::Symbol)
+    nnet = problem.network  
+    global_concrete, x_star = concrete_bound(nnet, problem.input, type)
+    global_approx = approx_bound(nnet, problem.input, solver.optimizer, type)
+    doms = Tuple{Any, Hyperrectangle}[(global_approx, problem.input)]
+    index = ifelse(type == :max, 1, -1)
+    while index * (global_approx - global_concrete) > solver.ϵ
         dom = pick_out(doms) # pick_out implements the search strategy
         subdoms = split_dom(dom[2]) # split implements the branching rule
         for i in 1:length(subdoms)
-            dom_lb, x = concrete_bound(nnet, subdoms[i], :max) # Sample
-            dom_ub = approx_bound(nnet, subdoms[i], solver.optimizer, :max)
-            dom_lb > global_lb && ((global_lb, x_star) = (dom_lb, x))
-            dom_ub > global_lb && add_domain!(doms, (dom_ub, subdoms[i]))
+            dom_concrete, x = concrete_bound(nnet, subdoms[i], type) # Sample
+            dom_approx = approx_bound(nnet, subdoms[i], solver.optimizer, type)
+            if index * (dom_concrete - global_concrete) > 0
+                (global_concrete, x_star) = (dom_concrete, x)
+            end
+            if index * (dom_approx - global_concrete) > 0
+                add_domain!(doms, (dom_approx, subdoms[i]))
+            end
         end 
-        global_ub = doms[1][1]
+        global_approx = doms[1][1]
     end
-
-    global_ub <= 0 && return CounterExampleResult(:SAT)
-    global_lb > 0 && return CounterExampleResult(:UNSAT, x_star)
-    return CounterExampleResult(:Unknown)
+    return (global_approx, global_concrete, x_star)
 end
 
 # Always pick the first dom
@@ -55,7 +68,6 @@ function add_domain!(doms::Vector{Tuple{Float64, Hyperrectangle}}, new::Tuple{Fl
 end
 
 # Always split the longest input dimention
-# To do: merge with "split_input" in reluVal
 function split_dom(dom::Hyperrectangle)
     max_value, index_to_split = findmax(dom.radius)
     return split_interval(dom, index_to_split)
@@ -79,9 +91,10 @@ function approx_bound(nnet::Network, subdom::Hyperrectangle, optimizer::Abstract
     neurons = init_neurons(model, nnet)
     add_input_constraint(model, subdom, first(neurons))
     encode_Δ_lp(model, nnet, bounds, neurons)
-    J = sum(last(neurons)) # there is only one output node
-    ifelse(type == :min, @objective(model, Min, J), @objective(model, Max, J))
+    index = ifelse(type == :max, 1, -1)
+    J = sum(last(neurons))
+    @objective(model, Max, index * J)
     status = solve(model)
     status == :Optimal && return getvalue(J)
-    error("Could not find lower bound for subdom: ", subdom)
+    error("Could not find bound for subdom: ", subdom)
 end
