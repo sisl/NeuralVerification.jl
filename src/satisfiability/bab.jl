@@ -1,12 +1,12 @@
-# BAB
+# BaB
 # Estimate the minimum of the output node
 
-struct BAB
+struct BaB
     ϵ::Float64
     optimizer::AbstractMathProgSolver
 end
 
-function solve(solver::BAB, problem::Problem)
+function solve(solver::BaB, problem::Problem)
     global_ub, global_ub_point = compute_UB(problem.network, problem.input)
     global_lb = compute_LB(problem.network, problem.input, solver.optimizer)
     # Assume that the constraint is output <= d

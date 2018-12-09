@@ -21,11 +21,11 @@ A[1] = 1
 A[2] = -1
 
 # TODO can we unify all of the reachability test conditions?
-### reverify
+### NSVerify
 inputSet  = HPolytope(A, [1.0,1.0])
 outputSet = HPolytope(A, [1.0,1.0])
-problem_reverify = Problem(small_nnet, inputSet, outputSet)
-solver_reverify = Reverify(GLPKSolverMIP(), 1000.0)
+problem_NSVerify = Problem(small_nnet, inputSet, outputSet)
+solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
 
 ### maxSens
 inputSet  = HPolytope(A, [1.0,1.0])
@@ -50,7 +50,7 @@ problem_reluVal = Problem(small_nnet, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
 
 
-@test @no_error solve(solver_reverify,   problem_reverify)
+@test @no_error solve(solver_NSVerify,   problem_NSVerify)
 @test @no_error solve(solver_maxSens,    problem_maxSens)
 @test @no_error solve(solver_exactReach, problem_exactReach)
 @test @no_error solve(solver_reluVal,    problem_reluVal)
