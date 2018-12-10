@@ -85,16 +85,16 @@ function concrete_bound(nnet::Network, subdom::Hyperrectangle, type::Symbol)
 end
 
 
-function approx_bound(nnet::Network, subdom::Hyperrectangle, optimizer::AbstractMathProgSolver, type::Symbol)
-    bounds = get_bounds(nnet, subdom)
+function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMathProgSolver, type::Symbol)
+    bounds = get_bounds(nnet, dom)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
-    add_input_constraint(model, subdom, first(neurons))
+    add_input_constraint(model, dom, first(neurons))
     encode_Δ_lp(model, nnet, bounds, neurons)
     index = ifelse(type == :max, 1, -1)
     J = sum(last(neurons))
     @objective(model, Max, index * J)
     status = solve(model)
     status == :Optimal && return getvalue(J)
-    error("Could not find bound for subdom: ", subdom)
+    error("Could not find bound for dom: ", dom)
 end
