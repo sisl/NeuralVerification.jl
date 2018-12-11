@@ -1,7 +1,5 @@
 # Planet, Reluplex and Reluval
 
-
-
 using NeuralVerification
 using Test
 
