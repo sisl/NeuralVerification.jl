@@ -1,11 +1,11 @@
-struct Reverify{O<:AbstractMathProgSolver}
+struct NSVerify{O<:AbstractMathProgSolver}
     optimizer::O
     m::Float64 # The big M in the linearization
 end
 
-Reverify(x) = Reverify(x, 1000.0)
+NSVerify(x) = NSVerify(x, 1000.0)
 
-function solve(solver::Reverify, problem::Problem)
+function solve(solver::NSVerify, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
