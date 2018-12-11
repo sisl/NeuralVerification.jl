@@ -1,6 +1,6 @@
 
 using NeuralVerification
-using Base.Test
+using Test
 
 macro no_error(ex)
     quote
