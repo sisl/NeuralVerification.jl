@@ -45,13 +45,13 @@ export solve
 include("optimization/utils/constraints.jl")
 include("optimization/utils/objectives.jl")
 include("optimization/utils/variables.jl")
-include("optimization/reverify.jl")
+include("optimization/nsVerify.jl")
 include("optimization/convDual.jl")
 include("optimization/duality.jl")
 include("optimization/certify.jl")
 include("optimization/iLP.jl")
 include("optimization/mipVerify.jl")
-export Reverify, ConvDual, Duality, Certify, ILP, MIPVerify
+export NSVerify, ConvDual, Duality, Certify, ILP, MIPVerify
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
@@ -63,7 +63,7 @@ include("satisfiability/bab.jl")
 include("satisfiability/planet.jl")
 include("satisfiability/sherlock.jl")
 include("satisfiability/reluplex.jl")
-export BAB, Planet, Sherlock, Reluplex
+export BaB, Planet, Sherlock, Reluplex
 
 include("adversarial/reluVal.jl")
 include("adversarial/FastLin.jl")
