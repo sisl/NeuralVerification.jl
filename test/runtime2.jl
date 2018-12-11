@@ -1,5 +1,4 @@
-# ConvDual, Duality
-# Problem spec - input: Hyperrectangle with uniform radisu, outputL half space constraint
+# NSVerify, MIPVerify, ILP
 
 using NeuralVerification
 using Test
@@ -17,7 +16,7 @@ end
 at = @__DIR__
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
-print("###### Problem type - input:Hyperrectangle, output:Hpolytope ######\n")
+print("###### Problem type - input:Hyperrectangle, output:Hyperrectangle ######\n")
 # Small MNIST Network 
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
@@ -41,22 +40,26 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 
 
 A = Matrix(undef, 2, 1)
-A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
-b = [0.0]
+A = [1, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
+b = [0]
 outputSet = HPolytope(A, b)
 
-problem_hyperrect_halfspace_small = Problem(mnist_small, inputSet, outputSet)
+problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 
-# Duality
-print("\nDuality - Small")
+# paper page 29 says input:Hyperrectangle, output:HPolytope (with only one inequality)
+# ILP
+print("\nILP - Small")
 optimizer = GLPKSolverMIP()
-solver = Duality(optimizer)
-#@time solve(solver, problem_hyperrect_halfspace_small)
+solver = ILP(optimizer, 1)
+#@time solve(solver, problem_hyperrect_oneineq_small)
 
-# ConvDual
-print("\nConvDual - Small")
+print("\nNSVerify - Small")
 optimizer = GLPKSolverMIP()
-solver = ConvDual()
-@time solve(solver, problem_hyperrect_halfspace_small)
+solver = NSVerify(optimizer, 1000.0)
+@time solve(solver, problem_hyperrect_oneineq_small)
 
+print("\nMIPVerify - Small")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrect_oneineq_small)
 
