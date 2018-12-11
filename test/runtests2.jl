@@ -39,6 +39,8 @@ solver_reluVal = ReluVal(2)
 
 @test @no_error solve(solver_reluVal, problem_hyperrect_small)
 
+solver_reluplex=Reluplex()
+@test @no_error solve(solver_reluplex, problem_hyperrect_small)
 
 # Deep MNIST network
 mnist_large = read_nnet("$at/../examples/networks/mnist_large.nnet")
@@ -66,6 +68,9 @@ solver_reluVal = ReluVal(2)
 
 @test @no_error solve(solver_reluVal, problem_hyperrect_deep)
 
+solver_reluplex=Reluplex()
+@test @no_error solve(solver_reluplex, problem_hyperrect_deep)
+
 # Wide MNIST network
 
 mnist_wide = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
@@ -88,3 +93,6 @@ problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
 
 @test @no_error solve(solver_reluVal, problem_hyperrect_wide)
+
+solver_reluplex=Reluplex()
+@test @no_error solve(solver_reluplex, problem_hyperrect_wide)
