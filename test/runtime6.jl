@@ -39,15 +39,15 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
-print("Reluval - Small")
+print("\nReluval - Small")
 @time solve(solver_reluVal, problem_hyperrect_small)
 
-print("Planet - Small")
+print("\nPlanet - Small")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
 @time solve(solver, problem_hyperrect_small)
 
-print("Reluplex - Small")
+print("\nReluplex - Small")
 solver=Reluplex()
 @time solve(solver, problem_hyperrect_small)
 
@@ -55,8 +55,6 @@ solver=Reluplex()
 
 # Deep MNIST network
 mnist_large = read_nnet("$at/../examples/networks/mnist_large.nnet")
-
-#mnist_large = read_nnet("/Users/christopherlazarus/Desktop/jsand/NNet/readNNet/python/mnist_large.nnet")
 
 # entry 23 in MNIST datset
 input_center = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,121,254,136,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,230,253,248,99,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,118,253,253,225,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,61,253,253,253,74,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,206,253,253,186,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,211,253,253,239,69,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,254,253,253,133,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,142,255,253,186,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,149,229,254,207,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,54,229,253,254,105,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,152,254,254,213,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,112,251,253,253,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,212,253,250,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,36,214,253,253,137,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,75,253,253,253,59,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,253,253,189,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,224,253,253,84,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43,235,253,126,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,99,248,253,119,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,225,235,49,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -76,17 +74,17 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_deep = Problem(mnist_large, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
-print("Reluval - Deep")
-@time solve(solver_reluVal, problem_hyperrect_deep)
+print("\nReluval - Deep")
+#@time solve(solver_reluVal, problem_hyperrect_deep)
 
-print("Planet - Deep")
+print("\nPlanet - Deep")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrect_deep)
+#@time solve(solver, problem_hyperrect_deep)
 
-print("Reluplex - Deep")
+print("\nReluplex - Deep")
 solver=Reluplex()
-@time solve(solver, problem_hyperrect_deep)
+#@time solve(solver, problem_hyperrect_deep)
 
 # Wide MNIST network
 
@@ -108,14 +106,14 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
-print("Reluval - Wide")
+print("\nReluval - Wide")
 @time solve(solver_reluVal, problem_hyperrect_wide)
 
-print("Planet - Wide")
+print("\nPlanet - Wide")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
 @time solve(solver, problem_hyperrect_wide)
 
-print("Reluplex - Deep")
+print("\nReluplex - Wide")
 solver=Reluplex()
 @time solve(solver, problem_hyperrect_wide)

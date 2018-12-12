@@ -51,7 +51,7 @@ problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_small)
+#@time solve(solver, problem_hyperrect_oneineq_small)
 
 
 # paper page 28 says input:Hyperrectangle, output:HPolytope (with only one inequality)
