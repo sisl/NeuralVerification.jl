@@ -5,7 +5,7 @@
 ##
 # Objective: L∞ norm of the disturbance
 function max_disturbance(model::Model, var)
-    J = maximum(symbolic_abs(var))
+    J = symbolic_infty_norm(var)
     @objective(model, Min, J)
     return J
 end

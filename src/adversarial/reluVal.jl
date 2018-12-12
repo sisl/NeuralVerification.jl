@@ -121,7 +121,7 @@ function forward_act(input::SymbolicIntervalMask)
             # Concretization
             mask_lower[i], mask_upper[i] = 0, 1
             output_Low[i, :] = fill(0.0, n_input)
-            if lower_bound(input.sym.Up[i, :], input.sym.interval) <= 0
+            if lower_bound(input.sym.Up[i, :], input.sym.interval) < 0
                 output_Up[i, :] = fill(0.0, n_input)
                 output_Up[i, end] = upper_bound(input.sym.Up[i, :], input.sym.interval)
             end

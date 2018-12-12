@@ -12,13 +12,14 @@ function solve(solver::Planet, problem::Problem)
     status, bounds = tighten_bounds(problem, solver.optimizer)
     status == :Optimal || return BasicResult(:SAT)
     ψ = init_ψ(bounds)
-    soln = PicoSAT.solve(ψ)
+    δ = PicoSAT.solve(ψ)
+    opt = solver.optimizer
     # main loop to compute the SAT problem
-    while soln != :unsatisfiable
-        status, conflict = elastic_filtering(problem, soln, bounds, solver.optimizer) # 3.2
+    while δ != :unsatisfiable
+        status, conflict = elastic_filtering(problem, δ, bounds, opt)
         status == :Infeasible || return BasicResult(:UNSAT)
         append!(ψ, Any[conflict])
-        soln = PicoSAT.solve(ψ)
+        δ = PicoSAT.solve(ψ)
     end
     return BasicResult(:SAT)
 end
