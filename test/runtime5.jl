@@ -41,25 +41,25 @@ problem_hyperrect_wide_1 = Problem(mnist_wide_1, inputSet, outputSet)
 # Reluval
 
 solver = ReluVal(1)
-print("Reluval - Wide-1")
+print("\nReluval - Wide-1")
 #@time solve(solver, problem_hyperrect_wide_1)
 
 # BaB
 optimizer = GLPKSolverMIP()
 solver = BaB(optimizer, 0.1)
-print("BaB - Wide-1")
-#@time solve(solver, problem_hyperrect_wide_1)
+print("\nBaB - Wide-1")
+@time solve(solver, problem_hyperrect_wide_1)
 
 # DLV
 optimizer = GLPKSolverMIP()
 solver = DLV(1.0)
-print("DLV - Wide-1")
+print("\nDLV - Wide-1")
 #@time solve(solver, problem_hyperrect_wide_1)
 
 # Sherlock
 
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
-print("Sherlock - Wide-1")
-@time solve(solver, problem_hyperrect_wide_1)
+print("\nSherlock - Wide-1")
+#@time solve(solver, problem_hyperrect_wide_1)
 
