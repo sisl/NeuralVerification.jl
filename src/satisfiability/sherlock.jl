@@ -2,11 +2,11 @@
 # Input constraint HPolytope
 # Output: 1D Hyperrectangle
 struct Sherlock
-    ϵ::Float64
     optimizer::AbstractMathProgSolver
+    ϵ::Float64
 end
 
-Sherlock() = Sherlock(1.0, GLPKSolverMIP())
+Sherlock() = Sherlock(GLPKSolverMIP(), 1.0)
 
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, :max)
