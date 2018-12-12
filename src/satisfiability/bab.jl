@@ -31,7 +31,7 @@ function output_bound(solver::BaB, problem::Problem, type::Symbol)
     nnet = problem.network  
     global_concrete, x_star = concrete_bound(nnet, problem.input, type)
     global_approx = approx_bound(nnet, problem.input, solver.optimizer, type)
-    doms = Tuple{Any, Hyperrectangle}[(global_approx, problem.input)]
+    doms = Tuple{Float64, Hyperrectangle}[(global_approx, problem.input)]
     index = ifelse(type == :max, 1, -1)
     while index * (global_approx - global_concrete) > solver.ϵ
         dom = pick_out(doms) # pick_out implements the search strategy
@@ -43,7 +43,7 @@ function output_bound(solver::BaB, problem::Problem, type::Symbol)
                 (global_concrete, x_star) = (dom_concrete, x)
             end
             if index * (dom_approx - global_concrete) > 0
-                add_domain!(doms, (dom_approx, subdoms[i]))
+                add_domain!(doms, (dom_approx, subdoms[i]), type)
             end
         end 
         global_approx = doms[1][1]
@@ -56,10 +56,11 @@ function pick_out(doms)
     return doms[1]
 end
 
-function add_domain!(doms::Vector{Tuple{Float64, Hyperrectangle}}, new::Tuple{Float64, Hyperrectangle})
+function add_domain!(doms::Vector{Tuple{Float64, Hyperrectangle}}, new::Tuple{Float64, Hyperrectangle}, type::Symbol)
     rank = length(doms) + 1
+    index = ifelse(type == :max, 1, -1)
     for i in 1:length(doms)
-        if new[1] >= doms[i][1]
+        if index * (new[1] - doms[i][1]) >= 0
             rank = i
             break
         end
