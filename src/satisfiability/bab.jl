@@ -4,11 +4,11 @@
 # BaB estimate whether the half space constraint can be violated or not
 
 struct BaB
-    ϵ::Float64
     optimizer::AbstractMathProgSolver
+    ϵ::Float64
 end
 
-BaB() = BaB(0.1, GLPKSolverMIP())
+BaB() = BaB(GLPKSolverMIP(), 0.1)
 
 function solve(solver::BaB, problem::Problem)
     (u_approx, u, x_u) = output_bound(solver, problem, :max)
