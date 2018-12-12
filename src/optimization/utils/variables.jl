@@ -47,3 +47,20 @@ end
 symbolic_abs(v::Variable)                = symbolic_abs(v.m, v)
 symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
 symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
+
+function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
+    aux = @variable(m)
+    @constraint(m, aux >= 0)
+    for (i, a) in enumerate(v)
+        @constraint(m, aux >= a)
+        @constraint(m, aux >= -a)
+    end
+    return aux
+end
+
+symbolic_infty_norm(m::Model, v::Variable)          = symbolic_abs(m, v)
+symbolic_infty_norm(m::Model, v::GenericAffExpr)    = symbolic_abs(m, v)
+
+symbolic_infty_norm(v::Variable)                = symbolic_infty_norm(v.m, v)
+symbolic_infty_norm(v::GenericAffExpr)          = symbolic_infty_norm(first(v.vars).m, v)
+symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(first(first(v).vars).m, v)

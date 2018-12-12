@@ -23,11 +23,8 @@ function output_bound(solver::Sherlock, problem::Problem, type::Symbol)
         (x, bound) = local_search(problem, x, opt, type)
         bound += ifelse(type == :max, solver.ϵ, -solver.ϵ)
         (x_new, bound_new, feasibile) = global_search(problem, bound, opt, type)
-        if feasibile
-            (x, bound) = (x_new, bound_new)
-        else
-            return (x, bound)
-        end
+        feasibile || return (x, bound)
+        (x, bound) = (x_new, bound_new)
     end
 end
 
