@@ -16,7 +16,7 @@ end
 at = @__DIR__
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
-print("###### Problem type - input:Hyperrectangle, output:Hyperrectangle ######\n")
+print("###### Problem type - input:Hyperrectangle, output:HPolytope ######\n")
 # Small MNIST Network 
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
@@ -51,7 +51,7 @@ problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-#@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_small)
 
 print("\nNSVerify - Small")
 optimizer = GLPKSolverMIP()

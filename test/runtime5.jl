@@ -34,8 +34,15 @@ output_high = output_center .+ out_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
+print(outputSet)
 
 problem_hyperrect_wide_1 = Problem(mnist_wide_1, inputSet, outputSet)
+
+# Reluval
+
+solver = ReluVal(1)
+print("Reluval - Wide-1")
+#@time solve(solver, problem_hyperrect_wide_1)
 
 # BaB
 optimizer = GLPKSolverMIP()
@@ -52,7 +59,7 @@ print("DLV - Wide-1")
 # Sherlock
 
 optimizer = GLPKSolverMIP()
-solver = Sherlock(optimizer, 1.0)
+solver = Sherlock(1.0, optimizer)
 print("Sherlock - Wide-1")
 @time solve(solver, problem_hyperrect_wide_1)
 
