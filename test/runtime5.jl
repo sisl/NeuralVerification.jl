@@ -46,7 +46,7 @@ print("Reluval - Wide-1")
 
 # BaB
 optimizer = GLPKSolverMIP()
-solver = BaB(0.1, optimizer)
+solver = BaB(optimizer, 0.1)
 print("BaB - Wide-1")
 #@time solve(solver, problem_hyperrect_wide_1)
 
@@ -59,7 +59,7 @@ print("DLV - Wide-1")
 # Sherlock
 
 optimizer = GLPKSolverMIP()
-solver = Sherlock(1.0, optimizer)
+solver = Sherlock(optimizer, 1.0)
 print("Sherlock - Wide-1")
 @time solve(solver, problem_hyperrect_wide_1)
 
