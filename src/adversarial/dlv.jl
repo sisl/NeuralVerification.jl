@@ -23,7 +23,8 @@ function solve(solver::DLV, problem::Problem)
             var, y = bounded_variation(η[i+1], x->(x∈problem.output), δ[i+1])
         else
             forward_nnet = Network(problem.network.layers[i+1:end])
-            var, y = bounded_variation(η[i+1], x->(compute_output(forward_nnet, x)∈problem.output), δ[i+1])
+            forward_map = x->(compute_output(forward_nnet, x)∈problem.output)
+            var, y = bounded_variation(η[i+1], forward_map, δ[i+1])
         end
         if var > 0
             backward_nnet = Network(problem.network.layers[1:i])

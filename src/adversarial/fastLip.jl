@@ -10,28 +10,28 @@ convert(::Type{FastLip}, S::FastLin) = FastLip(S.maxIter, S.ϵ0, S.accuracy)
 FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
-	c, d = tosimplehrep(problem.output)
-	y = compute_output(problem.network, problem.input.center)
-	J = (c * y - d)[1]
-	if J > 0
-		return AdversarialResult(:UNSAT, -J)
-	end
-	result = solve(FastLin(solver), problem)
-	result.status || return result
-	ϵ_fastLin = result.max_disturbance
-	LG, UG = get_gradient(problem.network, problem.input)
+    c, d = tosimplehrep(problem.output)
+    y = compute_output(problem.network, problem.input.center)
+    J = (c * y - d)[1]
+    if J > 0
+        return AdversarialResult(:UNSAT, -J)
+    end
+    result = solve(FastLin(solver), problem)
+    result.status == :UNSAT && return result
+    ϵ_fastLin = result.max_disturbance
+    LG, UG = get_gradient(problem.network, problem.input)
 
-	# C = problem.network.layers[1].weights
-	# L = zeros(size(C))
-	# U = zeros(size(C))
-	# for l in 2:length(problem.network.layers)
-	# 	C, L, U = bound_layer_grad(C, L, U, problem.network.layers[l].weights, act_pattern[l])
-	# end
-	# v = max.(abs.(C+L), abs.(C+U))
+    # C = problem.network.layers[1].weights
+    # L = zeros(size(C))
+    # U = zeros(size(C))
+    # for l in 2:length(problem.network.layers)
+    #   C, L, U = bound_layer_grad(C, L, U, problem.network.layers[l].weights, act_pattern[l])
+    # end
+    # v = max.(abs.(C+L), abs.(C+U))
 
-	a, b = interval_map(c, LG, UG)
-	v = max.(abs.(a), abs.(b))
-	ϵ = min(-J/sum(v), ϵ_fastLin)
+    a, b = interval_map(c, LG, UG)
+    v = max.(abs.(a), abs.(b))
+    ϵ = min(-J/sum(v), ϵ_fastLin)
 
     if ϵ > minimum(problem.input.radius)
         return AdversarialResult(:SAT, ϵ)
@@ -41,13 +41,13 @@ function solve(solver::FastLip, problem::Problem)
 end
 
 function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{Float64})
-	n_input = size(C)
-	rows, cols = size(W)
-	new_C = zeros(rows, n_input)
-	new_L = zeros(rows, n_input)
-	new_U = zeros(rows, n_input)
-	for k in 1:n_input         # NOTE n_input is 2-D
-		for j in 1:rows, i in 1:cols
+    n_input = size(C)
+    rows, cols = size(W)
+    new_C = zeros(rows, n_input)
+    new_L = zeros(rows, n_input)
+    new_U = zeros(rows, n_input)
+    for k in 1:n_input         # NOTE n_input is 2-D
+        for j in 1:rows, i in 1:cols
 
             u = U[i, k]
             l = L[i, k]
@@ -66,8 +66,8 @@ function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{
                 new_L[j,k] += w*(c+l)
 
             end
-		end
-	end
-	return (new_C, new_L, new_U)
+        end
+    end
+    return (new_C, new_L, new_U)
 end
 
