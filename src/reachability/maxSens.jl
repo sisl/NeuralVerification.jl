@@ -49,7 +49,7 @@ function partition(input::Hyperrectangle, delta::Float64)
 
     for i in 1:n_dim
         hyperrectangle_list[i] = n_hyperrectangle
-        n_hyperrectangle *= ceil((upper[i] - lower[i])/delta)
+        n_hyperrectangle *= Int64(ceil((upper[i] - lower[i])/delta))
     end
     n_hyperrectangle = trunc(Int, n_hyperrectangle)
 
