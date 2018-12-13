@@ -7,28 +7,34 @@ end
 convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 convert(::Type{FastLip}, S::FastLin) = FastLip(S.maxIter, S.ϵ0, S.accuracy)
 
+FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
-	# Call FastLin or Call get_bounds in convDual
-	# Need bounds and activation patterns for all layers
-	bounds, act_pattern = get_bounds()
-	result = solve(FastLin(solver), problem)
-	ϵ_fastLin = result.max_disturbance
-
-	C = problem.network.layers[1].weights
-	L = zeros(size(C))
-	U = zeros(size(C))
-
-	for l in 2:length(problem.network.layers)
-		C, L, U = bound_layer_grad(C, L, U, problem.network.layers[l].weights, act_pattern[l])
+	c, d = tosimplehrep(problem.output)
+	y = compute_output(problem.network, problem.input.center)
+	J = (c * y - d)[1]
+	if J > 0
+		return AdversarialResult(:UNSAT, -J)
 	end
+	result = solve(FastLin(solver), problem)
+	result.status || return result
+	ϵ_fastLin = result.max_disturbance
+	LG, UG = get_gradient(problem.network, problem.input)
 
-	v = max.(abs.(C+L), abs.(C+U))
-	# To do: find out how to compute g
-	ϵ = min(g(problem.input.center)/maximum(abs.(v)), ϵ_fastLin)
+	# C = problem.network.layers[1].weights
+	# L = zeros(size(C))
+	# U = zeros(size(C))
+	# for l in 2:length(problem.network.layers)
+	# 	C, L, U = bound_layer_grad(C, L, U, problem.network.layers[l].weights, act_pattern[l])
+	# end
+	# v = max.(abs.(C+L), abs.(C+U))
+
+	a, b = interval_map(c, LG, UG)
+	v = max.(abs.(a), abs.(b))
+	ϵ = min(-J/sum(v), ϵ_fastLin)
 
     if ϵ > minimum(problem.input.radius)
-        return AdversarialResult(:SAT, ϵ) # previously :True
+        return AdversarialResult(:SAT, ϵ)
     else
         return AdversarialResult(:UNSAT, ϵ)
     end
