@@ -65,7 +65,7 @@ end
 
 
 function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
-    layers = problem.nnet.layers
+    layers = nnet.layers
     # input layer
     J = input_layer_cost(layers[1], μ[1], bounds[1])
     J += activation_cost(layers[1], μ[1], λ[1], bounds[1])
