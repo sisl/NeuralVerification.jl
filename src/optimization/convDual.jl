@@ -1,8 +1,4 @@
-# This method only works for half space output constraint
-# c y >= b
-# Input constraint needs to be a hyperrectangle with uniform radius
-struct ConvDual
-end
+struct ConvDual end
 
 function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
@@ -145,3 +141,24 @@ function relaxed_ReLU(l::Float64, u::Float64)
     l >= 0.0 && return 1.0
     return u / (u - l)
 end
+
+"""
+    ConvDual
+
+ConvDual uses convex relaxation to compute over-approximated bounds for a network
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Convex relaxation with duality.
+
+# Property
+Sound but not complete.
+"""
+ConvDual
