@@ -170,6 +170,29 @@ function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
     return bound
 end
 
+"""
+    ReluVal(max_iter::Int64, tree_search::Symbol)
+
+ReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: hpolytope
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Symbolic reachability analysis and iterative interval refinement (search).
+- `max_iter` default `10`. 
+- `tree_search` default `:DFS` - depth first search.
+
+# Property
+Sound but not complete.
+"""
+ReluVal
+
 # Concrete forward_linear
 # function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
 #     n_output = size(W, 1)

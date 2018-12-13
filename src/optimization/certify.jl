@@ -1,11 +1,8 @@
-# Certify based on semidefinite relaxation
-# NN should only have one layer
-# This method only works for half space output constraint
-# c y <= d
-# Input constraint needs to be a hyperrectangle with uniform radius
 struct Certify{O<:AbstractMathProgSolver}
     optimizer::O
 end
+
+Certify() =  Certify(SCSSolver())
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
@@ -15,16 +12,12 @@ function solve(solver::Certify, problem::Problem)
     W = problem.network.layers[1].weights
     M = get_M(v[1, :], W)
     n = size(M, 1)
-
-    # Cone type SDP not supported
     @variable(model, P[1:n, 1:n], SDP)
-
     # Compute cost
     Tr = M * P
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
     J = output + epsilon/4 * sum(Tr[i, i] for i in 1:n)
-
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, J[1])
@@ -56,3 +49,26 @@ function get_M(v::Vector{Float64}, W::Matrix{Float64})
     M = [Mrow1; Mrow2; Mrow3]
     return M
 end
+
+"""
+    Certify(optimizer)
+
+Certify uses semidefinite programming to compute over-approximated certificates for a neural network with only one hidden layer. 
+
+# Problem requirement
+1. Network: one hidden layer, any activation that is differentiable almost everywhere whose derivative is bound by 0 and 1
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Semindefinite programming. 
+Default `optimizer` is `SCSSolver()`.
+
+# Property
+Sound but not complete.
+"""
+Certify
+

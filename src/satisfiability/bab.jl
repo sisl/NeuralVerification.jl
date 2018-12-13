@@ -1,8 +1,6 @@
 # BaB
 # Input: Hyperrectangle
 # Output: Hyperrectangle
-# BaB estimate whether the half space constraint can be violated or not
-
 struct BaB
     optimizer::AbstractMathProgSolver
     ϵ::Float64
@@ -99,3 +97,28 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     status == :Optimal && return getvalue(J)
     error("Could not find bound for dom: ", dom)
 end
+
+"""
+    BaB(optimizer, ϵ::Float64)
+
+BaB uses branch and bound to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Branch and bound. 
+For branch, it uses iterative interval refinement. 
+For bound, it computes concrete bounds by sampling, approximated bound by optimization.
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the desired accurancy for termination, default `0.1`.
+
+# Property
+Sound and complete.
+"""
+BaB

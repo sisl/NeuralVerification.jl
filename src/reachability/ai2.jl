@@ -1,4 +1,3 @@
-
 struct Ai2 end
 
 function solve(solver::Ai2, problem::Problem)
@@ -78,3 +77,24 @@ The Case type is probably not necessary for correct dispatch
 # end
 
 # constraint(case::Case, poly::AbstractPolytope) = constraint(typeof(case), dim((poly), case.i)
+
+"""
+    Ai2
+
+Ai2 performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.
+
+# Problem requirement
+1. Network: any depth, ReLU activation (more activations to be supported in the future)
+2. Input: HPolytope
+3. Output: HPolytope
+
+# Return
+`ReachabilityResult`
+
+# Method
+Reachability analysis using split and join.
+
+# Property
+Sound but not complete.
+"""
+Ai2

@@ -1,4 +1,3 @@
-# Planet
 struct Planet
     optimizer::AbstractMathProgSolver
     eager::Bool # Default false
@@ -130,6 +129,30 @@ function get_node_id(nnet::Network, n::Int64)
     end
     return (i, j)
 end
+
+"""
+    Planet(optimizer, eager::Bool)
+
+Planet integrates a SAT solver (`PicoSAT.jl`) to find an activation pattern that maps a feasible input to an infeasible output.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle or hpolytope
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Binary search of activations (0/1) and pruning by optimization. Our implementation is non eager.
+- `optimizer` default `GLPKSolverMIP()`;
+- `eager` default `false`;
+
+# Property
+Sound and complete.
+"""
+Planet
+
 
 # function init_ψ(p_list::Vector{Int64})
 #     ψ = Vector{Vector{Int64}}(undef, length(p_list))

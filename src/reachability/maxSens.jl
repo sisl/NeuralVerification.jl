@@ -49,7 +49,7 @@ function partition(input::Hyperrectangle, delta::Float64)
 
     for i in 1:n_dim
         hyperrectangle_list[i] = n_hyperrectangle
-        n_hyperrectangle *= ceil((upper[i] - lower[i])/delta)
+        n_hyperrectangle *= Int64(ceil((upper[i] - lower[i])/delta))
     end
     n_hyperrectangle = trunc(Int, n_hyperrectangle)
 
@@ -83,3 +83,27 @@ function partition(input::HPolytope, delta::Float64)
 
     return partition(Hyperrectangle(low = lower, high = upper), delta)
 end
+
+"""
+    MaxSens(resolution::Float64, tight::Bool)
+
+MaxSens performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.
+
+# Problem requirement
+1. Network: any depth, any activation that is monotone
+2. Input: `Hyperrectangle` or `HPolytope`
+3. Output: `HPolytope`
+
+# Return
+`ReachabilityResult`
+
+# Method
+First partition the input space into small grid cells according to `resolution`. 
+Then use interval arithmetic to compute the reachable set for each cell.
+Two versions of interval arithmetic is implemented with indicator `tight`.
+Default `resolution` is `1.0`. Default `tight = false`.
+
+# Property
+Sound but not complete.
+"""
+MaxSens
