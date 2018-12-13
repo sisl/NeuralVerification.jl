@@ -3,6 +3,9 @@ struct FastLip
     ϵ0::Float64
     accuracy::Float64
 end
+
+FastLip() = FastLip(10, 100.0, 0.1)
+
 # since FastLip is "higher" on the hierarchy, it defines both:
 convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 convert(::Type{FastLip}, S::FastLin) = FastLip(S.maxIter, S.ϵ0, S.accuracy)
@@ -71,3 +74,26 @@ function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{
     return (new_C, new_L, new_U)
 end
 
+"""
+    FastLip(maxIter::Int64, ϵ0::Float64, accuracy::Float64)
+
+FastLip adds Lipschitz estimation on top of FastLin.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Lipschitz estimation + FastLin. All arguments are for FastLin.
+- `max_iter` is the maximum iteration in search, default `10`;
+- `ϵ0` is the initial search radius, default `100.0`;
+- `accuracy` is the stopping criteria, default `0.1`;
+
+# Property
+Sound but not complete.
+"""
+FastLip

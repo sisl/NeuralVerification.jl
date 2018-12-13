@@ -6,6 +6,8 @@ struct FastLin
     accuracy::Float64
 end
 
+FastLin() = FastLin(10, 100.0, 0.1)
+
 function solve(solver::FastLin, problem::Problem)
     ϵ = fill(solver.ϵ0, solver.maxIter)
     ϵ_upper = 2 * max(solver.ϵ0, maximum(problem.input.radius))
@@ -164,3 +166,26 @@ function update_A!(A, l, u)
     push!(A, WD)  # consider pushing I and mapping WD onto it along with everything else
 end
 
+"""
+    FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)
+
+FastLin combines reachability analysis with binary search to find maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Reachability analysis by network approximation and binary search.
+- `max_iter` is the maximum iteration in search, default `10`;
+- `ϵ0` is the initial search radius, default `100.0`;
+- `accuracy` is the stopping criteria, default `0.1`;
+
+# Property
+Sound but not complete.
+"""
+FastLin

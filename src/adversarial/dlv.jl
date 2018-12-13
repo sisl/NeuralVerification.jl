@@ -1,7 +1,8 @@
-# DLV
 struct DLV
     ϵ::Float64
 end
+
+DLV() = DLV(1.0)
 
 function solve(solver::DLV, problem::Problem)
     # The list of etas
@@ -11,12 +12,6 @@ function solve(solver::DLV, problem::Problem)
     δ[1] = fill(solver.ϵ, dim(η[1]))
 
     output = compute_output(problem.network, problem.input.center)
-    # for layer i
-    # 1. determine a region w.r.t. definition 6
-    # 2. determine a minipulation set Δ w.r.t. definition 7
-    # 3. Verify
-    # True -> continue to i+1
-    # False -> adversarial example
     for (i, layer) in enumerate(problem.network.layers)
         δ[i+1] = get_manipulation(layer, δ[i], η[i+1])
         if i == length(problem.network.layers)
@@ -93,3 +88,31 @@ function bounded_variation(bound, mapping, δ)
     end
     return (0, [])
 end
+
+"""
+    DLV(ϵ::Float64)
+
+DLV searches layer by layer for counter examples in hidden layers.
+
+# Problem requirement
+1. Network: any depth, any activation (currently only support ReLU)
+2. Input: hyperrectangle
+3. Output: abstractpolytope
+
+# Return
+`CounterExampleResult`
+
+# Method
+The following operations are performed layer by layer. for layer i
+1. determine a reachable set from the reachable set in layer i-1
+2. determine a search tree in the reachable set by refining the search tree in layer i-1
+3. Verify
+    - True -> continue to layer i+1
+    - False -> counter example
+
+The argument `ϵ` is the resolution of the initial search tree. Default `1.0`.
+
+# Property
+Sound but not complete.
+"""
+DLV
