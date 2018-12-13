@@ -75,7 +75,7 @@ function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{
 end
 
 """
-    Duality
+    Duality(optimizer)
 
 Duality uses Lagrangian relaxation to compute over-approximated bounds for a network
 

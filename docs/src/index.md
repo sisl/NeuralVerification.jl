@@ -1,8 +1,6 @@
-
+# NeuralVerification.jl
 
 ```@contents
-
-```
-```@autodocs
-Modules = [NeuralVerification]
+Pages = ["problem.md", "solvers.md"]
+Depth = 3
 ```
