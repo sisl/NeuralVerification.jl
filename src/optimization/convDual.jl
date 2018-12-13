@@ -107,10 +107,9 @@ function all_neg_pos_sums(slopes, l, μ, n_output)
     for (i, ℓ) in enumerate(l)                # ℓ::Vector{Float64}
         for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
             if 0 < slopes[j] < 1              # if in the triangle region of relaxed ReLU
-                posind = M .> 0
-
-                neg .+= ℓ[j] * -M .* !posind  # multiply by boolean to set the undesired values to 0.0
-                pos .+= ℓ[j] *  M .* posind
+                #posind = M .> 0
+                neg .+= ℓ[j] * min.(M, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                pos .+= ℓ[j] * max.(M, 0) #M .* posind
             end
         end
     end
