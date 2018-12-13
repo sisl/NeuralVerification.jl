@@ -1,7 +1,13 @@
-# Reluplex
-# Minimal implementation of Reluplex
-
 struct Reluplex end
+
+function solve(solver::Reluplex, problem::Problem)
+    basic_model = new_model(solver)
+    bs, fs = encode(solver, basic_model, problem)
+    layers = problem.network.layers
+    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
+
+    return reluplex_step(solver, basic_model, bs, fs, initial_status)
+end
 
 function find_relu_to_fix(b_vars, f_vars)
     for i in 1:length(f_vars), j in 1:length(f_vars[i])
@@ -117,14 +123,7 @@ function reluplex_step(solver::Reluplex,
     end
 end
 
-function solve(solver::Reluplex, problem::Problem)
-    basic_model = new_model(solver)
-    bs, fs = encode(solver, basic_model, problem)
-    layers = problem.network.layers
-    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
 
-    return reluplex_step(solver, basic_model, bs, fs, initial_status)
-end
 
 # for convenience:
 new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
@@ -140,3 +139,24 @@ new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
 #     end
 #     return vars
 # end
+
+"""
+    Reluplex(optimizer, eager::Bool)
+
+Reluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`CounterExampleResult`
+
+# Method
+Binary search of activations (0/1) and pruning by optimization.
+
+# Property
+Sound and complete.
+"""
+Reluplex

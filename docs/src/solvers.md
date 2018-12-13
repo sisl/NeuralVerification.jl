@@ -70,5 +70,52 @@ Certify
 
 ## Search and Reachability Methods
 
+### ReluVal
+
+```@docs
+ReluVal
+```
+
+### FastLin
+
+```@docs
+FastLin
+```
+
+### FastLip
+
+```@docs
+FastLip
+```
+
+### DLV
+
+```@docs
+DLV
+```
+
 ## Search and Optimization Methods
 
+### Sherlock
+
+```@docs
+Sherlock
+```
+
+### BaB
+
+```@docs
+BaB
+```
+
+### Planet
+
+```@docs
+Planet
+```
+
+### Reluplex
+
+```@docs
+Reluplex
+```

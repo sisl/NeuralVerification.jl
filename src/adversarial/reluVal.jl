@@ -185,7 +185,8 @@ ReluVal combines symbolic reachability analysis with iterative interval refineme
 
 # Method
 Symbolic reachability analysis and iterative interval refinement (search).
-Default `max_iter` is `10`. Default `tree_search` is `:DFS` - depth first search.
+- `max_iter` default `10`. 
+- `tree_search` default `:DFS` - depth first search.
 
 # Property
 Sound but not complete.

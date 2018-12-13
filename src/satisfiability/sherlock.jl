@@ -1,12 +1,9 @@
-# Sherlock
-# Input constraint HPolytope
-# Output: 1D Hyperrectangle
 struct Sherlock
     optimizer::AbstractMathProgSolver
     ϵ::Float64
 end
 
-Sherlock() = Sherlock(GLPKSolverMIP(), 1.0)
+Sherlock() = Sherlock(GLPKSolverMIP(), 0.1)
 
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, :max)
@@ -66,3 +63,27 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
         return ([], 0.0, false)
     end
 end
+
+"""
+    Sherlock(optimizer, ϵ::Float64)
+
+Sherlock combines local and global search to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hpolytope and hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Local search: solve a linear program to find local optima on a line segment of the piece-wise linear network. 
+Global search: solve a feasibilty problem using MILP encoding (default calling NSVerify).
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the margin for global search, default `0.1`.
+
+# Property
+Sound but not complete.
+"""
+Sherlock
