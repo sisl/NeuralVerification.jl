@@ -40,8 +40,8 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 
 
 A = Matrix(undef, 2, 1)
-A = [1, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
-b = [0]
+A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
+b = [0.0]
 outputSet = HPolytope(A, b)
 
 problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
@@ -51,7 +51,7 @@ problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-#@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_small)
 
 
 # paper page 28 says input:Hyperrectangle, output:HPolytope (with only one inequality)
@@ -63,13 +63,13 @@ solver = MIPVerify(optimizer)
 
 # same problem, paper page 50 specifies same input and output
 print("\nFastLip - Small")
-solver = FastLip(100, .1, .1)
+solver = FastLip(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_small)
 
 
 # same problem, paper page 50 specifies same input and output
 print("\nFastLin - Small")
-solver = FastLin(100, .1, .1)
+solver = FastLin(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_small)
 
 

@@ -65,20 +65,20 @@ inputSet = HPolytope(A, b)
 
 
 A = Matrix(undef, 2, 1)
-A = [1, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
-b = [0]
+A = [1.0, -1.0, 0.0, 0.0, 0, 0, 0, 0, 0 ,0]'
+b = [0.0]
 outputSet = HPolytope(A, b)
 
 # version with polytopes as seen in the repo, doesnt work either
 problem_polytope_polytope_small = Problem(mnist_small, inputSet, outputSet)
 solver = MaxSens(.3, false)
 print("\nMaxSens - Small - polytopes")
-@time solve(solver, problem_polytope_polytope_small)
+#@time solve(solver, problem_polytope_polytope_small)
 
 
 solver = Ai2()
 print("\nAi2 - Small")
-@time solve(solver, problem_polytope_polytope_small)
+#@time solve(solver, problem_polytope_polytope_small)
 
 solver = ExactReach()
 print("\nExactReach - Small")
