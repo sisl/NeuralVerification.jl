@@ -1,4 +1,13 @@
+"""
+    Problem(network, input, output)
 
+Problem definition for neural verification.
+- `network` is defined by type `Network`
+- `input` belongs to `AbstractPolytope` in `LazySets.jl`
+- `output` belongs to `AbstractPolytope` in `LazySets.jl`
+
+We need to verify: for all input points in the input set, the corresponding output of the network belongs to the output set. 
+"""
 struct Problem{P<:AbstractPolytope, Q<:AbstractPolytope}
     network::Network
     input::P
