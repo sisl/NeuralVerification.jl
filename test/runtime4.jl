@@ -31,13 +31,8 @@ out_epsilon = 10 #logit domain
 input_low = input_center .- in_epsilon
 input_high = input_center .+ in_epsilon
 
-#output_low = output_center .- out_epsilon
-#output_high = output_center .+ out_epsilon
 
 inputSet = Hyperrectangle(low=input_low, high=input_high)
-#outputSet = Hyperrectangle(low=output_low, high=output_high)
-
-
 
 A = Matrix(undef, 2, 1)
 A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
@@ -46,7 +41,26 @@ outputSet = HPolytope(A, b)
 
 problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 
-# paper page 29 says input:Hyperrectangle, output:HPolytope (with only one inequality)
+########### Small ############
+# Problem type - input:Hyperrectangle, output:Hyperrectangle
+print("################## Small ##################\n")
+
+# FastLin
+print("\nFastLin - Small")
+solver = FastLin(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrect_oneineq_small)
+
+# FastLip
+print("\nFastLip - Small")
+solver = FastLip(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrect_oneineq_small)
+
+# MIPVerify
+print("\nMIPVerify - Small")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrect_oneineq_small)
+
 # ILP
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
@@ -54,23 +68,66 @@ solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_small)
 
 
-# paper page 28 says input:Hyperrectangle, output:HPolytope (with only one inequality)
+########### Deep ############
+print("################## Deep ##################\n")
+
+mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
+problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
+
+# FastLin
+print("\nFastLin - Small")
+solver = FastLin(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrect_oneineq_large)
+
+# FastLip
+print("\nFastLip - Small")
+solver = FastLip(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrect_oneineq_large)
+
 # MIPVerify
 print("\nMIPVerify - Small")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_large)
 
-# same problem, paper page 50 specifies same input and output
-print("\nFastLip - Small")
-solver = FastLip(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+# ILP
+print("\nILP - Small")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrect_oneineq_large)
 
+########### Wide ############
+print("################## Wide ##################\n")
 
-# same problem, paper page 50 specifies same input and output
+mnist_deep = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
+problem_hyperrect_oneineq_wide = Problem(mnist_deep, inputSet, outputSet)
+
+# FastLin
 print("\nFastLin - Small")
 solver = FastLin(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+# FastLip
+print("\nFastLip - Small")
+solver = FastLip(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+# MIPVerify
+print("\nMIPVerify - Small")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+# ILP
+print("\nILP - Small")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+
+print("################## Acas ##################\n")
+
+
 
 
 
