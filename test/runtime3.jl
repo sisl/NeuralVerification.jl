@@ -17,7 +17,7 @@ end
 at = @__DIR__
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
-print("###### Problem type - input:Hyperrectangle, output:Hpolytope ######\n")
+print("###### Group 3 - input:Hyperrectangle, output:Hpolytope (with 1 constraint) ######\n")
 # Small MNIST Network 
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
@@ -40,12 +40,18 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 
 
 
+
+
 A = Matrix(undef, 2, 1)
 A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 
+########### Small ############
+# Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
+
 problem_hyperrect_halfspace_small = Problem(mnist_small, inputSet, outputSet)
+print("################## Small ##################\n")
 
 # Duality
 print("\nDuality - Small")
@@ -59,4 +65,38 @@ optimizer = GLPKSolverMIP()
 solver = ConvDual()
 @time solve(solver, problem_hyperrect_halfspace_small)
 
+########### Deep ############
+print("################## Deep ##################\n")
 
+mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
+problem_hyperrect_halfspace_deep = Problem(mnist_deep, inputSet, outputSet)
+
+# Duality
+print("\nDuality - Deep")
+optimizer = GLPKSolverMIP()
+solver = Duality(optimizer)
+@time solve(solver, problem_hyperrect_halfspace_deep)
+
+# ConvDual
+print("\nConvDual - Deep")
+optimizer = GLPKSolverMIP()
+solver = ConvDual()
+@time solve(solver, problem_hyperrect_halfspace_deep)
+
+########### Wide ############
+print("################## Wide ##################\n")
+
+mnist_wide = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
+problem_hyperrect_halfspace_wide = Problem(mnist_wide, inputSet, outputSet)
+
+# Duality
+print("\nDuality - Wide")
+optimizer = GLPKSolverMIP()
+solver = Duality(optimizer)
+@time solve(solver, problem_hyperrect_halfspace_deep)
+
+# ConvDual
+print("\nConvDual - Wide")
+optimizer = GLPKSolverMIP()
+solver = ConvDual()
+@time solve(solver, problem_hyperrect_halfspace_deep)

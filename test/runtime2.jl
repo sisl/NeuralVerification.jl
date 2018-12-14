@@ -72,7 +72,7 @@ problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
 print("\nNSVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-@time solve(solver, problem_hyperrect_oneineq_large)
+#@time solve(solver, problem_hyperrect_oneineq_large)
 
 # MIPVerify
 print("\nMIPVerify - Deep")
@@ -110,3 +110,4 @@ optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_wide)
 
+print("################## Acas ##################\n")
