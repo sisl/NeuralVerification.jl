@@ -117,3 +117,28 @@ solver = Planet(optimizer)
 print("\nReluplex - Wide")
 solver=Reluplex()
 @time solve(solver, problem_hyperrect_wide)
+
+
+
+print("################## Acas ##################\n")
+
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+inputSet = Hyperrectangle(low=b_lower, high=b_upper)
+
+# TODO: compute output region - need to do some forward passes in the network
+# to get a sense of the output ranges.
+
+A = Matrix(undef, 2, 1)
+A = [1.0, 0.0, 0.0, 0.0, -1.0]'
+b = [0.0]
+outputSet = HPolytope(A, b)
+
+
+problem_hyperrectangle_hyperrectangle_acas = Problem(acas_nnet, inputSet, outputSet)
+
+
+
