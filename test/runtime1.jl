@@ -61,9 +61,6 @@ b = vcat(b0, b1)
 
 inputSet = HPolytope(A, b)
 
-
-
-
 A = Matrix(undef, 2, 1)
 A = [1.0, -1.0, 0.0, 0.0, 0, 0, 0, 0, 0 ,0]'
 b = [0.0]
@@ -78,10 +75,52 @@ print("\nMaxSens - Small - polytopes")
 
 solver = Ai2()
 print("\nAi2 - Small")
-@time solve(solver, problem_polytope_polytope_small)
+#@time solve(solver, problem_polytope_polytope_small)
 
 solver = ExactReach()
 print("\nExactReach - Small")
-@time solve(solver, problem_polytope_polytope_small)
+#@time solve(solver, problem_polytope_polytope_small)
+
+
+
+# Lets try ACAS
+
+
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+# ACAS PROPERTY 10 - modified
+
+A0 = Matrix{Float64}(I, 5, 5)
+A1 = -Matrix{Float64}(I, 5, 5)
+A = vcat(A0, A1)
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+b = vcat(b_upper, b_lower)
+inputSet = HPolytope(A, b)
+
+
+A = Matrix(undef, 2, 1)
+A = [1.0, 0.0, 0.0, 0.0, -1.0]'
+b = [0.0]
+outputSet = HPolytope(A, b)
+
+problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
+
+solver = MaxSens(1.0, false)
+print("\nMaxSens - ACAS")
+@time solve(solver, problem_polytope_polytope_acas)
+
+
+
+solver = Ai2()
+print("\nAi2 - ACAS")
+#@time solve(solver, problem_polytope_polytope_acas)
+
+solver = ExactReach()
+print("\nExactReach - ACAS")
+@time solve(solver, problem_polytope_polytope_acas)
+
 
 
