@@ -56,7 +56,7 @@ A1 = -Matrix{Float64}(I, 784, 784)
 A = vcat(A0, A1)
 
 b0 = ones(784)*255.0
-b1 = -ones(784)*1.0
+b1 = -ones(784)*250.0
 b = vcat(b0, b1)
 
 inputSet = HPolytope(A, b)
@@ -71,14 +71,14 @@ outputSet = HPolytope(A, b)
 
 # version with polytopes as seen in the repo, doesnt work either
 problem_polytope_polytope_small = Problem(mnist_small, inputSet, outputSet)
-solver = MaxSens(.3, false)
+solver = MaxSens(1.0, false)
 print("\nMaxSens - Small - polytopes")
 #@time solve(solver, problem_polytope_polytope_small)
 
 
 solver = Ai2()
 print("\nAi2 - Small")
-#@time solve(solver, problem_polytope_polytope_small)
+@time solve(solver, problem_polytope_polytope_small)
 
 solver = ExactReach()
 print("\nExactReach - Small")

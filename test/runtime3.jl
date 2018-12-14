@@ -57,7 +57,7 @@ print("################## Small ##################\n")
 print("\nDuality - Small")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-@time solve(solver, problem_hyperrect_halfspace_small)
+#@time solve(solver, problem_hyperrect_halfspace_small)
 
 # ConvDual
 print("\nConvDual - Small")
@@ -75,7 +75,7 @@ problem_hyperrect_halfspace_deep = Problem(mnist_deep, inputSet, outputSet)
 print("\nDuality - Deep")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-@time solve(solver, problem_hyperrect_halfspace_deep)
+#@time solve(solver, problem_hyperrect_halfspace_deep)
 
 # ConvDual
 print("\nConvDual - Deep")
@@ -93,7 +93,7 @@ problem_hyperrect_halfspace_wide = Problem(mnist_wide, inputSet, outputSet)
 print("\nDuality - Wide")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-@time solve(solver, problem_hyperrect_halfspace_deep)
+#@time solve(solver, problem_hyperrect_halfspace_deep)
 
 # ConvDual
 print("\nConvDual - Wide")
