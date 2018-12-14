@@ -368,6 +368,43 @@ function linear_transformation(layer::Layer, input::Hyperrectangle)
 end
 
 """
+    linear_transformation(layer::Layer, input::HPolytope)
+
+Transformation of a set considering linear mappings in a layer.
+
+Inputs:
+- `layer::Layer`: a layer in a network
+- `input::HPolytope`: input set
+Return: 
+- `output::HPolytope`: set after transformation.
+"""
+function linear_transformation(layer::Layer, input::HPolytope)
+    (W, b) = (layer.weights, layer.bias)
+    input_v = tovrep(input)
+    output_v = [W * v + b for v in vertices_list(input_v)]
+    output = tohrep(VPolytope(output_v))
+    return output
+end
+
+"""
+    linear_transformation(W::Matrix, input::HPolytope)
+
+Transformation of a set considering a linear mapping.
+
+Inputs:
+- `W::Matrix`: a linear mapping
+- `input::HPolytope`: input set
+Return: 
+- `output::HPolytope`: set after transformation.
+"""
+function linear_transformation(W::Matrix, input::HPolytope)
+    input_v = tovrep(input)
+    output_v = [W * v for v in vertices_list(input_v)]
+    output = tohrep(VPolytope(output_v))
+    return output
+end
+
+"""
     split_interval(dom::Hyperrectangle, index::Int64)
 
 Split a set into two at the given index.

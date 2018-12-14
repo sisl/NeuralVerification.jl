@@ -2,60 +2,58 @@ struct ExactReach end
 
 function solve(solver::ExactReach, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
-    #println(reach)
     return check_inclusion(reach, problem.output)
 end
 
 function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope})
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
-        append!(output, forward_positive(layer, input[i]))
-        append!(output, forward_negative(layer, input[i]))
-        append!(output, forward_undetermined(layer, input[i]))
+        input[i] = linear_transformation(layer, input[i])
+        push!(output, forward_positive(layer.activation, input[i]))
+        push!(output, forward_negative(layer.activation, input[i]))
+        append!(output, forward_undetermined(layer.activation, input[i]))
     end
     return output
 end
 
 function forward_layer(solver::ExactReach, layer::Layer, input::HPolytope)
+    input = linear_transformation(layer, input)
     output = Vector{HPolytope}(undef, 0)
-    append!(output, forward_positive(layer, input))
-    append!(output, forward_negative(layer, input))
-    append!(output, forward_undetermined(layer, input))
+    push!(output, forward_positive(layer.activation, input))
+    push!(output, forward_negative(layer.activation, input))
+    append!(output, forward_undetermined(layer.activation, input))
     return output
 end
 
-function forward_positive(layer::Layer, input::HPolytope)
-    inputA, inputb = tosimplehrep(input)
-    n = n_nodes(layer)
-    A = vcat(inputA*pinv(layer.weights), -Matrix(1.0I, n, n))
-    b = vcat(inputb - inputA*pinv(layer.weights) * layer.bias, zeros(n))
-    return HPolytope[HPolytope(A, b)]
+function forward_positive(act::ReLU, input::HPolytope)
+    C, d = tosimplehrep(input)
+    n = dim(input)
+    C = vcat(C, -Matrix(1.0I, n, n))
+    d = vcat(d, zeros(n))
+    return HPolytope(C, d)
 end
 
-function forward_negative(layer::Layer, input::HPolytope)
-    # if is_intersection_empty(input, HPolytope(layer.weights, -layer.bias))
-    if HPolytope_intersection_empty(input, HPolytope(layer.weights, -layer.bias))
-        return HPolytope[]
-    else
-        n = length(layer.bias)
-        eye = Matrix(1.0I, n, n)
-        H = HPolytope(vcat(eye, -eye), zeros(2*n))
-        return HPolytope[H]
+function forward_negative(act::ReLU, input::HPolytope)
+    n = dim(input)
+    eye = Matrix(1.0I, n, n)
+    if !HPolytope_intersection_empty(input, HPolytope(eye, zeros(n)))
+        return HPolytope(vcat(eye, -eye), zeros(2*n))
     end
 end
 
-function forward_undetermined(layer::Layer, input::HPolytope)
-    n = size(layer.weights, 1)
-    output = Vector{HPolytope}(undef, 2^n)
-    inputA, inputb = tosimplehrep(input)
+function forward_undetermined(act::ReLU, input::HPolytope)
+    n = dim(input)
+    output = Vector{HPolytope}(undef, 0)
+    C, d = tosimplehrep(input)
+    eye = Matrix(1.0I, n, n)
     for h in 1:2^n
-        IxAinv = inputA * pinv(layer.weights)
         p = getP(h, n)
-        # A = vcat(IxAinv, Matrix(1.0I, n, n)-p, -p)
-        # b = vcat(inputb - IxAinv * layer.bias, zeros(2*n))
-        A = [IxAinv ; Matrix(1.0I, n, n)-p ; -p]
-        b = [inputb - IxAinv * layer.bias ; zeros(2*n)]
-        output[h] = HPolytope(A, b)
+        Ch = vcat(C, eye - 2p)
+        dh = vcat(d, zeros(n))
+        set = HPolytope(Ch, dh)
+        if !isempty(set)
+            push!(output, linear_transformation(Matrix(p), set))
+        end
     end
     return output
 end
