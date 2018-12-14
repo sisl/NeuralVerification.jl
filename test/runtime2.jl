@@ -111,3 +111,36 @@ solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_wide)
 
 print("################## Acas ##################\n")
+
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+inputSet = Hyperrectangle(low=b_lower, high=b_upper)
+
+A = Matrix(undef, 2, 1)
+A = [1.0, 0.0, 0.0, 0.0, -1.0]'
+b = [0.0]
+outputSet = HPolytope(A, b)
+
+
+problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
+
+# NSVerify
+print("\nNSVerify - ACAS")
+optimizer = GLPKSolverMIP()
+solver = NSVerify(optimizer, 1000.0)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
+
+# MIPVerify
+print("\nMIPVerify - ACAS")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
+
+# ILP
+print("\nILP - ACAS")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
