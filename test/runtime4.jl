@@ -15,8 +15,8 @@ end
 
 at = @__DIR__
 
-# Problem type - input:Hyperrectangle, output:Hyperrectangle
-print("###### Problem type - input:Hyperrectangle, output:Hyperrectangle ######\n")
+# Problem type - input:Hyperrectangle, output:Hpolytope
+print("###### Group 4 - input:Hyperrectangle, output:HpolyTope (one constraint) ######\n")
 # Small MNIST Network 
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
@@ -31,7 +31,6 @@ out_epsilon = 10 #logit domain
 input_low = input_center .- in_epsilon
 input_high = input_center .+ in_epsilon
 
-
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 
 A = Matrix(undef, 2, 1)
@@ -39,10 +38,10 @@ A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 
-problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
-
 ########### Small ############
-# Problem type - input:Hyperrectangle, output:Hyperrectangle
+# Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
+
+problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
 print("################## Small ##################\n")
 
 # FastLin
@@ -75,23 +74,23 @@ mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
 problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
 
 # FastLin
-print("\nFastLin - Small")
+print("\nFastLin - Deep")
 solver = FastLin(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_large)
 
 # FastLip
-print("\nFastLip - Small")
+print("\nFastLip - Deep")
 solver = FastLip(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_large)
 
 # MIPVerify
-print("\nMIPVerify - Small")
+print("\nMIPVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
 @time solve(solver, problem_hyperrect_oneineq_large)
 
 # ILP
-print("\nILP - Small")
+print("\nILP - Deep")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_large)
@@ -99,27 +98,27 @@ solver = ILP(optimizer, 1)
 ########### Wide ############
 print("################## Wide ##################\n")
 
-mnist_deep = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
-problem_hyperrect_oneineq_wide = Problem(mnist_deep, inputSet, outputSet)
+mnist_wide = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
+problem_hyperrect_oneineq_wide = Problem(mnist_wide, inputSet, outputSet)
 
 # FastLin
-print("\nFastLin - Small")
+print("\nFastLin - Wide")
 solver = FastLin(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_wide)
 
 # FastLip
-print("\nFastLip - Small")
+print("\nFastLip - Wide")
 solver = FastLip(10, 10.0, 1.0)
 @time solve(solver, problem_hyperrect_oneineq_wide)
 
 # MIPVerify
-print("\nMIPVerify - Small")
+print("\nMIPVerify - Wide")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
 @time solve(solver, problem_hyperrect_oneineq_wide)
 
 # ILP
-print("\nILP - Small")
+print("\nILP - Wide")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_wide)
@@ -127,7 +126,42 @@ solver = ILP(optimizer, 1)
 
 print("################## Acas ##################\n")
 
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+inputSet = Hyperrectangle(low=b_lower, high=b_upper)
+
+A = Matrix(undef, 2, 1)
+A = [1.0, 0.0, 0.0, 0.0, -1.0]'
+b = [0.0]
+outputSet = HPolytope(A, b)
 
 
+problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
+
+
+# FastLin
+print("\nFastLin - ACAS")
+solver = FastLin(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
+
+# FastLip
+print("\nFastLip - ACAS")
+solver = FastLip(10, 10.0, 1.0)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
+
+# MIPVerify
+print("\nMIPVerify - ACAS")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
+
+# ILP
+print("\nILP - ACAS")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrectangle_polytope_acas)
 
 

@@ -131,7 +131,7 @@ problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 print("\nNSVerify - ACAS")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+#@time solve(solver, problem_hyperrectangle_polytope_acas)
 
 # MIPVerify
 print("\nMIPVerify - ACAS")
