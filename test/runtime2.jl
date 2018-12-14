@@ -119,10 +119,12 @@ b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
 
 inputSet = Hyperrectangle(low=b_lower, high=b_upper)
 
-A = Matrix(undef, 2, 1)
-A = [1.0, 0.0, 0.0, 0.0, -1.0]'
-b = [0.0]
-outputSet = HPolytope(A, b)
+# TODO: compute output region - need to do some forward passes in the network
+# to get a sense of the output ranges.
+
+#out_upper =
+#out_lower =
+outputSet = Hyperrectangle(low=b_lower, high=b_upper)
 
 
 problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
