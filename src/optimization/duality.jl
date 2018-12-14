@@ -27,13 +27,18 @@ end
 # max { mu[l][k] * z - lambda[l][k] * act(z) }
 function activation_cost(layer, μ, λ, bound)
     J = zero(typeof(first(μ)))
-    (W, b, act) = (layer.weights, layer.bias, layer.activation)
-    for k in 1:length(b)
-        z = W[k, :]' * bound.center + b[k]
-        r = sum(abs.(W[k, :]) .* bound.radius)
-        high = μ[k] * (z + r) - λ[k] * act(z + r)
-        low = μ[k] * (z - r) - λ[k] * act(z - r)
-        J += symbolic_max(high, low)
+    # (W, b, act) = (layer.weights, layer.bias, layer.activation)
+    b_hat = linear_transformation(layer, bound)
+    l_hat, u_hat = low(b_hat), high(b_hat)
+    l, u = layer.activation(l_hat), layer.activation(u_hat)
+    for k in 1:length(l)
+        J += symbolic_max(μ[k]*l_hat[k], μ[k]*u_hat[k])
+        J += symbolic_max(λ[k]*l[k], λ[k]*u[k])
+        # z = W[k, :]' * bound.center + b[k]
+        # r = sum(abs.(W[k, :]) .* bound.radius)
+        # high = μ[k] * (z + r) - λ[k] * act(z + r)
+        # low = μ[k] * (z - r) - λ[k] * act(z - r)
+        # J += symbolic_max(high, low)
     end
     return J
 end
