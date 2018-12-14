@@ -16,7 +16,7 @@ end
 at = @__DIR__
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
-print("###### Problem type - input:Hyperrectangle, output:HPolytope ######\n")
+print("###### Group 2 - input:Hyperrectangle, output:HpolyTope (one constraint) ######\n")
 # Small MNIST Network 
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
@@ -31,35 +31,82 @@ out_epsilon = 10 #logit domain
 input_low = input_center .- in_epsilon
 input_high = input_center .+ in_epsilon
 
-#output_low = output_center .- out_epsilon
-#output_high = output_center .+ out_epsilon
-
 inputSet = Hyperrectangle(low=input_low, high=input_high)
-#outputSet = Hyperrectangle(low=output_low, high=output_high)
-
-
 
 A = Matrix(undef, 2, 1)
 A = [1, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
 b = [0]
 outputSet = HPolytope(A, b)
 
-problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
+########### Small ############
+# Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
 
-# paper page 29 says input:Hyperrectangle, output:HPolytope (with only one inequality)
+problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
+print("################## Small ##################\n")
+
+# NSVerify
+print("\nNSVerify - Small")
+optimizer = GLPKSolverMIP()
+solver = NSVerify(optimizer, 1000.0)
+@time solve(solver, problem_hyperrect_oneineq_small)
+
+# MIPVerify
+print("\nMIPVerify - Small")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrect_oneineq_small)
+
 # ILP
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 @time solve(solver, problem_hyperrect_oneineq_small)
 
-print("\nNSVerify - Small")
+########### Deep ############
+print("################## Deep ##################\n")
+
+mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
+problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
+
+# NSVerify
+print("\nNSVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_large)
 
-print("\nMIPVerify - Small")
+# MIPVerify
+print("\nMIPVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_small)
+@time solve(solver, problem_hyperrect_oneineq_large)
+
+# ILP
+print("\nILP - Deep")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrect_oneineq_large)
+
+########### Wide ############
+print("################## Wide ##################\n")
+
+mnist_deep = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
+problem_hyperrect_oneineq_wide = Problem(mnist_deep, inputSet, outputSet)
+
+# NSVerify
+print("\nNSVerify - Wide")
+optimizer = GLPKSolverMIP()
+solver = NSVerify(optimizer, 1000.0)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+# MIPVerify
+print("\nMIPVerify - Wide")
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+@time solve(solver, problem_hyperrect_oneineq_wide)
+
+# ILP
+print("\nILP - Wide")
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+@time solve(solver, problem_hyperrect_oneineq_wide)
 
