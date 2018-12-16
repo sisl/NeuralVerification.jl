@@ -7,4 +7,5 @@
 
 ```@autodocs
 Modules = [NeuralVerification]
+Order = [:function]
 ```
