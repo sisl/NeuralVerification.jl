@@ -14,6 +14,7 @@ using Reexport
 @reexport using Polyhedra
 @reexport using CDDLib
 @reexport using LinearAlgebra
+@reexport using SparseArrays
 
 import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 
