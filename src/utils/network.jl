@@ -34,7 +34,7 @@ end
 """
     n_node(L::Layer)
 
-Returns the number of nodes in one layer.
+Returns the number of neurons in a layer.
 """
 n_nodes(L::Layer) = length(L.bias)
 

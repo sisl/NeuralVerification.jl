@@ -7,5 +7,6 @@
 
 ```@autodocs
 Modules = [NeuralVerification]
+Pages = ["utils/util.jl"]
 Order = [:function]
 ```
