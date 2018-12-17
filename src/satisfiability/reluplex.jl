@@ -72,7 +72,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     end
     add_output_constraint(model, problem.output, last(bs))
 
-    zero_objective(model)
+    zero_objective!(model)
 
     return bs, fs
 end

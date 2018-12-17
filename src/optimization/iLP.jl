@@ -14,8 +14,8 @@ function solve(solver::ILP, problem::Problem)
 
         neurons = init_neurons(model, problem.network)
         add_complementary_output_constraint!(model, problem.output, last(neurons))
-        encode_relaxed_lp(model, problem.network, act_pattern, neurons)
-        J = max_disturbance(model, first(neurons) - problem.input.center)
+        encode_relaxed_lp!(model, problem.network, act_pattern, neurons)
+        J = max_disturbance!(model, first(neurons) - problem.input.center)
 
         status = solve(model)
         if status != :Optimal
@@ -63,7 +63,7 @@ ILP iteratively solves a linearized primal optimization to compute maximum allow
 `AdversarialResult`
 
 # Method
-Iteratively solve a linear encoding of the problem. 
+Iteratively solve a linear encoding of the problem.
 Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
 
 # Property

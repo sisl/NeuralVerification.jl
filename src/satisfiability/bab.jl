@@ -89,7 +89,7 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, subdom, first(neurons))
-    encode_Δ_lp(model, nnet, bounds, neurons)
+    encode_Δ_lp!(model, nnet, bounds, neurons)
     index = ifelse(type == :max, 1, -1)
     J = sum(last(neurons))
     @objective(model, Max, index * J)
