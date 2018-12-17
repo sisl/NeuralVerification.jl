@@ -1,7 +1,13 @@
-# Reluplex
-# Minimal implementation of Reluplex
-
 struct Reluplex end
+
+function solve(solver::Reluplex, problem::Problem)
+    basic_model = new_model(solver)
+    bs, fs = encode(solver, basic_model, problem)
+    layers = problem.network.layers
+    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
+
+    return reluplex_step(solver, basic_model, bs, fs, initial_status)
+end
 
 function find_relu_to_fix(b_vars, f_vars)
     for i in 1:length(f_vars), j in 1:length(f_vars[i])
@@ -10,14 +16,12 @@ function find_relu_to_fix(b_vars, f_vars)
 
         if type_one_broken(b, f) ||
            type_two_broken(b, f)
-
-            return (i, j)
+            (i, j)
         end
     end
     return (0, 0)
 end
 
-# NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
 type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)
 type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 
@@ -49,7 +53,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         ## layerwise input constraint
-        add_set_constraint!(model, bounds[i], bs[i])
+        add_input_constraint(model, bounds[i], bs[i])
 
         ## b<——>f[next] constraint
         # first layer technically has only vars which are forward facing,
@@ -66,7 +70,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
             @constraint(model, fs[i] .>= bs[i+1])
         end
     end
-    add_set_constraint!(model, problem.output, last(bs))
+    add_output_constraint(model, problem.output, last(bs))
 
     zero_objective(model)
 
@@ -85,41 +89,6 @@ function enforce_repairs!(model::Model, bs, fs, relu_status)
     end
 end
 
-# function reluplex_step(solver::Reluplex,
-#                        model::Model,
-#                        b_vars::Vector{Vector{Variable}},
-#                        f_vars::Vector{Vector{Variable}},
-#                        relu_status::Vector{Vector{Int}})
-
-#     status = solve(model)
-
-#     if status == :Infeasible
-#         return CounterExampleResult(:SAT)
-
-#     elseif status == :Optimal
-#         i, j = find_relu_to_fix(b_vars, f_vars)
-
-#         # in case no broken relus could be found, return the "input" as a countereexample
-#         i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
-
-#         for repair_type in 1:2
-#             relu_status[i][j] = repair_type
-
-#             new_m  = new_model(solver)
-#             bs, fs = encode(solver, new_m, problem)
-#             enforce_repairs!(model, bs, fs, relu_status)
-
-#             result = reluplex_step(solver, new_m, bs, fs, relu_status)
-
-#             relu_status[i][j] = 0
-#             result.status == :UNSAT && return result
-#         end
-#     else
-#         error("unexpected status $status") # are there alternatives to the if and elseif?
-#     end
-# end
-
-# IF return codes other than Optimal and Infeasible don't ever happen:
 function reluplex_step(solver::Reluplex,
                        model::Model,
                        b_vars::Vector{Vector{Variable}},
@@ -127,35 +96,34 @@ function reluplex_step(solver::Reluplex,
                        relu_status::Vector{Vector{Int}})
 
     status = solve(model)
-    status == :Infeasible && return CounterExampleResult(:SAT)
 
-    i, j = find_relu_to_fix(b_vars, f_vars)
-    # in case no broken relus could be found, return the "input" as a countereexample
-    i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
+    if status == :Infeasible
+        return CounterExampleResult(:SAT)
 
-    for repair_type in 1:2
-        relu_status[i][j] = repair_type
+    elseif status == :Optimal
+        i, j = find_relu_to_fix(b_vars, f_vars)
 
-        new_m  = new_model(solver)
-        bs, fs = encode(solver, new_m, problem)
-        enforce_repairs!(new_m, bs, fs, relu_status)
+        # in case no broken relus could be found, return the "input" as a countereexample
+        i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
 
-        result = reluplex_step(solver, new_m, bs, fs, relu_status)
+        for repair_type in 1:2
+            relu_status[i][j] = repair_type
 
-        relu_status[i][j] = 0
-        result.status == :UNSAT && return result
+            new_m  = new_model(solver)
+            bs, fs = encode(solver, new_m, problem)
+            enforce_repairs!(new_m, bs, fs, relu_status)
+
+            result = reluplex_step(solver, new_m, bs, fs, relu_status)
+
+            relu_status[i][j] = 0
+            result.status == :UNSAT && return result
+        end
+    else
+        error("unexpected status $status") # are there alternatives to the if and elseif?
     end
 end
 
 
-function solve(solver::Reluplex, problem::Problem)
-    basic_model = new_model(solver)
-    bs, fs = encode(solver, basic_model, problem)
-    layers = problem.network.layers
-    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
-
-    return reluplex_step(solver, basic_model, bs, fs, initial_status)
-end
 
 # for convenience:
 new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
@@ -171,3 +139,24 @@ new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
 #     end
 #     return vars
 # end
+
+"""
+    Reluplex(optimizer, eager::Bool)
+
+Reluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`CounterExampleResult`
+
+# Method
+Binary search of activations (0/1) and pruning by optimization.
+
+# Property
+Sound and complete.
+"""
+Reluplex

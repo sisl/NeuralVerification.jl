@@ -1,8 +1,9 @@
-# Iterative LP
 struct ILP{O<:AbstractMathProgSolver}
     optimizer::O
     max_iter::Int64
 end
+
+ILP() = ILP(GLPKSolverMIP(), 10)
 
 function solve(solver::ILP, problem::Problem)
     x = problem.input.center
@@ -40,7 +41,6 @@ function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{B
         curr_value = layer.weights * curr_value + layer.bias
         for (j, val) in enumerate(curr_value)
             act = act_pattern[i][j]
-
             act  && val < 0.0 && return false
             !act && val > 0.0 && return false
         end
@@ -48,3 +48,25 @@ function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{B
     end
     return true
 end
+
+"""
+    ILP(optimizer, max_iter)
+
+ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Iteratively solve a linear encoding of the problem. 
+Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
+
+# Property
+Sound but not complete.
+"""
+ILP

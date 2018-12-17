@@ -1,36 +1,27 @@
-# Sherlock
-# Input constraint HPolytope
-# Output: 1D Hyperrectangle
 struct Sherlock
-    global_solver::AbstractMathProgSolver
-    delta::Float64
+    optimizer::AbstractMathProgSolver
+    ϵ::Float64
 end
+
+Sherlock() = Sherlock(GLPKSolverMIP(), 0.1)
 
 function solve(solver::Sherlock, problem::Problem)
-    (x_u, u) = output_bound(solver, problem, true) # true for upper bound, false for lower bound
-    (x_l, l) = output_bound(solver, problem, false)
-
-    udiff = u - high(problem.output)[1] # TODO: doesn't this assume 1-d input?
-    ldiff = l - low(problem.output)[1]
-
-    udiff <= 0 <= ldiff       && return CounterExampleResult(:SAT)
-    udiff > solver.delta      && return CounterExampleResult(:UNSAT, x_u)
-    ldiff < solver.delta      && return CounterExampleResult(:UNSAT, x_l)
-
-    return CounterExampleResult(:UNKNOWN)
+    (x_u, u) = output_bound(solver, problem, :max)
+    (x_l, l) = output_bound(solver, problem, :min)
+    bound = Hyperrectangle(low = [l], high = [u])
+    reach = Hyperrectangle(low = [l - solver.ϵ], high = [u + solver.ϵ])
+    return interpret_result(reach, bound, problem.output, x_l, x_u) # This function is defined in bab.jl
 end
 
-function output_bound(solver::Sherlock, problem::Problem, upper::Bool)
+function output_bound(solver::Sherlock, problem::Problem, type::Symbol)
+    opt = solver.optimizer
     x = sample(problem.input)
     while true
-        (x, bound) = local_search(solver, problem, x, upper)
-        bound += ifelse(upper, solver.delta, -solver.delta)
-        (x_new, bound_new, feasibile) = global_search(problem, solver, bound, upper)
-        if feasibile
-            (x, bound) = (x_new, bound_new)
-        else
-            return (x, bound)
-        end
+        (x, bound) = local_search(problem, x, opt, type)
+        bound += ifelse(type == :max, solver.ϵ, -solver.ϵ)
+        (x_new, bound_new, feasibile) = global_search(problem, bound, opt, type)
+        feasibile || return (x, bound)
+        (x, bound) = (x_new, bound_new)
     end
 end
 
@@ -40,50 +31,59 @@ function sample(set::AbstractPolytope)
     return x[1]
 end
 
-function local_search(solver::Sherlock, problem::Problem, x::Vector{Float64}, upper::Bool)
+function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractMathProgSolver, type::Symbol)
     nnet = problem.network
-
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
-
-    model = Model(solver = solver.global_solver)
-
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, problem.input, first(neurons))
     encode_lp(model, nnet, act_pattern, neurons)
-
     J = gradient * neurons[1]
-    if upper
-        @objective(model, Max, J[1])
-    else
-        @objective(model, Min, J[1])
-    end
-
-
+    index = ifelse(type == :max, 1, -1)
+    @objective(model, Max, index * J[1])
     solve(model)
-
     x_new = getvalue(neurons[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
 end
 
-global_search(problem::Problem, solver::Sherlock, bound::Float64, upper::Bool) = global_search(problem.network, problem.input, solver.global_solver, bound, upper)
-
-function global_search(nnet::Network, input::AbstractPolytope, optimizer::AbstractMathProgSolver, bound::Float64, upper::Bool)
-    # Call Reverify for global search
-    if (upper)    h = HalfSpace([1.0], bound)
-    else          h = HalfSpace([-1.0], -bound)
-    end
+function global_search(problem::Problem, bound::Float64, optimizer::AbstractMathProgSolver, type::Symbol)
+    index = ifelse(type == :max, 1.0, -1.0)
+    h = HalfSpace([index], index * bound)
     output_set = HPolytope([h])
-
-    problem = Problem(nnet, input, output_set)
-    solver  = Reverify(optimizer)
-    result  = solve(solver, problem)
+    problem_new = Problem(problem.network, problem.input, output_set)
+    solver  = NSVerify(optimizer)
+    result  = solve(solver, problem_new)
     if result.status == :UNSAT
         x = result.counter_example
-        bound = compute_output(nnet, x)
+        bound = compute_output(problem.network, x)
         return (x, bound[1], true)
     else
         return ([], 0.0, false)
     end
 end
+
+"""
+    Sherlock(optimizer, ϵ::Float64)
+
+Sherlock combines local and global search to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hpolytope and hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Local search: solve a linear program to find local optima on a line segment of the piece-wise linear network. 
+Global search: solve a feasibilty problem using MILP encoding (default calling NSVerify).
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the margin for global search, default `0.1`.
+
+# Property
+Sound but not complete.
+"""
+Sherlock

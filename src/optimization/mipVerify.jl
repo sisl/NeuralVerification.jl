@@ -1,11 +1,8 @@
-# MIPVerify
-#   Include maximum activation
-#   Include presolve
-# Only take half space input constraint
-# Computes the allowable radius of input perturbations
 struct MIPVerify{O<:AbstractMathProgSolver}
     optimizer::O
 end
+
+MIPVerify() = MIPVerify(GLPKSolverMIP())
 
 function solve(solver::MIPVerify, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
@@ -16,7 +13,6 @@ function solve(solver::MIPVerify, problem::Problem)
     encode_mip_constraint(model, problem.network, bounds, neurons, deltas)
     J = max_disturbance(model, first(neurons) - problem.input.center)
     status = solve(model)
-
     if status == :Infeasible
         return AdversarialResult(:SAT)
     end
@@ -26,3 +22,25 @@ function solve(solver::MIPVerify, problem::Problem)
         return AdversarialResult(:UNSAT, getvalue(J))
     end
 end
+
+"""
+    MIPVerify(optimizer)
+
+MIPVerify computes maximum allowable disturbance using mixed integer linear programming.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+MILP encoding. Use presolve to compute a tight node-wise bounds first.
+Default `optimizer` is `GLPKSolverMIP()`.
+
+# Property
+Sound and complete.
+"""
+MIPVerify

@@ -6,30 +6,29 @@ struct FastLin
     accuracy::Float64
 end
 
+FastLin() = FastLin(10, 100.0, 0.1)
+
 function solve(solver::FastLin, problem::Problem)
     ϵ = fill(solver.ϵ0, solver.maxIter)
-    ϵ_upper = 2 * solver.ϵ0
+    ϵ_upper = 2 * max(solver.ϵ0, maximum(problem.input.radius))
     ϵ_lower = 0.0
-    # c, d = tosimplehrep(problem.output)
-    i = 1
-    while ϵ[i] > solver.accuracy && i < solver.maxIter
-        input_bounds = Hyperrectangle(problem.input.center, fill(ϵ[i], dim(problem.input)))
-        # Here it uses reachability to compute the output bounds
-        output_bounds = forward_network(ϵ[i], problem.network, input_bounds)
-        # Binary search
+    n_input = dim(problem.input)
+    for i = 1:solver.maxIter
+        input_bounds = Hyperrectangle(problem.input.center, fill(ϵ[i], n_input))
+        output_bounds = forward_network(solver, problem.network, input_bounds)
         if issubset(output_bounds, problem.output)
             ϵ_lower = ϵ[i]
             ϵ[i+1] = (ϵ[i] + ϵ_upper) / 2
+            abs(ϵ[i] - ϵ[i+1]) > solver.accuracy || break
         else
             ϵ_upper = ϵ[i]
             ϵ[i+1] = (ϵ[i] + ϵ_lower) / 2
         end
-        i = i+1
     end
-    if ϵ[i] > minimum(problem.input.radius)
-        return AdversarialResult(:SAT, ϵ[i]) # previously :True
+    if ϵ_lower > minimum(problem.input.radius)
+        return AdversarialResult(:SAT, ϵ_lower) # previously :True
     else
-        return AdversarialResult(:UNSAT, ϵ[i])
+        return AdversarialResult(:UNSAT, ϵ_lower)
     end
 end
 
@@ -140,3 +139,26 @@ function update_A!(A, l, u)
     push!(A, WD)  # consider pushing I and mapping WD onto it along with everything else
 end
 
+"""
+    FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)
+
+FastLin combines reachability analysis with binary search to find maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Reachability analysis by network approximation and binary search.
+- `max_iter` is the maximum iteration in search, default `10`;
+- `ϵ0` is the initial search radius, default `100.0`;
+- `accuracy` is the stopping criteria, default `0.1`;
+
+# Property
+Sound but not complete.
+"""
+FastLin

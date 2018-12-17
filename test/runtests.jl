@@ -1,6 +1,6 @@
 
 using NeuralVerification
-using Base.Test
+using Test
 
 macro no_error(ex)
     quote
@@ -19,12 +19,11 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
 A = Matrix{Float64}(undef, 2,1)
 A[1:2] = [1, -1]
 
-# TODO can we unify all of the reachability test conditions?
-### reverify
-inputSet  = HPolytope(A, [1.0, 1.0])
-outputSet = HPolytope(A, [1.0, 1.0])
-problem_reverify = Problem(small_nnet, inputSet, outputSet)
-solver_reverify = Reverify(GLPKSolverMIP(), 1000.0)
+### NSVerify
+inputSet  = HPolytope(A, [1.0,1.0])
+outputSet = HPolytope(A, [1.0,1.0])
+problem_NSVerify = Problem(small_nnet, inputSet, outputSet)
+solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
 
 ### maxSens
 inputSet  = HPolytope(A, [1.0, 1.0])
@@ -104,7 +103,7 @@ outputSet = Hyperrectangle([10.0], [10.0])
 problem_sherlock = Problem(small_nnet, inputSet, outputSet)
 solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
 
-@test @no_error solve(solver_reverify,   problem_reverify)
+@test @no_error solve(solver_NSVerify,   problem_NSVerify)
 @test @no_error solve(solver_maxSens,    problem_maxSens)
 @test @no_error solve(solver_exactReach, problem_exactReach)
 @test @no_error solve(solver_reluVal,    problem_reluVal)

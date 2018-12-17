@@ -1,10 +1,8 @@
-# This method only works for half space output constraint
-# c y <= d
-# For this implementation, limit the input constraint to Hyperrectangle
-
 struct Duality{O<:AbstractMathProgSolver}
     optimizer::O
 end
+
+Duality() =  Duality(GLPKSolverMIP())
 
 function solve(solver::Duality, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)
@@ -22,7 +20,6 @@ end
 function interpret_result(solver::Duality, status, J)
     status != :Optimal && return BasicResult(:Unknown)
     getvalue(J) <= 0.0 && return BasicResult(:SAT)
-
     return BasicResult(:UNSAT)
 end
 
@@ -30,13 +27,18 @@ end
 # max { mu[l][k] * z - lambda[l][k] * act(z) }
 function activation_cost(layer, μ, λ, bound)
     J = zero(typeof(first(μ)))
-    (W, b, act) = (layer.weights, layer.bias, layer.activation)
-    for k in 1:length(b)
-        z = W[k, :]' * bound.center + b[k]
-        r = sum(abs.(W[k, :]) .* bound.radius)
-        high = μ[k] * (z + r) - λ[k] * act(z + r)
-        low = μ[k] * (z - r) - λ[k] * act(z - r)
-        J += symbolic_max(high, low)
+    # (W, b, act) = (layer.weights, layer.bias, layer.activation)
+    b_hat = linear_transformation(layer, bound)
+    l_hat, u_hat = low(b_hat), high(b_hat)
+    l, u = layer.activation(l_hat), layer.activation(u_hat)
+    for k in 1:length(l)
+        J += symbolic_max(μ[k]*l_hat[k], μ[k]*u_hat[k])
+        J += symbolic_max(λ[k]*l[k], λ[k]*u[k])
+        # z = W[k, :]' * bound.center + b[k]
+        # r = sum(abs.(W[k, :]) .* bound.radius)
+        # high = μ[k] * (z + r) - λ[k] * act(z + r)
+        # low = μ[k] * (z - r) - λ[k] * act(z - r)
+        # J += symbolic_max(high, low)
     end
     return J
 end
@@ -63,9 +65,8 @@ function input_layer_cost(layer, μ, input)
     return J
 end
 
-
 function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
-    layers = problem.nnet.layers
+    layers = nnet.layers
     # input layer
     J = input_layer_cost(layers[1], μ[1], bounds[1])
     J += activation_cost(layers[1], μ[1], λ[1], bounds[1])
@@ -77,3 +78,25 @@ function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{
     @objective(model, Min, J)
     return J
 end
+
+"""
+    Duality(optimizer)
+
+Duality uses Lagrangian relaxation to compute over-approximated bounds for a network
+
+# Problem requirement
+1. Network: any depth, any activation function that is monotone
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Lagrangian relaxation. 
+Default `optimizer` is `GLPKSolverMIP()`.
+
+# Property
+Sound but not complete.
+"""
+Duality

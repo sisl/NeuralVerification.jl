@@ -1,8 +1,4 @@
-# This method only works for half space output constraint
-# c y >= b
-# Input constraint needs to be a hyperrectangle with uniform radius
-struct ConvDual
-end
+struct ConvDual end
 
 function solve(solver::ConvDual, problem::Problem)
     J = dual_cost(solver, problem.network, problem.input, problem.output)
@@ -44,7 +40,7 @@ function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
         if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
-            v[j] = abs(v[j]) * val
+            v[j] = v[j] * val
             J += v[j] * l[j]
         end
     end
@@ -107,10 +103,9 @@ function all_neg_pos_sums(slopes, l, μ, n_output)
     for (i, ℓ) in enumerate(l)                # ℓ::Vector{Float64}
         for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
             if 0 < slopes[j] < 1              # if in the triangle region of relaxed ReLU
-                posind = M .> 0
-
-                neg .+= ℓ[j] * -M .* !posind  # multiply by boolean to set the undesired values to 0.0
-                pos .+= ℓ[j] *  M .* posind
+                #posind = M .> 0
+                neg .+= ℓ[j] * min.(M, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                pos .+= ℓ[j] * max.(M, 0) #M .* posind
             end
         end
     end
@@ -146,3 +141,24 @@ function relaxed_ReLU(l::Float64, u::Float64)
     l >= 0.0 && return 1.0
     return u / (u - l)
 end
+
+"""
+    ConvDual
+
+ConvDual uses convex relaxation to compute over-approximated bounds for a network
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Convex relaxation with duality.
+
+# Property
+Sound but not complete.
+"""
+ConvDual
