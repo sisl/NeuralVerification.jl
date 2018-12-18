@@ -23,12 +23,12 @@ Sound and complete.
 R. Ehlers, "Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,"
 in *International Symposium on Automated Technology for Verification and Analysis*, 2017.
 """
-struct Planet
+@with_kw struct Planet
     optimizer::AbstractMathProgSolver
-    eager::Bool # Default false
+    eager::Bool                        = false
 end
 
-Planet(x::AbstractMathProgSolver) = Planet(x, false)
+Planet(x::AbstractMathProgSolver) = Planet(optimizer = x)
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"

@@ -23,12 +23,10 @@ A. Lomuscio and L. Maganti,
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
 *ArXiv Preprint ArXiv:1706.07351*, 2017.
 """
-struct NSVerify{O<:AbstractMathProgSolver}
-    optimizer::O
-    m::Float64 # The big M in the linearization
+@with_kw struct NSVerify{O<:AbstractMathProgSolver}
+    optimizer::O = GLPKSolverMIP()
+    m::Float64   = 1000.0  # The big M in the linearization
 end
-
-NSVerify(x) = NSVerify(x, 1000.0)
 
 function solve(solver::NSVerify, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)

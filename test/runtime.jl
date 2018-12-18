@@ -16,7 +16,7 @@ at = @__DIR__
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
 print("###### Problem type - input:Hyperrectangle, output:Hyperrectangle ######\n")
-# Small MNIST Network 
+# Small MNIST Network
 
 mnist_small = read_nnet("$at/../examples/networks/mnist_small.nnet")
 
@@ -37,7 +37,7 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
-solver_reluVal = ReluVal(2)
+solver_reluVal = ReluVal(max_iter = 2)
 print("Reluval - Small")
 @time solve(solver_reluVal, problem_hyperrect_small)
 
@@ -67,7 +67,7 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_deep = Problem(mnist_large, inputSet, outputSet)
-solver_reluVal = ReluVal(2)
+solver_reluVal = ReluVal(max_iter = 2)
 print("Reluval - Deep")
 @time solve(solver_reluVal, problem_hyperrect_deep)
 
@@ -94,7 +94,7 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
-solver_reluVal = ReluVal(2)
+solver_reluVal = ReluVal(max_iter = 2)
 print("Reluval - Wide")
 @time solve(solver_reluVal, problem_hyperrect_wide)
 
@@ -133,7 +133,7 @@ solver = Sherlock(optimizer, 0.1)
 print("Sherlock - Wide-1")
 @time solve(solver, problem_hyperrect_wide_1)
 
-#solver_reluVal = ReluVal(2)
+#solver_reluVal = ReluVal(max_iter = 2)
 #print("Reluval - Wide")
 #@time solve(solver_reluVal, problem_hyperrect_wide_1)
 

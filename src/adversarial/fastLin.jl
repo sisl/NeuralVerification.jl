@@ -27,13 +27,11 @@ T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, a
 "Towards Fast Computation of Certified Robustness for ReLU Networks,"
 *ArXiv Preprint ArXiv:1804.09699*, 2018.
 """
-struct FastLin
-    maxIter::Int64
-    ϵ0::Float64
-    accuracy::Float64
+@with_kw struct FastLin
+    maxIter::Int64    = 10
+    ϵ0::Float64       = 100.0
+    accuracy::Float64 = 0.1
 end
-
-FastLin() = FastLin(10, 100.0, 0.1)
 
 function solve(solver::FastLin, problem::Problem)
     ϵ = fill(solver.ϵ0, solver.maxIter)

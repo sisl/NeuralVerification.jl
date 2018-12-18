@@ -23,12 +23,10 @@ O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminis
 "Measuring Neural Net Robustness with Constraints,"
 in *Advances in Neural Information Processing Systems*, 2016.
 """
-struct ILP{O<:AbstractMathProgSolver}
-    optimizer::O
-    max_iter::Int64
+@with_kw struct ILP{O<:AbstractMathProgSolver}
+    optimizer::O    = GLPKSolverMIP()
+    max_iter::Int64 = 10
 end
-
-ILP() = ILP(GLPKSolverMIP(), 10)
 
 function solve(solver::ILP, problem::Problem)
     x = problem.input.center

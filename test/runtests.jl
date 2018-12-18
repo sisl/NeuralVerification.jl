@@ -29,7 +29,7 @@ solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
 inputSet  = HPolytope(A, [1.0, 1.0])
 outputSet = HPolytope(A, [100.0, 1.0])
 problem_maxSens = Problem(small_nnet, inputSet, outputSet)
-solver_maxSens = MaxSens(0.3)
+solver_maxSens = MaxSens(resolution = 0.3)
 
 ### exactReach
 inputSet  = HPolytope(A,           [0.0, 2.0])
@@ -41,7 +41,7 @@ solver_exactReach = ExactReach()
 inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
 outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
 problem_reluVal = Problem(small_nnet, inputSet, outputSet)
-solver_reluVal = ReluVal(2)
+solver_reluVal = ReluVal(max_iter = 2)
 
 ### Ai2
 input  = HPolytope(A, [0.0, 0.0])

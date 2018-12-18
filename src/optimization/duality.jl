@@ -23,11 +23,12 @@ K. Dvijotham, R. Stanforth, S. Gowal, T. Mann, and P. Kohli,
 "A Dual Approach to Scalable Verification of Deep Networks,"
 *ArXiv Preprint ArXiv:1803.06567*, 2018.
 """
-struct Duality{O<:AbstractMathProgSolver}
-    optimizer::O
+@with_kw struct Duality{O<:AbstractMathProgSolver}
+    optimizer::O = GLPKSolverMIP()
 end
 
-Duality() =  Duality(GLPKSolverMIP())
+# can pass keyword args to optimizer
+# Duality(optimizer::DataType = GLPKSolverMIP; kwargs...) =  Duality(optimizer(kwargs...))
 
 function solve(solver::Duality, problem::Problem)
     model = JuMP.Model(solver = solver.optimizer)

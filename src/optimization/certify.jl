@@ -23,11 +23,12 @@ A. Raghunathan, J. Steinhardt, and P. Liang,
 "Certified Defenses against Adversarial Examples,"
 *ArXiv Preprint ArXiv:1801.09344*, 2018.
 """
-struct Certify{O<:AbstractMathProgSolver}
-    optimizer::O
+@with_kw struct Certify{O<:AbstractMathProgSolver}
+    optimizer::O  = SCSSolver()
 end
 
-Certify() =  Certify(SCSSolver())
+# can pass keyword args to optimizer
+# Certify(optimizer::DataType = SCSSolver; kwargs...) =  Certify(optimizer(kwargs...))
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"

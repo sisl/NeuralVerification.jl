@@ -26,12 +26,10 @@ R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
 "A Unified View of Piecewise Linear Neural Network Verification,"
 *ArXiv Preprint ArXiv:1711.00455*, 2017.
 """
-struct BaB
-    optimizer::AbstractMathProgSolver
-    ϵ::Float64
+@with_kw struct BaB
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    ϵ::Float64                        = 0.1
 end
-
-BaB() = BaB(GLPKSolverMIP(), 0.1)
 
 function solve(solver::BaB, problem::Problem)
     (u_approx, u, x_u) = output_bound(solver, problem, :max)

@@ -1,10 +1,31 @@
-struct ReluVal
-    max_iter::Int64
-    tree_search::Symbol
-end
+"""
+    ReluVal(max_iter::Int64, tree_search::Symbol)
 
-ReluVal() = ReluVal(10, :DFS)
-ReluVal(x::Int64) = ReluVal(x, :DFS)
+ReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: hpolytope
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Symbolic reachability analysis and iterative interval refinement (search).
+- `max_iter` default `10`.
+- `tree_search` default `:DFS` - depth first search.
+
+# Property
+Sound but not complete.
+
+# Reference
+S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, "Formal Security Analysis of Neural Networks Using Symbolic Intervals," *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.
+"""
+@with_kw struct ReluVal
+    max_iter::Int64     = 10
+    tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
+end
 
 struct SymbolicInterval
     Low::Matrix{Float64}
@@ -169,32 +190,6 @@ function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
     end
     return bound
 end
-
-"""
-    ReluVal(max_iter::Int64, tree_search::Symbol)
-
-ReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: hpolytope
-
-# Return
-`CounterExampleResult` or `ReachabilityResult`
-
-# Method
-Symbolic reachability analysis and iterative interval refinement (search).
-- `max_iter` default `10`.
-- `tree_search` default `:DFS` - depth first search.
-
-# Property
-Sound but not complete.
-
-# Reference
-S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, "Formal Security Analysis of Neural Networks Using Symbolic Intervals," *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.
-"""
-ReluVal
 
 # Concrete forward_linear
 # function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})

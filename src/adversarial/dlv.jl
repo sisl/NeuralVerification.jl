@@ -29,13 +29,11 @@ X. Huang, M. Kwiatkowska, S. Wang, and M. Wu,
 "Safety Verification of Deep Neural Networks,"
 in *International Conference on Computer Aided Verification*, 2017.
 """
-struct DLV
-    ϵ::Float64
+@with_kw struct DLV
+    ϵ::Float64 = 1.0
 end
 # TODO: create types for the two mapping cases, since they are now both unstable and boxed
 # also check out how to get performance out of closures, since that can be an issue in julia
-
-DLV() = DLV(1.0)
 
 function solve(solver::DLV, problem::Problem)
     # The list of etas

@@ -25,12 +25,10 @@ S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
 "Output Range Analysis for Deep Neural Networks,"
 *ArXiv Preprint ArXiv:1709.09130*, 2017.
 """
-struct Sherlock
-    optimizer::AbstractMathProgSolver
-    ϵ::Float64
+@with_kw struct Sherlock
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    ϵ::Float64                        = 0.1
 end
-
-Sherlock() = Sherlock(GLPKSolverMIP(), 0.1)
 
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, :max)
@@ -80,7 +78,7 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
     h = HalfSpace([index], index * bound)
     output_set = HPolytope([h])
     problem_new = Problem(problem.network, problem.input, output_set)
-    solver  = NSVerify(optimizer)
+    solver  = NSVerify(optimizer = optimizer)
     result  = solve(solver, problem_new)
     if result.status == :UNSAT
         x = result.counter_example

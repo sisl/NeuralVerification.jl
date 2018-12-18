@@ -25,14 +25,10 @@ W. Xiang, H.-D. Tran, and T. T. Johnson,
 "Output Reachable Set Estimation and Verification for Multi-Layer Neural Networks,"
 *ArXiv Preprint ArXiv:1708.03322*, 2017.
 """
-struct MaxSens
-    resolution::Float64
-    tight::Bool
+@with_kw struct MaxSens
+    resolution::Float64 = 1.0
+    tight::Bool         = false
 end
-
-MaxSens()           = MaxSens(1.0, false)
-MaxSens(x::Float64) = MaxSens(x, false)
-MaxSens(x::Bool)    = MaxSens(1.0, x)
 
 # This is the main function
 function solve(solver::MaxSens, problem::Problem)
