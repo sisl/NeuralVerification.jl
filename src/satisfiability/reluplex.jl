@@ -1,3 +1,27 @@
+"""
+    Reluplex(optimizer, eager::Bool)
+
+Reluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`CounterExampleResult`
+
+# Method
+Binary search of activations (0/1) and pruning by optimization.
+
+# Property
+Sound and complete.
+
+# Reference
+G. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer,
+"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
+*International Conference on Computer Aided Verification*, 2017.
+"""
 struct Reluplex end
 
 function solve(solver::Reluplex, problem::Problem)
@@ -123,13 +147,11 @@ function reluplex_step(solver::Reluplex,
     end
 end
 
-
-
 # for convenience:
 new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
 
 
-# doesn't do what it should! TODO open feature requestion issue on JuMP
+# doesn't do what it should! TODO open feature request issue on JuMP
 # function extract_bs_fs(m::Model)
 #     vars = collect(keys(m.varData))
 #     L1, L2 = map(length, vars)
@@ -139,24 +161,3 @@ new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
 #     end
 #     return vars
 # end
-
-"""
-    Reluplex(optimizer, eager::Bool)
-
-Reluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: halfspace
-
-# Return
-`CounterExampleResult`
-
-# Method
-Binary search of activations (0/1) and pruning by optimization.
-
-# Property
-Sound and complete.
-"""
-Reluplex

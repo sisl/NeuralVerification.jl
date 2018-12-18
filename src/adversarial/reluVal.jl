@@ -145,7 +145,7 @@ function get_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::M
             feature = i
         end
     end
-    return feature 
+    return feature
 end
 
 # Get upper bound in concretization
@@ -185,11 +185,14 @@ ReluVal combines symbolic reachability analysis with iterative interval refineme
 
 # Method
 Symbolic reachability analysis and iterative interval refinement (search).
-- `max_iter` default `10`. 
+- `max_iter` default `10`.
 - `tree_search` default `:DFS` - depth first search.
 
 # Property
 Sound but not complete.
+
+# Reference
+S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, "Formal Security Analysis of Neural Networks Using Symbolic Intervals," *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.
 """
 ReluVal
 

@@ -42,5 +42,11 @@ Default `optimizer` is `GLPKSolverMIP()`.
 
 # Property
 Sound and complete.
+
+# Reference
+
+V. Tjeng, K. Xiao, and R. Tedrake,
+"Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
+*ArXiv Preprint ArXiv:1711.07356*, 2017.
 """
 MIPVerify

@@ -1,3 +1,34 @@
+"""
+    DLV(ϵ::Float64)
+
+DLV searches layer by layer for counter examples in hidden layers.
+
+# Problem requirement
+1. Network: any depth, any activation (currently only support ReLU)
+2. Input: hyperrectangle
+3. Output: abstractpolytope
+
+# Return
+`CounterExampleResult`
+
+# Method
+The following operations are performed layer by layer. for layer i
+1. determine a reachable set from the reachable set in layer i-1
+2. determine a search tree in the reachable set by refining the search tree in layer i-1
+3. Verify
+    - True -> continue to layer i+1
+    - False -> counter example
+
+The argument `ϵ` is the resolution of the initial search tree. Default `1.0`.
+
+# Property
+Sound but not complete.
+
+# Reference
+X. Huang, M. Kwiatkowska, S. Wang, and M. Wu,
+"Safety Verification of Deep Neural Networks,"
+in *International Conference on Computer Aided Verification*, 2017.
+"""
 struct DLV
     ϵ::Float64
 end
@@ -105,31 +136,3 @@ function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
     end
     return (false, similar(y, 0))
 end
-
-"""
-    DLV(ϵ::Float64)
-
-DLV searches layer by layer for counter examples in hidden layers.
-
-# Problem requirement
-1. Network: any depth, any activation (currently only support ReLU)
-2. Input: hyperrectangle
-3. Output: abstractpolytope
-
-# Return
-`CounterExampleResult`
-
-# Method
-The following operations are performed layer by layer. for layer i
-1. determine a reachable set from the reachable set in layer i-1
-2. determine a search tree in the reachable set by refining the search tree in layer i-1
-3. Verify
-    - True -> continue to layer i+1
-    - False -> counter example
-
-The argument `ϵ` is the resolution of the initial search tree. Default `1.0`.
-
-# Property
-Sound but not complete.
-"""
-DLV

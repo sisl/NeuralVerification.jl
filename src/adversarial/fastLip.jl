@@ -95,5 +95,10 @@ Lipschitz estimation + FastLin. All arguments are for FastLin.
 
 # Property
 Sound but not complete.
+
+# Reference
+T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
+"Towards Fast Computation of Certified Robustness for ReLU Networks,"
+*ArXiv Preprint ArXiv:1804.09699*, 2018.
 """
 FastLip

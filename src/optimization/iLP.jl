@@ -1,3 +1,28 @@
+"""
+    ILP(optimizer, max_iter)
+
+ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Iteratively solve a linear encoding of the problem.
+Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
+
+# Property
+Sound but not complete.
+
+# Reference
+O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
+"Measuring Neural Net Robustness with Constraints,"
+in *Advances in Neural Information Processing Systems*, 2016.
+"""
 struct ILP{O<:AbstractMathProgSolver}
     optimizer::O
     max_iter::Int64
@@ -48,25 +73,3 @@ function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{B
     end
     return true
 end
-
-"""
-    ILP(optimizer, max_iter)
-
-ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: halfspace
-
-# Return
-`AdversarialResult`
-
-# Method
-Iteratively solve a linear encoding of the problem.
-Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
-
-# Property
-Sound but not complete.
-"""
-ILP

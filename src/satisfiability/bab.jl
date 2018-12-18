@@ -1,6 +1,31 @@
-# BaB
-# Input: Hyperrectangle
-# Output: Hyperrectangle
+"""
+    BaB(optimizer, ϵ::Float64)
+
+BaB uses branch and bound to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Branch and bound.
+For branch, it uses iterative interval refinement.
+For bound, it computes concrete bounds by sampling, approximated bound by optimization.
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the desired accurancy for termination, default `0.1`.
+
+# Property
+Sound and complete.
+
+# Reference
+R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
+"A Unified View of Piecewise Linear Neural Network Verification,"
+*ArXiv Preprint ArXiv:1711.00455*, 2017.
+"""
 struct BaB
     optimizer::AbstractMathProgSolver
     ϵ::Float64
@@ -97,28 +122,3 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     status == :Optimal && return getvalue(J)
     error("Could not find bound for dom: ", dom)
 end
-
-"""
-    BaB(optimizer, ϵ::Float64)
-
-BaB uses branch and bound to estimate the range of the output node.
-
-# Problem requirement
-1. Network: any depth, ReLU activation, single output
-2. Input: hyperrectangle
-3. Output: hyperrectangle (1d interval)
-
-# Return
-`CounterExampleResult` or `ReachabilityResult`
-
-# Method
-Branch and bound.
-For branch, it uses iterative interval refinement.
-For bound, it computes concrete bounds by sampling, approximated bound by optimization.
-- `optimizer` default `GLPKSolverMIP()`
-- `ϵ` is the desired accurancy for termination, default `0.1`.
-
-# Property
-Sound and complete.
-"""
-BaB

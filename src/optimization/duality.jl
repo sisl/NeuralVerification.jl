@@ -1,3 +1,28 @@
+"""
+    Duality(optimizer)
+
+Duality uses Lagrangian relaxation to compute over-approximated bounds for a network
+
+# Problem requirement
+1. Network: any depth, any activation function that is monotone
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Lagrangian relaxation.
+Default `optimizer` is `GLPKSolverMIP()`.
+
+# Property
+Sound but not complete.
+
+# Reference
+K. Dvijotham, R. Stanforth, S. Gowal, T. Mann, and P. Kohli,
+"A Dual Approach to Scalable Verification of Deep Networks,"
+*ArXiv Preprint ArXiv:1803.06567*, 2018.
+"""
 struct Duality{O<:AbstractMathProgSolver}
     optimizer::O
 end
@@ -78,25 +103,3 @@ function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{
     @objective(model, Min, J)
     return J
 end
-
-"""
-    Duality(optimizer)
-
-Duality uses Lagrangian relaxation to compute over-approximated bounds for a network
-
-# Problem requirement
-1. Network: any depth, any activation function that is monotone
-2. Input: hyperrectangle
-3. Output: halfspace
-
-# Return
-`BasicResult`
-
-# Method
-Lagrangian relaxation. 
-Default `optimizer` is `GLPKSolverMIP()`.
-
-# Property
-Sound but not complete.
-"""
-Duality
