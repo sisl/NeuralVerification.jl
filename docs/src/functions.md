@@ -1,14 +1,15 @@
-# Functions
+# Helper Functions
+[](TODO: can rename helper to whatever makes the most sense)
 
-```@contents
-	Pages = ["functions.md"]
-	Depth = 3
-```
+[](```@contents)
+[](    Pages = ["functions.md"])
+[](    Depth = 3)
+[](```)
 
-<!-- can rename helper to whatever makes the most sense -->
-<!-- Since most of these function are not exported they have to be called with NeuralVerification.
-    Should consider whether we want to document unexported functions online at all.-->
-### Helper functions
+[](TODO: Since most of these function are not exported they have to be called with NeuralVerification.)
+[](Should consider whether we want to document unexported functions online at all.)
+
+
 ```@docs
 NeuralVerification.read_nnet
 NeuralVerification.init_layer

@@ -22,6 +22,7 @@ Order = [:type, :function]
 ## Results
 
 ```@docs
+Result
 BasicResult
 CounterExampleResult
 AdversarialResult
