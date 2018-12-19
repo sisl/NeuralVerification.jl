@@ -1,94 +1,3 @@
-struct DLV
-    ϵ::Float64
-end
-
-DLV() = DLV(1.0)
-
-function solve(solver::DLV, problem::Problem)
-    # The list of etas
-    η = get_bounds(problem)
-    # The list of sample intervals
-    δ = Vector{Vector{Float64}}(undef,length(η))
-    δ[1] = fill(solver.ϵ, dim(η[1]))
-
-    output = compute_output(problem.network, problem.input.center)
-    for (i, layer) in enumerate(problem.network.layers)
-        δ[i+1] = get_manipulation(layer, δ[i], η[i+1])
-        if i == length(problem.network.layers)
-            var, y = bounded_variation(η[i+1], x->(x∈problem.output), δ[i+1])
-        else
-            forward_nnet = Network(problem.network.layers[i+1:end])
-            forward_map = x->(compute_output(forward_nnet, x)∈problem.output)
-            var, y = bounded_variation(η[i+1], forward_map, δ[i+1])
-        end
-        if var > 0
-            backward_nnet = Network(problem.network.layers[1:i])
-            status, x = backward_map(y, backward_nnet, η[1:i+1])
-            if status
-                return CounterExampleResult(:UNSAT, x)
-            end
-        end
-    end
-    return CounterExampleResult(:SAT)
-end
-
-# For simplicity, we just cut the sample interval into half
-function get_manipulation(layer::Layer, δ::Vector{Float64}, bound::Hyperrectangle)
-    δ_new = abs.(layer.weights) * δ ./ 2
-    return δ_new
-end
-
-# Try to find an input x that arrives at output y
-function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrectangle})
-    output = Hyperrectangle(y, zeros(size(y)))
-    input = first(bounds)
-    model = Model(solver = GLPKSolverMIP())
-    neurons = init_neurons(model, nnet)
-    deltas = init_deltas(model, nnet)
-    add_input_constraint(model, input, first(neurons))
-    add_output_constraint(model, output, last(neurons))
-    encode_mip_constraint(model, nnet, bounds, neurons, deltas)
-    J = max_disturbance(model, first(neurons) - input.center)
-    status = solve(model)
-    if status == :Optimal
-        return (true, getvalue(first(neurons)))
-    else
-        return (false, [])
-    end
-end
-
-# Here we implement single-path search (greedy)
-# For simplicity, we partition the reachable set by dimension
-function bounded_variation(bound, mapping, δ)
-    var = 0
-    y = bound.center
-    # step 1: check whether the boundary points have the same class
-    for i = 1:dim(bound)
-
-        y[i] += bound.radius[i]
-        !mapping(y) && return (1, y)
-
-        y[i] -= 2 * bound.radius[i]
-        !mapping(y) && return (1, y)
-        y[i] += bound.radius[i]
-    end
-  
-    # step 2: check the 0-variation in all dimension
-    for i = 1:dim(bound)
-        z = y
-        while maximum(z - high(bound)) < 0
-            z[i] += δ[i]
-            !mapping(z) && return (1, y)
-        end
-        z = y
-        while minimum(z - high(bound)) > 0
-            z[i] -= δ[i]
-            !mapping(z) && return (1, y)
-        end
-    end
-    return (0, [])
-end
-
 """
     DLV(ϵ::Float64)
 
@@ -114,5 +23,114 @@ The argument `ϵ` is the resolution of the initial search tree. Default `1.0`.
 
 # Property
 Sound but not complete.
+
+# Reference
+X. Huang, M. Kwiatkowska, S. Wang, and M. Wu,
+"Safety Verification of Deep Neural Networks,"
+in *International Conference on Computer Aided Verification*, 2017.
 """
-DLV
+@with_kw struct DLV
+    ϵ::Float64 = 1.0
+end
+# TODO: create types for the two mapping cases, since they are now both unstable and boxed
+# also check out how to get performance out of closures, since that can be an issue in julia
+
+function solve(solver::DLV, problem::Problem)
+    # The list of etas
+    η = get_bounds(problem)
+    # The list of sample intervals
+    δ = Vector{Vector{Float64}}(undef,length(η))
+    δ[1] = fill(solver.ϵ, dim(η[1]))
+
+    output = compute_output(problem.network, problem.input.center)
+    for (i, layer) in enumerate(problem.network.layers)
+        δ[i+1] = get_manipulation(layer, δ[i], η[i+1])
+        if i == length(problem.network.layers)
+            mapping = x -> (x ∈ problem.output)
+        else
+            forward_nnet = Network(problem.network.layers[i+1:end])
+            mapping = x -> (compute_output(forward_nnet, x) ∈ problem.output)
+        end
+        var, y = bounded_variation(η[i+1], mapping, δ[i+1])  # TODO rename "var"
+
+        if var
+            backward_nnet = Network(problem.network.layers[1:i])
+            status, x = backward_map(y, backward_nnet, η[1:i+1])
+            if status
+                return CounterExampleResult(:UNSAT, x)
+            end
+        end
+    end
+    return CounterExampleResult(:SAT)
+end
+
+# For simplicity, we just cut the sample interval into half
+function get_manipulation(layer::Layer, δ::Vector{Float64}, bound::Hyperrectangle)
+    δ_new = abs.(layer.weights) * δ ./ 2
+    return δ_new
+end
+
+# Try to find an input x that arrives at output y
+function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrectangle})
+    output = Hyperrectangle(y, zeros(size(y)))
+    input = first(bounds)
+    model = Model(solver = GLPKSolverMIP())
+    neurons = init_neurons(model, nnet)
+    deltas  = init_deltas(model, nnet)
+    add_set_constraint!(model, input, first(neurons))
+    add_set_constraint!(model, output, last(neurons))
+    encode_mip_constraint!(model, nnet, bounds, neurons, deltas)
+    J = max_disturbance!(model, first(neurons) - input.center)
+    status = solve(model)
+    if status == :Optimal
+        return (true, getvalue(first(neurons)))
+    else
+        return (false, [])
+    end
+end
+
+function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+    # step 1: check whether the boundary points have the same class
+    var, y = uniform_boundary_class(bound, mapping)
+    var && return (var, y)
+    # step 2: check the 0-variation in all dimension
+    var, y = zero_variation(bound, mapping, δ)
+    var && return (var, y)
+
+    return (false, similar(y, 0))
+end
+
+function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
+    y = bound.center
+    for i = 1:dim(bound)
+
+        y[i] += bound.radius[i]
+        mapping(y) || return (true, y)
+
+        y[i] -= 2 * bound.radius[i]
+        mapping(y) || return (true, y)
+
+        y[i] += bound.radius[i]
+    end
+    return (false, similar(y, 0))
+end
+
+function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+    y = bound.center
+    for i = 1:dim(bound)
+
+        z = deepcopy(y)
+        while maximum(z - high(bound)) < 0
+            z[i] += δ[i]
+            mapping(z) || return (true, z)
+        end
+
+        z = deepcopy(y)
+        while minimum(z - high(bound)) > 0
+            z[i] -= δ[i]
+            mapping(z) || return (true, z)
+        end
+
+    end
+    return (false, similar(y, 0))
+end

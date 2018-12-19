@@ -1,3 +1,27 @@
+"""
+    Ai2
+
+Ai2 performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.
+
+# Problem requirement
+1. Network: any depth, ReLU activation (more activations to be supported in the future)
+2. Input: HPolytope
+3. Output: HPolytope
+
+# Return
+`ReachabilityResult`
+
+# Method
+Reachability analysis using split and join.
+
+# Property
+Sound but not complete.
+
+# Reference
+T. Gehr, M. Mirman, D. Drashsler-Cohen, P. Tsankov, S. Chaudhuri, and M. Vechev,
+"Ai2: Safety and Robustness Certification of Neural Networks with Abstract Interpretation,"
+in *2018 IEEE Symposium on Security and Privacy (SP)*, 2018.
+"""
 struct Ai2 end
 
 function solve(solver::Ai2, problem::Problem)
@@ -14,28 +38,29 @@ function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
 end
 
 function transform(f::ReLU, P::AbstractPolytope)
-    hull::VPolytope
+    polys = VPolytope[]
     # check if 1:2^n relus is tighter range than relu(relu(...to the n))
     for i in dim(P)
         pos = meet(P, i, true)
         neg = meet(P, i, false)
-        Vneg = VPolytope([f(v) for v in vertices_list(neg)]) #dimensional relu
+        relu_neg = VPolytope([f(v) for v in vertices_list(neg)]) #dimensional relu
 
-        hull = convex_hull(hull, pos)
-        hull = convex_hull(hull, Vneg)
+        push!(polys, tovrep(pos))
+        push!(polys, relu_neg)
+    end
+
+    hull = polys[1]
+    for P in polys[2:end]
+        hull = convex_hull(hull, P)
     end
 
     return hull
 end
 
+# constraints are added in H-representation
 meet(V::VPolytope, pos::Bool) = meet(tohrep(V), pos)
-
-function meet(H::HPolytope, pos::Bool)
-    HH = deepcopy(H)
-    meet!(HH, pos)
-    return HH
-end
-function meet!(H::HPolytope{T}, pos::Bool) where T
+function meet(HP::HPolytope{T}, pos::Bool) where T
+    H = copy(HP)
     # constraints are given by ax <= b so (-) is required for a positive constraint
     if (pos)  d = Matrix(-1.0I, dim(H), dim(H))
     else      d = Matrix(1.0I, dim(H), dim(H))
@@ -77,24 +102,3 @@ The Case type is probably not necessary for correct dispatch
 # end
 
 # constraint(case::Case, poly::AbstractPolytope) = constraint(typeof(case), dim((poly), case.i)
-
-"""
-    Ai2
-
-Ai2 performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.
-
-# Problem requirement
-1. Network: any depth, ReLU activation (more activations to be supported in the future)
-2. Input: HPolytope
-3. Output: HPolytope
-
-# Return
-`ReachabilityResult`
-
-# Method
-Reachability analysis using split and join.
-
-# Property
-Sound but not complete.
-"""
-Ai2

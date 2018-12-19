@@ -13,16 +13,16 @@ Problem
 
 ## Network
 
-```@docs
-Network
-Layer
-Node
-n_node
+```@autodocs
+Modules = [NeuralVerification]
+Pages = ["utils/network.jl"]
+Order = [:type, :function]
 ```
 
 ## Results
 
 ```@docs
+Result
 BasicResult
 CounterExampleResult
 AdversarialResult

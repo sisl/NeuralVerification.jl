@@ -1,9 +1,32 @@
-struct ILP{O<:AbstractMathProgSolver}
-    optimizer::O
-    max_iter::Int64
-end
+"""
+    ILP(optimizer, max_iter)
 
-ILP() = ILP(GLPKSolverMIP(), 10)
+ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Iteratively solve a linear encoding of the problem.
+Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
+
+# Property
+Sound but not complete.
+
+# Reference
+O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
+"Measuring Neural Net Robustness with Constraints,"
+in *Advances in Neural Information Processing Systems*, 2016.
+"""
+@with_kw struct ILP{O<:AbstractMathProgSolver}
+    optimizer::O    = GLPKSolverMIP()
+    max_iter::Int64 = 10
+end
 
 function solve(solver::ILP, problem::Problem)
     x = problem.input.center
@@ -13,9 +36,9 @@ function solve(solver::ILP, problem::Problem)
         act_pattern = get_activation(problem.network, x)
 
         neurons = init_neurons(model, problem.network)
-        add_complementary_output_constraint(model, problem.output, last(neurons))
-        encode_relaxed_lp(model, problem.network, act_pattern, neurons)
-        J = max_disturbance(model, first(neurons) - problem.input.center)
+        add_complementary_output_constraint!(model, problem.output, last(neurons))
+        encode_relaxed_lp!(model, problem.network, act_pattern, neurons)
+        J = max_disturbance!(model, first(neurons) - problem.input.center)
 
         status = solve(model)
         if status != :Optimal
@@ -48,25 +71,3 @@ function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{B
     end
     return true
 end
-
-"""
-    ILP(optimizer, max_iter)
-
-ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: halfspace
-
-# Return
-`AdversarialResult`
-
-# Method
-Iteratively solve a linear encoding of the problem. 
-Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
-
-# Property
-Sound but not complete.
-"""
-ILP

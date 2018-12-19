@@ -1,9 +1,34 @@
-struct Sherlock
-    optimizer::AbstractMathProgSolver
-    ϵ::Float64
-end
+"""
+    Sherlock(optimizer, ϵ::Float64)
 
-Sherlock() = Sherlock(GLPKSolverMIP(), 0.1)
+Sherlock combines local and global search to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hpolytope and hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Local search: solve a linear program to find local optima on a line segment of the piece-wise linear network.
+Global search: solve a feasibilty problem using MILP encoding (default calling NSVerify).
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the margin for global search, default `0.1`.
+
+# Property
+Sound but not complete.
+
+# Reference
+S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
+"Output Range Analysis for Deep Neural Networks,"
+*ArXiv Preprint ArXiv:1709.09130*, 2017.
+"""
+@with_kw struct Sherlock
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    ϵ::Float64                        = 0.1
+end
 
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, :max)
@@ -37,8 +62,8 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractM
     gradient = get_gradient(nnet, x)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
-    add_input_constraint(model, problem.input, first(neurons))
-    encode_lp(model, nnet, act_pattern, neurons)
+    add_set_constraint!(model, problem.input, first(neurons))
+    encode_lp!(model, nnet, act_pattern, neurons)
     J = gradient * neurons[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * J[1])
@@ -53,7 +78,7 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
     h = HalfSpace([index], index * bound)
     output_set = HPolytope([h])
     problem_new = Problem(problem.network, problem.input, output_set)
-    solver  = NSVerify(optimizer)
+    solver  = NSVerify(optimizer = optimizer)
     result  = solve(solver, problem_new)
     if result.status == :UNSAT
         x = result.counter_example
@@ -63,27 +88,3 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
         return ([], 0.0, false)
     end
 end
-
-"""
-    Sherlock(optimizer, ϵ::Float64)
-
-Sherlock combines local and global search to estimate the range of the output node.
-
-# Problem requirement
-1. Network: any depth, ReLU activation, single output
-2. Input: hpolytope and hyperrectangle
-3. Output: hyperrectangle (1d interval)
-
-# Return
-`CounterExampleResult` or `ReachabilityResult`
-
-# Method
-Local search: solve a linear program to find local optima on a line segment of the piece-wise linear network. 
-Global search: solve a feasibilty problem using MILP encoding (default calling NSVerify).
-- `optimizer` default `GLPKSolverMIP()`
-- `ϵ` is the margin for global search, default `0.1`.
-
-# Property
-Sound but not complete.
-"""
-Sherlock
