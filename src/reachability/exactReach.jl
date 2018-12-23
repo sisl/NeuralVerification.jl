@@ -23,10 +23,10 @@ function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
     output = Vector{HPolytope}(undef, 0)
     C, d = tosimplehrep(input)
-    dh = vcat(d, zeros(n))
+    dh = [d; zeros(n)]
     for h in 0:2^n-1
         P = getP(h, n)
-        Ch = vcat(C, I - 2P)
+        Ch = [C; I - 2P]
         input_h = HPolytope(Ch, dh)
         if !isempty(input_h)
             push!(output, linear_transformation(Matrix(P), input_h))
