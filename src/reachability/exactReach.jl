@@ -9,50 +9,27 @@ function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
         input[i] = linear_transformation(layer, input[i])
-        push!(output, forward_positive(layer.activation, input[i]))
-        push!(output, forward_negative(layer.activation, input[i]))
-        append!(output, forward_undetermined(layer.activation, input[i]))
+        append!(output, forward_partition(layer.activation, input[i]))
     end
     return output
 end
 
 function forward_layer(solver::ExactReach, layer::Layer, input::HPolytope)
     input = linear_transformation(layer, input)
-    output = Vector{HPolytope}(undef, 0)
-    push!(output, forward_positive(layer.activation, input))
-    push!(output, forward_negative(layer.activation, input))
-    append!(output, forward_undetermined(layer.activation, input))
-    return output
+    return forward_partition(layer.activation, input)
 end
 
-function forward_positive(act::ReLU, input::HPolytope)
-    C, d = tosimplehrep(input)
-    n = dim(input)
-    C = vcat(C, -Matrix(1.0I, n, n))
-    d = vcat(d, zeros(n))
-    return HPolytope(C, d)
-end
-
-function forward_negative(act::ReLU, input::HPolytope)
-    n = dim(input)
-    eye = Matrix(1.0I, n, n)
-    if !HPolytope_intersection_empty(input, HPolytope(eye, zeros(n)))
-        return HPolytope(vcat(eye, -eye), zeros(2*n))
-    end
-end
-
-function forward_undetermined(act::ReLU, input::HPolytope)
+function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
     output = Vector{HPolytope}(undef, 0)
     C, d = tosimplehrep(input)
-    eye = Matrix(1.0I, n, n)
-    for h in 1:2^n
-        p = getP(h, n)
-        Ch = vcat(C, eye - 2p)
-        dh = vcat(d, zeros(n))
-        set = HPolytope(Ch, dh)
-        if !isempty(set)
-            push!(output, linear_transformation(Matrix(p), set))
+    dh = vcat(d, zeros(n))
+    for h in 0:2^n-1
+        P = getP(h, n)
+        Ch = vcat(C, I - 2P)
+        input_h = HPolytope(Ch, dh)
+        if !isempty(input_h)
+            push!(output, linear_transformation(Matrix(P), input_h))
         end
     end
     return output
@@ -65,20 +42,6 @@ function getP(h::Int64, n::Int64)
         vec[i] = ifelse(str[i] == '1', 1, 0)
     end
     return Diagonal(vec)
-end
-
-# This function is called in forward_negative
-# NOTE: renamed function to avoid type piracy with LazySets. TODO: submit this function to them.
-function HPolytope_intersection_empty(set_a::HPolytope, set_b::HPolytope)
-    aVrep = tovrep(set_a)
-    for v in vertices_list(aVrep)
-        v in set_b || return false
-    end
-    bVrep = tovrep(set_b)
-    for v in vertices_list(bVrep)
-        v in set_a || return false
-    end
-    return true
 end
 
 """
