@@ -1,9 +1,34 @@
-struct Planet
+"""
+    Planet(optimizer, eager::Bool)
+
+Planet integrates a SAT solver (`PicoSAT.jl`) to find an activation pattern that maps a feasible input to an infeasible output.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hyperrectangle or hpolytope
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Binary search of activations (0/1) and pruning by optimization. Our implementation is non eager.
+- `optimizer` default `GLPKSolverMIP()`;
+- `eager` default `false`;
+
+# Property
+Sound and complete.
+
+# Reference
+R. Ehlers, "Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,"
+in *International Symposium on Automated Technology for Verification and Analysis*, 2017.
+"""
+@with_kw struct Planet
     optimizer::AbstractMathProgSolver
-    eager::Bool # Default false
+    eager::Bool                        = false
 end
 
-Planet(x::AbstractMathProgSolver) = Planet(x, false)
+Planet(x::AbstractMathProgSolver) = Planet(optimizer = x)
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
@@ -41,11 +66,11 @@ end
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
-    add_input_constraint(model, problem.input, first(neurons))
+    add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_Δ_lp(model, problem.network, bounds, neurons)
-    slack = encode_slack_lp(model, problem.network, δ, neurons)
-    J = min_sum_all(model, slack)
+    encode_Δ_lp!(model, problem.network, bounds, neurons)
+    slack = encode_slack_lp!(model, problem.network, δ, neurons)
+    J = min_sum_all!(model, slack)
     conflict = Vector{Int64}()
     while true
         status = solve(model)
@@ -78,16 +103,16 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     bounds = get_bounds(problem)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
-    add_input_constraint(model, problem.input, first(neurons))
+    add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
-    encode_Δ_lp(model, problem.network, bounds, neurons)
+    encode_Δ_lp!(model, problem.network, bounds, neurons)
 
-    J = min_sum_all(model, neurons)
+    J = min_sum_all!(model, neurons)
     status = solve(model)
     status == :Optimal || return (:Infeasible, [])
     lower = getvalue(neurons)
 
-    J = max_sum_all(model, neurons)
+    J = max_sum_all!(model, neurons)
     status = solve(model)
     status == :Optimal || return (:Infeasible, [])
     upper = getvalue(neurons)
@@ -129,29 +154,6 @@ function get_node_id(nnet::Network, n::Int64)
     end
     return (i, j)
 end
-
-"""
-    Planet(optimizer, eager::Bool)
-
-Planet integrates a SAT solver (`PicoSAT.jl`) to find an activation pattern that maps a feasible input to an infeasible output.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hyperrectangle or hpolytope
-3. Output: halfspace
-
-# Return
-`BasicResult`
-
-# Method
-Binary search of activations (0/1) and pruning by optimization. Our implementation is non eager.
-- `optimizer` default `GLPKSolverMIP()`;
-- `eager` default `false`;
-
-# Property
-Sound and complete.
-"""
-Planet
 
 
 # function init_ψ(p_list::Vector{Int64})
@@ -228,9 +230,9 @@ Planet
 #     model = JuMP.Model(solver = optimizer)
 
 #     neurons = init_neurons(solver, model, problem.network)
-#     add_input_constraint(model, problem.input, first(neurons))
+#     add_set_constraint!(model, problem.input, first(neurons))
 #     add_complementary_output_constraint(model, problem.output, last(neurons))
-#     encode_Δ_lp(model, problem.network, bounds, neurons)
+#     encode_Δ_lp!(model, problem.network, bounds, neurons)
 #     encode_partial_assignment(model, problem.network, p, neurons, false)
 
 #     J = 0.0

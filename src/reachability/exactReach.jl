@@ -1,3 +1,27 @@
+"""
+    ExactReach
+
+ExactReach performs exact reachability analysis to compute the output reachable set for a network.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: HPolytope
+3. Output: HPolytope
+
+# Return
+`ReachabilityResult`
+
+# Method
+Exact reachability analysis.
+
+# Property
+Sound and complete.
+
+# Reference
+W. Xiang, H.-D. Tran, and T. T. Johnson,
+"Reachable Set Computation and Safety Verification for Neural Networks with ReLU Activations,"
+*ArXiv Preprint ArXiv:1712.08163*, 2017.
+"""
 struct ExactReach end
 
 function solve(solver::ExactReach, problem::Problem)
@@ -43,24 +67,3 @@ function getP(h::Int64, n::Int64)
     end
     return Diagonal(vec)
 end
-
-"""
-    ExactReach
-
-ExactReach performs exact reachability analysis to compute the output reachable set for a network.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: HPolytope
-3. Output: HPolytope
-
-# Return
-`ReachabilityResult`
-
-# Method
-Exact reachability analysis.
-
-# Property
-Sound and complete.
-"""
-ExactReach

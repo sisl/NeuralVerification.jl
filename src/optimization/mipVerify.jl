@@ -1,28 +1,3 @@
-struct MIPVerify{O<:AbstractMathProgSolver}
-    optimizer::O
-end
-
-MIPVerify() = MIPVerify(GLPKSolverMIP())
-
-function solve(solver::MIPVerify, problem::Problem)
-    model = JuMP.Model(solver = solver.optimizer)
-    neurons = init_neurons(model, problem.network)
-    deltas = init_deltas(model, problem.network)
-    add_complementary_output_constraint(model, problem.output, last(neurons))
-    bounds = get_bounds(problem)
-    encode_mip_constraint(model, problem.network, bounds, neurons, deltas)
-    J = max_disturbance(model, first(neurons) - problem.input.center)
-    status = solve(model)
-    if status == :Infeasible
-        return AdversarialResult(:SAT)
-    end
-    if getvalue(J) >= minimum(problem.input.radius)
-        return AdversarialResult(:SAT)
-    else
-        return AdversarialResult(:UNSAT, getvalue(J))
-    end
-end
-
 """
     MIPVerify(optimizer)
 
@@ -42,5 +17,32 @@ Default `optimizer` is `GLPKSolverMIP()`.
 
 # Property
 Sound and complete.
+
+# Reference
+
+V. Tjeng, K. Xiao, and R. Tedrake,
+"Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
+*ArXiv Preprint ArXiv:1711.07356*, 2017.
 """
-MIPVerify
+@with_kw struct MIPVerify{O<:AbstractMathProgSolver}
+    optimizer::O
+end
+
+function solve(solver::MIPVerify, problem::Problem)
+    model = JuMP.Model(solver = solver.optimizer)
+    neurons = init_neurons(model, problem.network)
+    deltas = init_deltas(model, problem.network)
+    add_complementary_output_constraint!(model, problem.output, last(neurons))
+    bounds = get_bounds(problem)
+    encode_mip_constraint!(model, problem.network, bounds, neurons, deltas)
+    J = max_disturbance!(model, first(neurons) - problem.input.center)
+    status = solve(model)
+    if status == :Infeasible
+        return AdversarialResult(:SAT)
+    end
+    if getvalue(J) >= minimum(problem.input.radius)
+        return AdversarialResult(:SAT)
+    else
+        return AdversarialResult(:UNSAT, getvalue(J))
+    end
+end

@@ -1,3 +1,26 @@
+"""
+    ConvDual
+
+ConvDual uses convex relaxation to compute over-approximated bounds for a network
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Convex relaxation with duality.
+
+# Property
+Sound but not complete.
+
+# Reference
+E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via the Convex Outer Adversarial Polytope,"
+*ArXiv Preprint ArXiv:1711.00851*, 2017.
+"""
 struct ConvDual end
 
 function solve(solver::ConvDual, problem::Problem)
@@ -141,24 +164,3 @@ function relaxed_ReLU(l::Float64, u::Float64)
     l >= 0.0 && return 1.0
     return u / (u - l)
 end
-
-"""
-    ConvDual
-
-ConvDual uses convex relaxation to compute over-approximated bounds for a network
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hypercube
-3. Output: halfspace
-
-# Return
-`BasicResult`
-
-# Method
-Convex relaxation with duality.
-
-# Property
-Sound but not complete.
-"""
-ConvDual

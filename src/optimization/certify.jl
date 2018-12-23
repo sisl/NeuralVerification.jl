@@ -1,8 +1,34 @@
-struct Certify{O<:AbstractMathProgSolver}
-    optimizer::O
+"""
+    Certify(optimizer)
+
+Certify uses semidefinite programming to compute over-approximated certificates for a neural network with only one hidden layer.
+
+# Problem requirement
+1. Network: one hidden layer, any activation that is differentiable almost everywhere whose derivative is bound by 0 and 1
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`BasicResult`
+
+# Method
+Semindefinite programming.
+Default `optimizer` is `SCSSolver()`.
+
+# Property
+Sound but not complete.
+
+# Reference
+A. Raghunathan, J. Steinhardt, and P. Liang,
+"Certified Defenses against Adversarial Examples,"
+*ArXiv Preprint ArXiv:1801.09344*, 2018.
+"""
+@with_kw struct Certify{O<:AbstractMathProgSolver}
+    optimizer::O  = SCSSolver()
 end
 
-Certify() =  Certify(SCSSolver())
+# can pass keyword args to optimizer
+# Certify(optimizer::DataType = SCSSolver; kwargs...) =  Certify(optimizer(kwargs...))
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
@@ -50,25 +76,4 @@ function get_M(v::Vector{Float64}, W::Matrix{Float64})
     return M
 end
 
-"""
-    Certify(optimizer)
-
-Certify uses semidefinite programming to compute over-approximated certificates for a neural network with only one hidden layer. 
-
-# Problem requirement
-1. Network: one hidden layer, any activation that is differentiable almost everywhere whose derivative is bound by 0 and 1
-2. Input: hypercube
-3. Output: halfspace
-
-# Return
-`BasicResult`
-
-# Method
-Semindefinite programming. 
-Default `optimizer` is `SCSSolver()`.
-
-# Property
-Sound but not complete.
-"""
-Certify
 

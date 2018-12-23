@@ -6,6 +6,6 @@ struct Max <: ActivationFunction end
 struct Id <: ActivationFunction end
 
 (f::GeneralAct)(x) = f(x)
-(f::ReLU)(x) = max.(x,0)
-(f::Max)(x) = max(maximum(x),0)
+(f::ReLU)(x) = max.(x, zero(eltype(x)))  # these type stable definitions probably don't need to go in the paper as-is
+(f::Max)(x) = max(maximum(x), zero(eltype(x)))
 (f::Id)(x) = x

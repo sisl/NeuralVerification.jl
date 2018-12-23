@@ -1,12 +1,37 @@
 # Input constraint is Hyperrectangle (uniform radius)
 # Output constriant is HPolytope with one constraint
-struct FastLin
-    maxIter::Int64
-    ϵ0::Float64
-    accuracy::Float64
-end
+"""
+    FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)
 
-FastLin() = FastLin(10, 100.0, 0.1)
+FastLin combines reachability analysis with binary search to find maximum allowable disturbance.
+
+# Problem requirement
+1. Network: any depth, ReLU activation
+2. Input: hypercube
+3. Output: halfspace
+
+# Return
+`AdversarialResult`
+
+# Method
+Reachability analysis by network approximation and binary search.
+- `max_iter` is the maximum iteration in search, default `10`;
+- `ϵ0` is the initial search radius, default `100.0`;
+- `accuracy` is the stopping criteria, default `0.1`;
+
+# Property
+Sound but not complete.
+
+# Reference
+T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
+"Towards Fast Computation of Certified Robustness for ReLU Networks,"
+*ArXiv Preprint ArXiv:1804.09699*, 2018.
+"""
+@with_kw struct FastLin
+    maxIter::Int64    = 10
+    ϵ0::Float64       = 100.0
+    accuracy::Float64 = 0.1
+end
 
 function solve(solver::FastLin, problem::Problem)
     ϵ = fill(solver.ϵ0, solver.maxIter)
@@ -19,7 +44,7 @@ function solve(solver::FastLin, problem::Problem)
         if issubset(output_bounds, problem.output)
             ϵ_lower = ϵ[i]
             ϵ[i+1] = (ϵ[i] + ϵ_upper) / 2
-            abs(ϵ[i] - ϵ[i+1]) > solver.accuracy || break 
+            abs(ϵ[i] - ϵ[i+1]) > solver.accuracy || break
         else
             ϵ_upper = ϵ[i]
             ϵ[i+1] = (ϵ[i] + ϵ_lower) / 2
@@ -32,39 +57,12 @@ function solve(solver::FastLin, problem::Problem)
     end
 end
 
-function forward_network(solver::FastLin, nnet::Network, input::Hyperrectangle)
-    L, U = get_bounds(nnet, input.center, input.radius[1])
-    output = Hyperrectangle(low = last(L), high = last(U))
-    return output
-end
-
-
-# function forward_network(solver::FastLin, nnet::Network, input::Hyperrectangle)
-
-#     len = length(nnet.layers)
-
-#     A = Vector{Matrix{Float64}}(len)
-#     act_pattern = Vector{Float64}(len)
-#     l = Vector{Vector{Float64}}(len)
-#     u = Vector{Vector{Float64}}(len)
-
-#     l[1], u[1] = CAN_BE_ANYTHING
-#     for m in 2:len # NOTE Paper is probably using 0-based indexing
-#         act_pattern[m] = relaxed_ReLU.(l[m-1], u[m-1])
-#         update_A!(A, m, l[m-1], u[m-1])
-#         T, H = get_TH(T, H, m, l, A, layers, act_pattern)
-#         l[m], u[m] = get_bounds(layers, input, ϵ, m, A, T, H)
-#     end
-
-#     return Hyperrectangle(lower = last(l), upper = last(u))
-# end
-
 function forward_network(ϵ::Float64, nnet::Network, input::Hyperrectangle)
 
     len = length(nnet.layers)
 
-    A = Vector{Matrix{Float64}}()
     act_pattern = Vector{Float64}()
+    A = Vector{Matrix{Float64}}()
     l = Vector{Vector{Float64}}()
     u = Vector{Vector{Float64}}()
 
@@ -80,7 +78,7 @@ function forward_network(ϵ::Float64, nnet::Network, input::Hyperrectangle)
         push!(u, new_u)
     end
 
-    return Hyperrectangle(lower = last(l), upper = last(u))
+    return Hyperrectangle(low = last(l), high = last(u))
 end
 
 #=
@@ -159,33 +157,9 @@ end
 #     end
 # end
 function update_A!(A, l, u)
-    D = diagm(relaxed_ReLU.(l, u))  # diagonal matrix according to Eq. 5
+    D = Diagonal(relaxed_ReLU.(l, u))  # diagonal matrix according to Eq. 5
     WD = layers[m].weights * D
 
     map!(a->WD*a, A, A)
     push!(A, WD)  # consider pushing I and mapping WD onto it along with everything else
 end
-
-"""
-    FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)
-
-FastLin combines reachability analysis with binary search to find maximum allowable disturbance.
-
-# Problem requirement
-1. Network: any depth, ReLU activation
-2. Input: hypercube
-3. Output: halfspace
-
-# Return
-`AdversarialResult`
-
-# Method
-Reachability analysis by network approximation and binary search.
-- `max_iter` is the maximum iteration in search, default `10`;
-- `ϵ0` is the initial search radius, default `100.0`;
-- `accuracy` is the stopping criteria, default `0.1`;
-
-# Property
-Sound but not complete.
-"""
-FastLin
