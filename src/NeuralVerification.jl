@@ -16,10 +16,11 @@ using CDDLib
 using LinearAlgebra
 using SparseArrays
 using Parameters
+using Interpolations # only for PiecewiseLinear
 
 import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 
-abstract type Solver end # no longer needed
+# abstract type Solver end # no longer needed
 
 # NOTE: the first 3 can probably be unified in one file.
 include("utils/activation.jl")
