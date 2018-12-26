@@ -2,7 +2,7 @@ module NeuralVerification
 
 __precompile__(false)
 
-using Reexport
+using Reexport # once development slows down, remove this requirement in favor of only exporting what we need from each package
 # for Feasibility
 @reexport using JuMP
 @reexport using MathProgBase.SolverInterface
@@ -11,9 +11,11 @@ using Reexport
 @reexport using SCS     # needed for Certify and Duality
 # for Reachability
 @reexport using LazySets
-@reexport using Polyhedra
-@reexport using CDDLib
-@reexport using LinearAlgebra
+using Polyhedra
+using CDDLib
+using LinearAlgebra
+using SparseArrays
+using Parameters
 
 import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 
@@ -39,7 +41,7 @@ export
     check_inclusion
 
 solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
-export solve
+# export solve
 
 # TODO: consider creating sub-modules for each of these.
 include("optimization/utils/constraints.jl")

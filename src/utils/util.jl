@@ -63,7 +63,7 @@ end
 """
     compute_output(nnet::Network, input::Vector{Float64})
 
-Compute output of an nnet for a given input vector
+Propagate a given vector through a nnet and compute the output.
 """
 function compute_output(nnet::Network, input::Vector{Float64})
     curr_value = input
@@ -75,30 +75,30 @@ function compute_output(nnet::Network, input::Vector{Float64})
     return curr_value # would another name be better?
 end
 
-"""
-    compute_output(nnet::Network, input::Vector{Float64}, i, j)
+# """
+#     compute_output(nnet::Network, input::Vector{Float64}, i, j)
 
-Returns ouput of neuron j in layer i for a given input. 
-NOTE: The was necessary for the sampling methods, but now might not be.
-"""
-function compute_output(nnet::Network, input::Vector{Float64}, i, j)
-    layers = nnet.layers
-    @assert 0 <= i <= length(layers)         "number of layers in nnet is $(length(layers)). Got $i for number of layers to compute"
-    @assert 0 <= j <= length(layers[i].bias) "number of neurons in layer is $(length(layers[i].bias)). Got $j for neuron index"
-    curr_value = input
-    for m = 1:i
-        curr_value = (layers[m].weights * curr_value) + layers[m].bias
-        curr_value = layers[m].activation(curr_value)
-    end
-    return curr_value[j]
-end
+# Returns ouput of neuron j in layer i for a given input.
+# NOTE: The was necessary for the sampling methods, but now might not be.
+# """
+# function compute_output(nnet::Network, input::Vector{Float64}, i, j)
+#     layers = nnet.layers
+#     @assert 0 <= i <= length(layers)         "number of layers in nnet is $(length(layers)). Got $i for number of layers to compute"
+#     @assert 0 <= j <= length(layers[i].bias) "number of neurons in layer is $(length(layers[i].bias)). Got $j for neuron index"
+#     curr_value = input
+#     for m = 1:i
+#         curr_value = (layers[m].weights * curr_value) + layers[m].bias
+#         curr_value = layers[m].activation(curr_value)
+#     end
+#     return curr_value[j]
+# end
 
 """
     get_activation(nnet::Network, x::Vector{Float64})
 
 Given a network, find the activation pattern of all neurons at a given point x.
 Assume ReLU.
-return Vector{Vector{Bool}}.
+return Vector{Vector{Bool}}. Each Vector{Bool} refers to the activation pattern of a particular layer.
 """
 function get_activation(nnet::Network, x::Vector{Float64})
     act_pattern = Vector{Vector{Bool}}(undef, length(nnet.layers))
@@ -118,7 +118,7 @@ Given a network, find the activation pattern of all neurons for a given input se
 Assume ReLU.
 return Vector{Vector{Int64}}.
 - 1: activated
-- 0: undertermined
+- 0: undetermined
 - -1: not activated
 """
 function get_activation(nnet::Network, input::Hyperrectangle)
@@ -133,7 +133,7 @@ Given a network, find the activation pattern of all neurons given the node-wise 
 Assume ReLU.
 return Vector{Vector{Int64}}.
 - 1: activated
-- 0: undertermined
+- 0: undetermined
 - -1: not activated
 """
 function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
@@ -155,11 +155,11 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 end
 
 """
-    get_gradient(nnet::Network, x::Vector{N}) where N
+    get_gradient(nnet::Network, x::Vector)
 
 Given a network, find the gradient at the input x
 """
-function get_gradient(nnet::Network, x::Vector{N}) where N
+function get_gradient(nnet::Network, x::Vector)
     z = x
     gradient = Matrix(1.0I, length(x), length(x))
     for (i, layer) in enumerate(nnet.layers)
@@ -177,7 +177,7 @@ end
 Computing the gradient of an activation function at point z_hat.
 Currently only support ReLU.
 """
-function act_gradient(act::ReLU, z_hat::Vector{N}) where N
+function act_gradient(act::ReLU, z_hat::Vector)
     return z_hat .>= 0.0
 end
 
@@ -187,7 +187,7 @@ end
 Get lower and upper bounds on network gradient for a given input set.
 Return:
 - `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds 
+- `UG::Vector{Matrix}`: upper bounds
 """
 function get_gradient(nnet::Network, input::AbstractPolytope)
     LΛ, UΛ = act_gradient_bounds(nnet, input)
@@ -201,11 +201,11 @@ Computing the bounds on the gradient of all activation functions given an input 
 Currently only support ReLU.
 Return:
 - `LΛ::Vector{Matrix}`: lower bounds
-- `UΛ::Vector{Matrix}`: upper bounds 
+- `UΛ::Vector{Matrix}`: upper bounds
 """
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     bounds = get_bounds(nnet, input)
-    LΛ = Vector{Matrix}(undef, 0) 
+    LΛ = Vector{Matrix}(undef, 0)
     UΛ = Vector{Matrix}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
         before_act_bound = linear_transformation(layer, bounds[i])
@@ -228,7 +228,7 @@ Inputs:
 - `UΛ::Vector{Matrix}`: upper bounds on activation gradients
 Return:
 - `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds 
+- `UG::Vector{Matrix}`: upper bounds
 """
 function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
     n_input = size(nnet.layers[1].weights, 2)
@@ -251,7 +251,7 @@ Inputs:
 - `UΛ::Vector{Vector{N}}`: upper bounds on activation gradients
 Return:
 - `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds 
+- `UG::Vector{Matrix}`: upper bounds
 """
 function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
     n_input = size(nnet.layers[1].weights, 2)
@@ -306,7 +306,7 @@ end
 
 This function calls maxSens to compute node-wise bounds given a input set.
 
-Return: 
+Return:
 - `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
@@ -324,7 +324,7 @@ end
 
 This function calls maxSens to compute node-wise bounds given a problem.
 
-Return: 
+Return:
 - `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
 """
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
@@ -338,7 +338,7 @@ Inputs:
 - `nnet::Network`: network
 - `input::Hyperrectangle`: input set
 - `act::Bool`: `true` for after activation bound; `false` for before activation bound
-Return: 
+Return:
 - `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool)
@@ -357,7 +357,7 @@ Transformation of a set considering linear mappings in a layer.
 Inputs:
 - `layer::Layer`: a layer in a network
 - `input::Hyperrectangle`: input set
-Return: 
+Return:
 - `output::Hyperrectangle`: set after transformation.
 """
 function linear_transformation(layer::Layer, input::Hyperrectangle)
@@ -368,6 +368,43 @@ function linear_transformation(layer::Layer, input::Hyperrectangle)
 end
 
 """
+    linear_transformation(layer::Layer, input::HPolytope)
+
+Transformation of a set considering linear mappings in a layer.
+
+Inputs:
+- `layer::Layer`: a layer in a network
+- `input::HPolytope`: input set
+Return:
+- `output::HPolytope`: set after transformation.
+"""
+function linear_transformation(layer::Layer, input::HPolytope)
+    (W, b) = (layer.weights, layer.bias)
+    input_v = tovrep(input)
+    output_v = [W * v + b for v in vertices_list(input_v)]
+    output = tohrep(VPolytope(output_v))
+    return output
+end
+
+"""
+    linear_transformation(W::Matrix, input::HPolytope)
+
+Transformation of a set considering a linear mapping.
+
+Inputs:
+- `W::Matrix`: a linear mapping
+- `input::HPolytope`: input set
+Return:
+- `output::HPolytope`: set after transformation.
+"""
+function linear_transformation(W::Matrix, input::HPolytope)
+    input_v = tovrep(input)
+    output_v = [W * v for v in vertices_list(input_v)]
+    output = tohrep(VPolytope(output_v))
+    return output
+end
+
+"""
     split_interval(dom::Hyperrectangle, index::Int64)
 
 Split a set into two at the given index.
@@ -375,7 +412,7 @@ Split a set into two at the given index.
 Inputs:
 - `dom::Hyperrectangle`: the set to be split
 - `index`: the index to split at
-Return: 
+Return:
 - `(left, right)::Tuple{Hyperrectangle, Hyperrectangle}`: two sets after split
 """
 function split_interval(dom::Hyperrectangle, index::Int64)

@@ -1,12 +1,35 @@
-# BaB
-# Input: Hyperrectangle
-# Output: Hyperrectangle
-struct BaB
-    optimizer::AbstractMathProgSolver
-    ϵ::Float64
-end
+"""
+    BaB(optimizer, ϵ::Float64)
 
-BaB() = BaB(GLPKSolverMIP(), 0.1)
+BaB uses branch and bound to estimate the range of the output node.
+
+# Problem requirement
+1. Network: any depth, ReLU activation, single output
+2. Input: hyperrectangle
+3. Output: hyperrectangle (1d interval)
+
+# Return
+`CounterExampleResult` or `ReachabilityResult`
+
+# Method
+Branch and bound.
+For branch, it uses iterative interval refinement.
+For bound, it computes concrete bounds by sampling, approximated bound by optimization.
+- `optimizer` default `GLPKSolverMIP()`
+- `ϵ` is the desired accurancy for termination, default `0.1`.
+
+# Property
+Sound and complete.
+
+# Reference
+R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
+"A Unified View of Piecewise Linear Neural Network Verification,"
+*ArXiv Preprint ArXiv:1711.00455*, 2017.
+"""
+@with_kw struct BaB
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    ϵ::Float64                        = 0.1
+end
 
 function solve(solver::BaB, problem::Problem)
     (u_approx, u, x_u) = output_bound(solver, problem, :max)
@@ -17,7 +40,7 @@ function solve(solver::BaB, problem::Problem)
 end
 
 function interpret_result(reach, bound, output, x_l, x_u)
-    if high(reach) > high(output) && low(reach) < low(output) 
+    if high(reach) > high(output) && low(reach) < low(output)
         return ReachabilityResult(:SAT, reach)
     end
     high(bound) > high(output)    && return CounterExampleResult(:UNSAT, x_u)
@@ -26,7 +49,7 @@ function interpret_result(reach, bound, output, x_l, x_u)
 end
 
 function output_bound(solver::BaB, problem::Problem, type::Symbol)
-    nnet = problem.network  
+    nnet = problem.network
     global_concrete, x_star = concrete_bound(nnet, problem.input, type)
     global_approx = approx_bound(nnet, problem.input, solver.optimizer, type)
     doms = Tuple{Float64, Hyperrectangle}[(global_approx, problem.input)]
@@ -43,7 +66,7 @@ function output_bound(solver::BaB, problem::Problem, type::Symbol)
             if index * (dom_approx - global_concrete) > 0
                 add_domain!(doms, (dom_approx, subdoms[i]), type)
             end
-        end 
+        end
         global_approx = doms[1][1]
     end
     return (global_approx, global_concrete, x_star)
@@ -88,8 +111,8 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     bounds = get_bounds(nnet, dom)
     model = JuMP.Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
-    add_input_constraint(model, dom, first(neurons))
-    encode_Δ_lp(model, nnet, bounds, neurons)
+    add_set_constraint!(model, dom, first(neurons))
+    encode_Δ_lp!(model, nnet, bounds, neurons)
     index = ifelse(type == :max, 1, -1)
     J = sum(last(neurons))
     @objective(model, Max, index * J)
@@ -97,28 +120,3 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     status == :Optimal && return getvalue(J)
     error("Could not find bound for dom: ", dom)
 end
-
-"""
-    BaB(optimizer, ϵ::Float64)
-
-BaB uses branch and bound to estimate the range of the output node.
-
-# Problem requirement
-1. Network: any depth, ReLU activation, single output
-2. Input: hyperrectangle
-3. Output: hyperrectangle (1d interval)
-
-# Return
-`CounterExampleResult` or `ReachabilityResult`
-
-# Method
-Branch and bound. 
-For branch, it uses iterative interval refinement. 
-For bound, it computes concrete bounds by sampling, approximated bound by optimization.
-- `optimizer` default `GLPKSolverMIP()`
-- `ϵ` is the desired accurancy for termination, default `0.1`.
-
-# Property
-Sound and complete.
-"""
-BaB

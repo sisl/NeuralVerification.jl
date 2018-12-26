@@ -62,7 +62,7 @@ b = vcat(b0, b1)
 inputSet = HPolytope(A, b)
 
 A = Matrix(undef, 2, 1)
-A = [1.0, -1.0, 0.0, 0.0, 0, 0, 0, 0, 0 ,0]'
+A = [1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ,0.0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 

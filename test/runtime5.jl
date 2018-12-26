@@ -40,7 +40,7 @@ problem_hyperrect_wide_1 = Problem(mnist_wide_1, inputSet, outputSet)
 
 # Reluval
 
-solver = ReluVal(1)
+solver = ReluVal(max_iter = 1)
 print("\nReluval - Wide-1")
 @time solve(solver, problem_hyperrect_wide_1)
 
