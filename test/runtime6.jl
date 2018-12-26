@@ -40,16 +40,16 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
 print("\nReluval - Small")
-@time solve(solver_reluVal, problem_hyperrect_small)
+#@time solve(solver_reluVal, problem_hyperrect_small)
 
 print("\nPlanet - Small")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrect_small)
+#@time solve(solver, problem_hyperrect_small)
 
 print("\nReluplex - Small")
 solver=Reluplex()
-@time solve(solver, problem_hyperrect_small)
+#@time solve(solver, problem_hyperrect_small)
 
 
 
@@ -107,16 +107,16 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
 solver_reluVal = ReluVal(2)
 print("\nReluval - Wide")
-@time solve(solver_reluVal, problem_hyperrect_wide)
+#@time solve(solver_reluVal, problem_hyperrect_wide)
 
 print("\nPlanet - Wide")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrect_wide)
+#@time solve(solver, problem_hyperrect_wide)
 
 print("\nReluplex - Wide")
 solver=Reluplex()
-@time solve(solver, problem_hyperrect_wide)
+#@time solve(solver, problem_hyperrect_wide)
 
 
 
@@ -129,16 +129,28 @@ b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
 
 inputSet = Hyperrectangle(low=b_lower, high=b_upper)
 
+out_lower = [-0.02088955, -0.01863226,  0.01521364, -0.01918539, 0.01563704]
+out_upper = [-0.02077696, -0.01852366,  0.01523927, -0.01912529, 0.015789]
+
+outputSet = Hyperrectangle(low=out_lower, high=out_upper)
+
 # TODO: compute output region - need to do some forward passes in the network
 # to get a sense of the output ranges.
 
-A = Matrix(undef, 2, 1)
-A = [1.0, 0.0, 0.0, 0.0, -1.0]'
-b = [0.0]
-outputSet = HPolytope(A, b)
-
-
 problem_hyperrectangle_hyperrectangle_acas = Problem(acas_nnet, inputSet, outputSet)
+solver_reluVal = ReluVal(2)
+print("\nReluval - Acas")
+@time solve(solver_reluVal, problem_hyperrectangle_hyperrectangle_acas)
+
+print("\nPlanet - Acas")
+optimizer = GLPKSolverMIP()
+solver = Planet(optimizer)
+@time solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+
+print("\nReluplex - Acas")
+solver=Reluplex()
+@time solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+
 
 
 
