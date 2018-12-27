@@ -30,6 +30,13 @@ include("utils/util.jl")
 export
     Solver,
     Network,
+    AbstractActivation,
+    # NOTE: not sure if exporting these is a good idea as far as namespace conflicts go:
+    # ReLU,
+    # Max,
+    # Id,
+    GeneralAct,
+    PiecewiseLinear,
     Problem,
     Result,
     BasicResult,
