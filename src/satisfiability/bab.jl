@@ -40,12 +40,12 @@ function solve(solver::BaB, problem::Problem)
 end
 
 function interpret_result(reach, bound, output, x_l, x_u)
-    if high(reach) > high(output) && low(reach) < low(output)
+    if high(reach) < high(output) && low(reach) > low(output)
         return ReachabilityResult(:SAT, reach)
     end
     high(bound) > high(output)    && return CounterExampleResult(:UNSAT, x_u)
     low(bound) < low(output)      && return CounterExampleResult(:UNSAT, x_l)
-    return RechabilityResult(:Unknown, reach)
+    return ReachabilityResult(:Unknown, reach)
 end
 
 function output_bound(solver::BaB, problem::Problem, type::Symbol)
