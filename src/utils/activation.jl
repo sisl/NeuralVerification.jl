@@ -17,6 +17,7 @@ struct Max <: ActivationFunction end
 """
     Id <: ActivationFunction
 Identity operator
+
     (Id())(x) -> x
 """
 struct Id <: ActivationFunction end
@@ -60,7 +61,8 @@ act(last(kx))  == last(ky)  == 1.5
 
 act(1.0)    # 0.4166666666666667
 act(-102)   # -42.5
-
+```
+```julia
 act = PiecewiseLinear(kx, ky, Flat())
 
 act(-102)   # 0.0
