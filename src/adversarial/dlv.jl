@@ -115,7 +115,7 @@ function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
     return (false, similar(y, 0))
 end
 
-function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{Float64})
     y = bound.center
     for i = 1:dim(bound)
 
