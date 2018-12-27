@@ -49,6 +49,7 @@ export
     check_inclusion
 
 solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
+solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
 # export solve
 
 # TODO: consider creating sub-modules for each of these.

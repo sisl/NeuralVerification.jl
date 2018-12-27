@@ -38,7 +38,7 @@ function solve(solver::Duality, problem::Problem)
     μ = init_multipliers(model, problem.network)
     J = dual_cost(solver, model, problem.network, bounds, λ, μ)
     @constraint(model, last(λ) .== -c)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     return interpret_result(solver, status, J - d[1])
 end
 

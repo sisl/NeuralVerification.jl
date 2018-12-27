@@ -36,7 +36,7 @@ function solve(solver::MIPVerify, problem::Problem)
     bounds = get_bounds(problem)
     encode_mip_constraint!(model, problem.network, bounds, neurons, deltas)
     J = max_disturbance!(model, first(neurons) - problem.input.center)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     if status == :Infeasible
         return AdversarialResult(:SAT)
     end

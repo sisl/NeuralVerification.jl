@@ -73,7 +73,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::
     J = min_sum_all!(model, slack)
     conflict = Vector{Int64}()
     while true
-        status = solve(model)
+        status = solve(model, suppress_warnings = true)
         status == :Optimal || return (:Infeasible, conflict)
         (m, index) = max_slack(getvalue(slack))
         m > 0.0 || return (:Feasible, conflict)
@@ -108,12 +108,12 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     encode_Δ_lp!(model, problem.network, bounds, neurons)
 
     J = min_sum_all!(model, neurons)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     lower = getvalue(neurons)
 
     J = max_sum_all!(model, neurons)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     upper = getvalue(neurons)
 
@@ -245,7 +245,7 @@ end
 #     end
 
 #     @objective(model, Min, J)
-#     status = solve(model)
+#     status = solve(model, suppress_warnings = true)
 #     if status != :Optimal
 #         return (:Infeasible, [])
 #     end

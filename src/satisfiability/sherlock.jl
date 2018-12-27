@@ -67,7 +67,7 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractM
     J = gradient * neurons[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * J[1])
-    solve(model)
+    solve(model, suppress_warnings = true)
     x_new = getvalue(neurons[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
