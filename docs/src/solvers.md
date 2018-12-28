@@ -1,7 +1,9 @@
 # Solvers
 
-There are three basic verification methods: reachability, optimization, and search. 
-Regarding the three basic methods, we devide the solvers into five categories.
+The three basic verification methods are "reachability", "optimization", and "search".
+These are further divided into the five categories listed below.
+Note that all of the optimization methods use the [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) library.
+
 
 ```@contents
 	Pages = ["solvers.md"]
@@ -9,41 +11,50 @@ Regarding the three basic methods, we devide the solvers into five categories.
 ```
 
 ## Reachability Methods
-
+These methods perform exact or approximate reachability analysis to determine the output set corresponding to a given input set.
+In addition, `MaxSens`, which computes lower and upper bounds for each layer, is called within other solver types in the form of [`get_bounds`](@ref).
 ### ExactReach
-
 ```@docs
 ExactReach
 ```
 
 ### Ai2
-
 ```@docs
 Ai2
 ```
 
 ### MaxSens
-
 ```@docs
 MaxSens
 ```
 
 ## Primal Optimization Methods
 
-### NSVerify
+#### Example
+```@example
+nnet = read_nnet("examples/networks/small_nnet.txt")
+input  = Hyperrectangle([0.0], [.5])
+output = HPolytope(ones(1,1), [102.5])
 
+problem = Problem(nnet, input, output)
+# set the JuMP solver with `optimizer` keyword or use default:
+solver = MIPVerify(optimizer = GLPKSolverMIP())
+
+julia> solve(solver_mipverify,  problem_mipverify)
+AdversarialResult(:SAT, -1.0)
+```
+
+### NSVerify
 ```@docs
 NSVerify
 ```
 
 ### MIPVerify
-
 ```@docs
 MIPVerify
 ```
 
 ### ILP
-
 ```@docs
 ILP
 ```
@@ -51,19 +62,16 @@ ILP
 ## Dual Optimization Methods
 
 ### Duality
-
 ```@docs
 Duality
 ```
 
 ### ConvDual
-
 ```@docs
 ConvDual
 ```
 
 ### Certify
-
 ```@docs
 Certify
 ```
@@ -71,25 +79,21 @@ Certify
 ## Search and Reachability Methods
 
 ### ReluVal
-
 ```@docs
 ReluVal
 ```
 
 ### FastLin
-
 ```@docs
 FastLin
 ```
 
 ### FastLip
-
 ```@docs
 FastLip
 ```
 
 ### DLV
-
 ```@docs
 DLV
 ```
@@ -97,25 +101,21 @@ DLV
 ## Search and Optimization Methods
 
 ### Sherlock
-
 ```@docs
 Sherlock
 ```
 
 ### BaB
-
 ```@docs
 BaB
 ```
 
 ### Planet
-
 ```@docs
 Planet
 ```
 
 ### Reluplex
-
 ```@docs
 Reluplex
 ```

@@ -119,7 +119,7 @@ function reluplex_step(solver::Reluplex,
                        f_vars::Vector{Vector{Variable}},
                        relu_status::Vector{Vector{Int}})
 
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
 
     if status == :Infeasible
         return CounterExampleResult(:SAT)

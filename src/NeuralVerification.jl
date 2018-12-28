@@ -16,10 +16,11 @@ using CDDLib
 using LinearAlgebra
 using SparseArrays
 using Parameters
+using Interpolations # only for PiecewiseLinear
 
 import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
 
-abstract type Solver end # no longer needed
+# abstract type Solver end # no longer needed
 
 # NOTE: the first 3 can probably be unified in one file.
 include("utils/activation.jl")
@@ -29,6 +30,13 @@ include("utils/util.jl")
 export
     Solver,
     Network,
+    AbstractActivation,
+    # NOTE: not sure if exporting these is a good idea as far as namespace conflicts go:
+    # ReLU,
+    # Max,
+    # Id,
+    GeneralAct,
+    PiecewiseLinear,
     Problem,
     Result,
     BasicResult,
@@ -41,6 +49,7 @@ export
     check_inclusion
 
 solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
+solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
 # export solve
 
 # TODO: consider creating sub-modules for each of these.

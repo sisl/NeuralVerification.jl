@@ -81,7 +81,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     add_set_constraint!(model, output, last(neurons))
     encode_mip_constraint!(model, nnet, bounds, neurons, deltas)
     J = max_disturbance!(model, first(neurons) - input.center)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     if status == :Optimal
         return (true, getvalue(first(neurons)))
     else
@@ -89,7 +89,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     end
 end
 
-function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{Float64})
     # step 1: check whether the boundary points have the same class
     var, y = uniform_boundary_class(bound, mapping)
     var && return (var, y)
@@ -115,7 +115,7 @@ function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
     return (false, similar(y, 0))
 end
 
-function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{Float64})
     y = bound.center
     for i = 1:dim(bound)
 

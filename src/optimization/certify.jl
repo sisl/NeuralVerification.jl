@@ -28,7 +28,7 @@ A. Raghunathan, J. Steinhardt, and P. Liang,
 end
 
 # can pass keyword args to optimizer
-# Certify(optimizer::DataType = SCSSolver; kwargs...) =  Certify(optimizer(kwargs...))
+# Certify(optimizer::DataType = SCSSolver; kwargs...) =  Certify(optimizer(;kwargs...))
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
@@ -47,7 +47,7 @@ function solve(solver::Certify, problem::Problem)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, J[1])
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     return interpret_result(solver, status, J[1])
 end
 

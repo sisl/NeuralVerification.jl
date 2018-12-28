@@ -36,7 +36,7 @@ function solve(solver::NSVerify, problem::Problem)
     add_complementary_output_constraint!(model, problem.output, last(neurons))
     encode_mip_constraint!(model, problem.network, solver.m, neurons, deltas)
     zero_objective!(model)
-    status = solve(model)
+    status = solve(model, suppress_warnings = true)
     if status == :Optimal
         return CounterExampleResult(:UNSAT, getvalue(first(neurons)))
     end
