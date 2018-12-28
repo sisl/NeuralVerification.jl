@@ -89,7 +89,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     end
 end
 
-function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Float64)
+function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{Float64})
     # step 1: check whether the boundary points have the same class
     var, y = uniform_boundary_class(bound, mapping)
     var && return (var, y)
