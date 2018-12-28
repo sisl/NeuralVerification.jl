@@ -6,8 +6,8 @@ macro no_error(ex)
     quote
         try $(esc(ex))
             true
-        catch
-            false
+        catch ex
+            rethrow(ex)
         end
     end
 end
@@ -37,11 +37,17 @@ outputSet = HPolytope(zeros(2, 1), [100.0, 1.0])
 problem_exactReach = Problem(small_nnet, inputSet, outputSet)
 solver_exactReach = ExactReach()
 
-#reluVal
+### reluVal
 inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
 outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
 problem_reluVal = Problem(small_nnet, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
+
+### DLV
+inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
+outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
+problem_dlv = Problem(small_nnet, inputSet, outputSet)
+solver_dlv = DLV()
 
 ### Ai2
 input  = HPolytope(A, [0.0, 0.0])
@@ -106,7 +112,7 @@ solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
 @test @no_error solve(solver_maxSens,    problem_maxSens)
 @test @no_error solve(solver_exactReach, problem_exactReach)
 @test @no_error solve(solver_reluVal,    problem_reluVal)
-@test @no_error solve(solver_bab,        problem_bab)
+@test @no_error solve(solver_dlv,        problem_dlv)
 # @test @no_error solve(solver_certify,    problem_certify) # only works for tinynet (single hidden layer)
 @test @no_error solve(solver_convdual,   problem_convdual)
 @test @no_error solve(solver_duality,    problem_duality)
@@ -115,6 +121,7 @@ solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
 @test @no_error solve(solver_planet,     problem_planet)
 @test @no_error solve(solver_reluplex,   problem_reluplex)
 @test @no_error solve(solver_sherlock,   problem_sherlock)
+@test @no_error solve(solver_bab,        problem_bab)
 @test @no_error solve(solver_NSVerify,   problem_NSVerify)
 @test @no_error solve(solver_ai2,        problem_ai2)
 
