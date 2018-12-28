@@ -6,8 +6,8 @@
 [](    Depth = 3)
 [](```)
 
-[](TODO: Since most of these function are not exported they have to be called with NeuralVerification.)
-[](Should consider whether we want to document unexported functions online at all.)
+[](TODO: Since most of these function are not exported they have to be called with NeuralVerification.[])
+[](Should consider whether we want to list unexported functions online at all.)
 
 
 ```@docs

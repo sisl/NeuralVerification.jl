@@ -40,7 +40,7 @@ function solve(solver::ILP, problem::Problem)
         encode_relaxed_lp!(model, problem.network, act_pattern, neurons)
         J = max_disturbance!(model, first(neurons) - problem.input.center)
 
-        status = solve(model)
+        status = solve(model, suppress_warnings = true)
         if status != :Optimal
             return AdversarialResult(:Unknown)
         end
