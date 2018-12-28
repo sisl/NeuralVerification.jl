@@ -138,7 +138,7 @@ outputSet = Hyperrectangle(low=out_lower, high=out_upper)
 # to get a sense of the output ranges.
 
 problem_hyperrectangle_hyperrectangle_acas = Problem(acas_nnet, inputSet, outputSet)
-solver_reluVal = ReluVal(2)
+solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Acas")
 @time solve(solver_reluVal, problem_hyperrectangle_hyperrectangle_acas)
 

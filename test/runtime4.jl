@@ -34,7 +34,7 @@ input_high = input_center .+ in_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 
 A = Matrix(undef, 2, 1)
-A = [1.0, -1, 0, 0, 0, 0, 0, 0, 0 ,0]'
+A = [1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ,0.0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 
