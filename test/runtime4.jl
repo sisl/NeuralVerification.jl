@@ -42,33 +42,44 @@ outputSet = HPolytope(A, b)
 # Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
 
 problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
-print("################## Small ##################\n")
+print("\n\n################## Small ##################\n")
 
 # FastLin
 print("\nFastLin - Small")
 solver = FastLin(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # FastLip
 print("\nFastLip - Small")
 solver = FastLip(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # MIPVerify
 print("\nMIPVerify - Small")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # ILP
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_small)
-
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 ########### Deep ############
-print("################## Deep ##################\n")
+print("\n\n################## Deep ##################\n")
 
 mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
 problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
@@ -76,27 +87,39 @@ problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
 # FastLin
 print("\nFastLin - Deep")
 solver = FastLin(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # FastLip
 print("\nFastLip - Deep")
 solver = FastLip(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # MIPVerify
 print("\nMIPVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # ILP
 print("\nILP - Deep")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 ########### Wide ############
-print("################## Wide ##################\n")
+print("\n\n################## Wide ##################\n")
 
 mnist_wide = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
 problem_hyperrect_oneineq_wide = Problem(mnist_wide, inputSet, outputSet)
@@ -104,27 +127,38 @@ problem_hyperrect_oneineq_wide = Problem(mnist_wide, inputSet, outputSet)
 # FastLin
 print("\nFastLin - Wide")
 solver = FastLin(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # FastLip
 print("\nFastLip - Wide")
 solver = FastLip(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # MIPVerify
 print("\nMIPVerify - Wide")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # ILP
 print("\nILP - Wide")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
-
-print("################## Acas ##################\n")
+print("\n\n################## Acas ##################\n")
 
 acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
 
@@ -145,23 +179,34 @@ problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 # FastLin
 print("\nFastLin - ACAS")
 solver = FastLin(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # FastLip
 print("\nFastLip - ACAS")
 solver = FastLip(10, 10.0, 1.0)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # MIPVerify
 print("\nMIPVerify - ACAS")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # ILP
 print("\nILP - ACAS")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
-
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
