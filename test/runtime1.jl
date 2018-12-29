@@ -70,21 +70,26 @@ outputSet = HPolytope(A, b)
 problem_polytope_polytope_small = Problem(mnist_small, inputSet, outputSet)
 solver = MaxSens(1.0, false)
 print("\nMaxSens - Small - polytopes")
-#@time solve(solver, problem_polytope_polytope_small)
-
+#timed_result =@timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = Ai2()
 print("\nAi2 - Small")
-#@time solve(solver, problem_polytope_polytope_small)
+#timed_result = @timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = ExactReach()
 print("\nExactReach - Small")
-#@time solve(solver, problem_polytope_polytope_small)
+#timed_result = @timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
-
-
-# Lets try ACAS
-
+# ACAS
 
 acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
 
@@ -110,17 +115,23 @@ problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 
 solver = MaxSens(1.0, false)
 print("\nMaxSens - ACAS")
-@time solve(solver, problem_polytope_polytope_acas)
-
-
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = Ai2()
 print("\nAi2 - ACAS")
-#@time solve(solver, problem_polytope_polytope_acas)
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = ExactReach()
 print("\nExactReach - ACAS")
-@time solve(solver, problem_polytope_polytope_acas)
-
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 
