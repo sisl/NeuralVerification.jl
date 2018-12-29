@@ -40,17 +40,26 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Small")
-#@time solve(solver_reluVal, problem_hyperrect_small)
+#timed_result = @timed solve(solver_reluVal, problem_hyperrect_small)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Small")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-#@time solve(solver, problem_hyperrect_small)
+#timed_result = @timed solve(solver, problem_hyperrect_small)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
+
 
 print("\nReluplex - Small")
 solver=Reluplex()
-#@time solve(solver, problem_hyperrect_small)
-
+#timed_result = @timed solve(solver, problem_hyperrect_small)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 
 # Deep MNIST network
@@ -75,16 +84,25 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 problem_hyperrect_deep = Problem(mnist_large, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Deep")
-#@time solve(solver_reluVal, problem_hyperrect_deep)
+#timed_result = @timed solve(solver_reluVal, problem_hyperrect_deep)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Deep")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-#@time solve(solver, problem_hyperrect_deep)
+#timed_result = @timed solve(solver, problem_hyperrect_deep)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 print("\nReluplex - Deep")
 solver=Reluplex()
-#@time solve(solver, problem_hyperrect_deep)
+#timed_result = @timed solve(solver, problem_hyperrect_deep)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # Wide MNIST network
 
@@ -107,20 +125,28 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Wide")
-#@time solve(solver_reluVal, problem_hyperrect_wide)
+#timed_result = @timed solve(solver_reluVal, problem_hyperrect_wide)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Wide")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-#@time solve(solver, problem_hyperrect_wide)
+#timed_result = @timed solve(solver, problem_hyperrect_wide)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 print("\nReluplex - Wide")
 solver=Reluplex()
-#@time solve(solver, problem_hyperrect_wide)
+#timed_result = @timed solve(solver, problem_hyperrect_wide)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 
-
-print("################## Acas ##################\n")
+print("\n\n################## Acas ##################\n")
 
 acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
 
@@ -140,17 +166,23 @@ outputSet = Hyperrectangle(low=out_lower, high=out_upper)
 problem_hyperrectangle_hyperrectangle_acas = Problem(acas_nnet, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Acas")
-@time solve(solver_reluVal, problem_hyperrectangle_hyperrectangle_acas)
+timed_result = @timed solve(solver_reluVal, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Acas")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nReluplex - Acas")
 solver=Reluplex()
-@time solve(solver, problem_hyperrectangle_hyperrectangle_acas)
-
-
-
+timed_result = @timed solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
