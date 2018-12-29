@@ -51,22 +51,28 @@ outputSet = HPolytope(A, b)
 # Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
 
 problem_hyperrect_halfspace_small = Problem(mnist_small, inputSet, outputSet)
-print("################## Small ##################\n")
+print("\n\n################## Small ##################\n")
 
 # Duality
 print("\nDuality - Small")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-#@time solve(solver, problem_hyperrect_halfspace_small)
+#timed_result = @timed solve(solver, problem_hyperrect_halfspace_small)
+t = timed_result[2]
+out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # ConvDual
 print("\nConvDual - Small")
 optimizer = GLPKSolverMIP()
 solver = ConvDual()
-@time solve(solver, problem_hyperrect_halfspace_small)
+timed_result = @timed solve(solver, problem_hyperrect_halfspace_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 ########### Deep ############
-print("################## Deep ##################\n")
+print("\n\n################## Deep ##################\n")
 
 mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
 problem_hyperrect_halfspace_deep = Problem(mnist_deep, inputSet, outputSet)
@@ -75,16 +81,19 @@ problem_hyperrect_halfspace_deep = Problem(mnist_deep, inputSet, outputSet)
 print("\nDuality - Deep")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-#@time solve(solver, problem_hyperrect_halfspace_deep)
+#timed_result = @timed solve(solver, problem_hyperrect_halfspace_deep)
 
 # ConvDual
 print("\nConvDual - Deep")
 optimizer = GLPKSolverMIP()
 solver = ConvDual()
-@time solve(solver, problem_hyperrect_halfspace_deep)
+timed_result = @timed solve(solver, problem_hyperrect_halfspace_deep)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 ########### Wide ############
-print("################## Wide ##################\n")
+print("\n\n################## Wide ##################\n")
 
 mnist_wide = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
 problem_hyperrect_halfspace_wide = Problem(mnist_wide, inputSet, outputSet)
@@ -93,10 +102,16 @@ problem_hyperrect_halfspace_wide = Problem(mnist_wide, inputSet, outputSet)
 print("\nDuality - Wide")
 optimizer = GLPKSolverMIP()
 solver = Duality(optimizer)
-#@time solve(solver, problem_hyperrect_halfspace_deep)
+#timed_result = @timed solve(solver, problem_hyperrect_halfspace_deep)
+t = timed_result[2]
+out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # ConvDual
 print("\nConvDual - Wide")
 optimizer = GLPKSolverMIP()
 solver = ConvDual()
-@time solve(solver, problem_hyperrect_halfspace_deep)
+timed_result = @timed solve(solver, problem_hyperrect_halfspace_deep)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
