@@ -42,28 +42,38 @@ outputSet = HPolytope(A, b)
 # Problem type - input:Hyperrectangle, output:Hpolytope (one constraint)
 
 problem_hyperrect_oneineq_small = Problem(mnist_small, inputSet, outputSet)
-print("################## Small ##################\n")
+print("\n\n################## Small ##################\n")
 
 # NSVerify
 print("\nNSVerify - Small")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+print(" - Time - $timed_result[2] s - Output: $timed_result[1]")
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
 
 # MIPVerify
 print("\nMIPVerify - Small")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # ILP
 print("\nILP - Small")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_small)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 ########### Deep ############
-print("################## Deep ##################\n")
+print("\n\n################## Deep ##################\n")
 
 mnist_deep = read_nnet("$at/../examples/networks/mnist_large.nnet")
 problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
@@ -72,22 +82,31 @@ problem_hyperrect_oneineq_large = Problem(mnist_deep, inputSet, outputSet)
 print("\nNSVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-#@time solve(solver, problem_hyperrect_oneineq_large)
+#timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # MIPVerify
 print("\nMIPVerify - Deep")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # ILP
 print("\nILP - Deep")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_large)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_large)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 ########### Wide ############
-print("################## Wide ##################\n")
+print("\n\n################## Wide ##################\n")
 
 mnist_deep = read_nnet("$at/../examples/networks/mnist-1-100.nnet")
 problem_hyperrect_oneineq_wide = Problem(mnist_deep, inputSet, outputSet)
@@ -96,21 +115,30 @@ problem_hyperrect_oneineq_wide = Problem(mnist_deep, inputSet, outputSet)
 print("\nNSVerify - Wide")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # MIPVerify
 print("\nMIPVerify - Wide")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # ILP
 print("\nILP - Wide")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrect_oneineq_wide)
+timed_result = @timed solve(solver, problem_hyperrect_oneineq_wide)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
-print("################## Acas ##################\n")
+print("\n\n################## Acas ##################\n")
 
 acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
 
@@ -131,16 +159,25 @@ problem_hyperrectangle_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 print("\nNSVerify - ACAS")
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
-#@time solve(solver, problem_hyperrectangle_polytope_acas)
+#timed_result - @timed solve(solver, problem_hyperrectangle_polytope_acas)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # MIPVerify
 print("\nMIPVerify - ACAS")
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # ILP
 print("\nILP - ACAS")
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
-@time solve(solver, problem_hyperrectangle_polytope_acas)
+timed_result = @timed solve(solver, problem_hyperrectangle_polytope_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
