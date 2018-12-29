@@ -34,32 +34,41 @@ output_high = output_center .+ out_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
-print(outputSet)
-
 problem_hyperrect_wide_1 = Problem(mnist_wide_1, inputSet, outputSet)
 
 # Reluval
 
 solver = ReluVal(max_iter = 1)
 print("\nReluval - Wide-1")
-@time solve(solver, problem_hyperrect_wide_1)
+timed_result = @timed solve(solver, problem_hyperrect_wide_1)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # BaB
 optimizer = GLPKSolverMIP()
 solver = BaB(optimizer, 0.1)
 #print("\nBaB - Wide-1")
-#@time solve(solver, problem_hyperrect_wide_1)
+#timed_result = @timed solve(solver, problem_hyperrect_wide_1)
+t = timed_result[2]
+out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # DLV
 optimizer = GLPKSolverMIP()
 solver = DLV(1.0)
 print("\nDLV - Wide-1")
-@time solve(solver, problem_hyperrect_wide_1)
+timed_result = @timed solve(solver, problem_hyperrect_wide_1)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 # Sherlock
 
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
 print("\nSherlock - Wide-1")
-@time solve(solver, problem_hyperrect_wide_1)
-
+timed_result = @timed solve(solver, problem_hyperrect_wide_1)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
