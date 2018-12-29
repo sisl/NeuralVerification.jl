@@ -45,14 +45,7 @@ t = timed_result[2]
 out = timed_result[1]
 print(" - Time: $t s - Output: $out")
 
-# BaB
-optimizer = GLPKSolverMIP()
-solver = BaB(optimizer, 0.1)
-#print("\nBaB - Wide-1")
-#timed_result = @timed solve(solver, problem_hyperrect_wide_1)
-t = timed_result[2]
-out = timed_result[1]
-#print(" - Time: $t s - Output: $out")
+
 
 # DLV
 optimizer = GLPKSolverMIP()
@@ -72,3 +65,12 @@ timed_result = @timed solve(solver, problem_hyperrect_wide_1)
 t = timed_result[2]
 out = timed_result[1]
 print(" - Time: $t s - Output: $out")
+
+# BaB
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
+#print("\nBaB - Wide-1")
+#timed_result = @timed solve(solver, problem_hyperrect_wide_1)
+t = timed_result[2]
+out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
