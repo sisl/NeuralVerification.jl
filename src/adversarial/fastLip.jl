@@ -31,11 +31,7 @@ T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, a
     accuracy::Float64 = 0.1
 end
 
-# since FastLip is "higher" on the hierarchy, it defines both:
 convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
-convert(::Type{FastLip}, S::FastLin) = FastLip(S.maxIter, S.ϵ0, S.accuracy)
-
-FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
     c, d = tosimplehrep(problem.output)
