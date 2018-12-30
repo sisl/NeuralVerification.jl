@@ -64,7 +64,7 @@ function init_ψ(bounds::Vector{Hyperrectangle})
 end
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
@@ -101,7 +101,7 @@ end
 
 function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     bounds = get_bounds(problem)
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint(model, problem.output, last(neurons))
@@ -227,7 +227,7 @@ end
 # end
 
 # function get_tight_clause(problem::Problem, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
-#     model = JuMP.Model(solver = optimizer)
+#     model = Model(solver = optimizer)
 
 #     neurons = init_neurons(solver, model, problem.network)
 #     add_set_constraint!(model, problem.input, first(neurons))
