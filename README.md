@@ -17,6 +17,12 @@ Sherlock, BaB, Planet, Reluplex
 Please note that the implementations of the algorithms are pedagogical in nature, and so may not perform optimally.
 Derivation and discussion of these algorithms is presented in _link to paper_.
 
+## Installation
+To download this library, clone it from the julia package manager like so:
+```@example
+(v1.0) pkg> add https://github.com/sisl/NeuralVerification.jl.git
+```
+
 ## Example Usage
 ### Choose a solver
 ```julia
@@ -31,7 +37,7 @@ inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
 outputSet = Hyperrectangle(low = [-1.0], high = [70.0])
 problem = Problem(small_nnet, inputSet, outputSet)
 ```
-### Solve!
+### Solve
 ```julia
 result = solve(solver, problem) # returns CounterExampleResult(:UNSAT, [1.0])
 
