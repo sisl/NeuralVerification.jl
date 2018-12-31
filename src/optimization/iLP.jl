@@ -37,7 +37,7 @@ function solve(solver::ILP, problem::Problem)
 
         neurons = init_neurons(model, problem.network)
         add_complementary_set_constraint!(model, problem.output, last(neurons))
-        encode_relaxed_lp!(model, problem.network, act_pattern, neurons)
+        encode_relaxed_lp!(model, problem.network, neurons, act_pattern)
         J = max_disturbance!(model, first(neurons) - problem.input.center)
 
         status = solve(model, suppress_warnings = true)

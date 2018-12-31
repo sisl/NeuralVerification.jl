@@ -63,7 +63,7 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractM
     model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, problem.input, first(neurons))
-    encode_lp!(model, nnet, act_pattern, neurons)
+    encode_lp!(model, nnet, neurons, act_pattern)
     J = gradient * neurons[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * J[1])

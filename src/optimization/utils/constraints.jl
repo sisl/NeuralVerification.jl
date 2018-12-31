@@ -5,8 +5,8 @@
 # this is used in Sherlock
 function encode_lp!(model::Model,
                     nnet::Network,
-                    δ::Vector{Vector{Bool}},
-                    z::Vector{Vector{Variable}})
+                    z::Vector{Vector{Variable}},
+                    δ::Vector{Vector{Bool}})
 
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
@@ -26,8 +26,8 @@ end
 # This function is called in iLP
 function encode_relaxed_lp!(model::Model,
                             nnet::Network,
-                            δ::Vector{Vector{Bool}},
-                            z::Vector{Vector{Variable}})
+                            z::Vector{Vector{Variable}},
+                            δ::Vector{Vector{Bool}})
 
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
@@ -72,8 +72,8 @@ end
 
 function encode_slack_lp!(model::Model,
                           nnet::Network,
-                          δ::Vector{Vector{Bool}},
-                          z::Vector{Vector{Variable}})
+                          z::Vector{Vector{Variable}},
+                          δ::Vector{Vector{Bool}})
 
     slack = Vector{Vector{Variable}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)

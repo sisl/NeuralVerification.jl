@@ -69,7 +69,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
-    slack = encode_slack_lp!(model, problem.network, δ, neurons)
+    slack = encode_slack_lp!(model, problem.network, neurons, δ)
     J = min_sum_all!(model, slack)
     conflict = Vector{Int64}()
     while true
