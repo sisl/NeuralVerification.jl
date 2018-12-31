@@ -128,7 +128,7 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_complementary_output_constraint!(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
+function add_complementary_set_constraint!(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
     # Needs to take the complementary of output constraint
     n = length(out_b)
@@ -148,7 +148,7 @@ function add_complementary_output_constraint!(model::Model, output::HPolytope, n
     return nothing
 end
 
-function add_complementary_output_constraint!(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
+function add_complementary_set_constraint!(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
     @constraint(model, neuron_vars .>= -high(output))
     @constraint(model, neuron_vars .<= -low(output))
     return nothing

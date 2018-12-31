@@ -86,7 +86,6 @@ function symbol_to_concrete(reach::SymbolicInterval)
     return Hyperrectangle(low = lower, high = upper)
 end
 
-# This overwrites check_inclusion in utils/reachability.jl
 function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
     reachable = symbol_to_concrete(reach)
     issubset(reachable, output) && return BasicResult(:SAT)
