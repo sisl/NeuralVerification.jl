@@ -35,14 +35,14 @@ function solve(solver::MIPVerify, problem::Problem)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
     encode_mip_constraint!(model, problem.network, bounds, neurons, deltas)
-    J = max_disturbance!(model, first(neurons) - problem.input.center)
+    o = max_disturbance!(model, first(neurons) - problem.input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
         return AdversarialResult(:SAT)
     end
-    if getvalue(J) >= minimum(problem.input.radius)
+    if getvalue(o) >= minimum(problem.input.radius)
         return AdversarialResult(:SAT)
     else
-        return AdversarialResult(:UNSAT, getvalue(J))
+        return AdversarialResult(:UNSAT, getvalue(o))
     end
 end

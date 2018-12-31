@@ -36,9 +36,9 @@ convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 function solve(solver::FastLip, problem::Problem)
     c, d = tosimplehrep(problem.output)
     y = compute_output(problem.network, problem.input.center)
-    J = (c * y - d)[1]
-    if J > 0
-        return AdversarialResult(:UNSAT, -J)
+    o = (c * y - d)[1]
+    if o > 0
+        return AdversarialResult(:UNSAT, -o)
     end
     result = solve(FastLin(solver), problem)
     result.status == :UNSAT && return result
@@ -55,7 +55,7 @@ function solve(solver::FastLip, problem::Problem)
 
     a, b = interval_map(c, LG, UG)
     v = max.(abs.(a), abs.(b))
-    ϵ = min(-J/sum(v), ϵ_fastLin)
+    ϵ = min(-o/sum(v), ϵ_fastLin)
 
     if ϵ > minimum(problem.input.radius)
         return AdversarialResult(:SAT, ϵ)

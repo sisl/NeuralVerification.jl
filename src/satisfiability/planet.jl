@@ -70,7 +70,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
     slack = encode_slack_lp!(model, problem.network, neurons, δ)
-    J = min_sum_all!(model, slack)
+    o = min_sum_all!(model, slack)
     conflict = Vector{Int64}()
     while true
         status = solve(model, suppress_warnings = true)
@@ -109,12 +109,12 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
 
-    J = min_sum_all!(model, neurons)
+    o = min_sum_all!(model, neurons)
     status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     lower = getvalue(neurons)
 
-    J = max_sum_all!(model, neurons)
+    o = max_sum_all!(model, neurons)
     status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     upper = getvalue(neurons)
@@ -239,16 +239,16 @@ end
 #     encode_Δ_lp!(model, problem.network, bounds, neurons)
 #     encode_partial_assignment(model, problem.network, p, neurons, false)
 
-#     J = 0.0
+#     o = 0.0
 #     for i in 1:length(p)
 #         for j in 1:length(p[i])
 #             if p[i][j] == 0
-#                 J += neurons[i+1][j]
+#                 o += neurons[i+1][j]
 #             end
 #         end
 #     end
 
-#     @objective(model, Min, J)
+#     @objective(model, Min, o)
 #     status = solve(model, suppress_warnings = true)
 #     if status != :Optimal
 #         return (:Infeasible, [])

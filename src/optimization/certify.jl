@@ -43,19 +43,19 @@ function solve(solver::Certify, problem::Problem)
     Tr = M * P
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
-    J = output + epsilon/4 * sum(Tr[i, i] for i in 1:n)
+    o = output + epsilon/4 * sum(Tr[i, i] for i in 1:n)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
-    @objective(model, Max, J[1])
+    @objective(model, Max, o[1])
     status = solve(model, suppress_warnings = true)
-    return interpret_result(solver, status, J[1])
+    return interpret_result(solver, status, o[1])
 end
 
-# True if J < 0
+# True if o < 0
 # Undertermined if otherwise
-function interpret_result(solver::Certify, status, J)
-    # println("Upper bound: ", getvalue(J[1]))
-    if getvalue(J) <= 0
+function interpret_result(solver::Certify, status, o)
+    # println("Upper bound: ", getvalue(o[1]))
+    if getvalue(o) <= 0
         return BasicResult(:SAT)
     else
         return BasicResult(:Unknown)

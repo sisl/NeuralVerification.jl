@@ -114,9 +114,9 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     add_set_constraint!(model, dom, first(neurons))
     encode_Δ_lp!(model, nnet, bounds, neurons)
     index = ifelse(type == :max, 1, -1)
-    J = sum(last(neurons))
-    @objective(model, Max, index * J)
+    o = sum(last(neurons))
+    @objective(model, Max, index * o)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal && return getvalue(J)
+    status == :Optimal && return getvalue(o)
     error("Could not find bound for dom: ", dom)
 end

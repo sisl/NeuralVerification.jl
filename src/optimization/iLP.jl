@@ -38,7 +38,7 @@ function solve(solver::ILP, problem::Problem)
         neurons = init_neurons(model, problem.network)
         add_complementary_set_constraint!(model, problem.output, last(neurons))
         encode_relaxed_lp!(model, problem.network, neurons, act_pattern)
-        J = max_disturbance!(model, first(neurons) - problem.input.center)
+        o = max_disturbance!(model, first(neurons) - problem.input.center)
 
         status = solve(model, suppress_warnings = true)
         if status != :Optimal
@@ -46,7 +46,7 @@ function solve(solver::ILP, problem::Problem)
         end
         x = getvalue(first(neurons))
         if match_activation(problem.network, x, act_pattern)
-            radius = getvalue(J)
+            radius = getvalue(o)
             if radius >= minimum(problem.input.radius)
                 return AdversarialResult(:SAT, radius)
             else
