@@ -3,16 +3,16 @@
 
 # Encode constraint as LP according to the activation pattern
 # this is used in Sherlock
-function encode_lp!(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
+function encode_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
     for (i, layer) in enumerate(nnet.layers)
-        before_act = layer.weights * neurons[i] + layer.bias
+        ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
-            if act_pattern[i][j]
-                @constraint(model, before_act[j] >= 0.0)
-                @constraint(model, neurons[i+1][j] == before_act[j])
+            if δ[i][j]
+                @constraint(model, ẑ[j] >= 0.0)
+                @constraint(model, z[i+1][j] == ẑ[j])
             else
-                @constraint(model, before_act[j] <= 0.0)
-                @constraint(model, neurons[i+1][j] == 0.0)
+                @constraint(model, ẑ[j] <= 0.0)
+                @constraint(model, z[i+1][j] == 0.0)
             end
         end
     end
@@ -20,14 +20,14 @@ function encode_lp!(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool
 end
 
 # This function is called in iLP
-function encode_relaxed_lp!(model::Model, nnet::Network, act_pattern::Vector{Vector{Bool}}, neurons)
+function encode_relaxed_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
     for (i, layer) in enumerate(nnet.layers)
-        before_act = layer.weights * neurons[i] + layer.bias
+        ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
-            if act_pattern[i][j]
-                @constraint(model, neurons[i+1][j] == before_act[j])
+            if δ[i][j]
+                @constraint(model, z[i+1][j] == ẑ[j])
             else
-                @constraint(model, neurons[i+1][j] == 0.0)
+                @constraint(model, z[i+1][j] == 0.0)
             end
         end
     end
@@ -36,23 +36,21 @@ end
 
 # Encode constraint as LP according to the Δ relaxation of ReLU
 # This function is called in planet and bab
-function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons)
+function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, z)
     for (i, layer) in enumerate(nnet.layers)
-        (W, b, act) = (layer.weights, layer.bias, layer.activation)
-        before_act = W * neurons[i] + b
-        before_act_rectangle = linear_transformation(layer, bounds[i])
-        lower, upper = low(before_act_rectangle), high(before_act_rectangle)
-        # For now assume only ReLU activation
-        for j in 1:length(layer.bias) # For evey node
-            if lower[j] > 0.0
-                @constraint(model, neurons[i+1][j] == before_act[j])
-            elseif upper[j] < 0.0
-                @constraint(model, neurons[i+1][j] == 0.0)
-            else # Here use triangle relaxation
+        ẑ = layer.weights * z[i] + layer.bias
+        ẑ_bound = linear_transformation(layer, bounds[i])
+        l̂, û = low(ẑ_bound), high(ẑ_bound)
+        for j in 1:length(layer.bias)
+            if l̂[j] > 0.0
+                @constraint(model, z[i+1][j] == ẑ[j])
+            elseif û[j] < 0.0
+                @constraint(model, z[i+1][j] == 0.0)
+            else
                 @constraints(model, begin
-                                    neurons[i+1][j] >= before_act[j]
-                                    neurons[i+1][j] <= upper[j] / (upper[j] - lower[j]) * (before_act[j] - lower[j])
-                                    neurons[i+1][j] >= 0.0
+                                    z[i+1][j] >= ẑ[j]
+                                    z[i+1][j] <= û[j] / (û[j] - l̂[j]) * (ẑ[j] - l̂[j])
+                                    z[i+1][j] >= 0.0
                                 end)
             end
         end
@@ -60,18 +58,18 @@ function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangl
     return nothing
 end
 
-function encode_slack_lp!(model::Model, nnet::Network, p::Vector{Vector{Int64}}, neurons)
+function encode_slack_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
     slack = Vector{Vector{Variable}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
-        before_act = layer.weights * neurons[i] + layer.bias
+        ẑ = layer.weights * z[i] + layer.bias
         slack[i] = @variable(model, [1:length(layer.bias)])
         for j in 1:length(layer.bias)
-            if p[i][j] == 1
-                @constraint(model, neurons[i+1][j] == before_act[j] + slack[i][j])
-                @constraint(model, before_act[j] + slack[i][j] >= 0.0)
+            if δ[i][j]
+                @constraint(model, z[i+1][j] == ẑ[j] + slack[i][j])
+                @constraint(model, ẑ[j] + slack[i][j] >= 0.0)
             else
-                @constraint(model, neurons[i+1][j] == 0.0)
-                @constraint(model, 0.0 >= before_act[j] - slack[i][j])
+                @constraint(model, z[i+1][j] == 0.0)
+                @constraint(model, 0.0 >= ẑ[j] - slack[i][j])
             end
         end
     end
@@ -80,17 +78,15 @@ end
 
 # Encode constraint as MIP without bounds
 # This function is called in Reverify
-function encode_mip_constraint!(model::Model, nnet::Network, M::Float64, neurons, deltas)
+function encode_mip_constraint!(model::Model, nnet::Network, m::Float64, z, δ)
     for (i, layer) in enumerate(nnet.layers)
-        lbounds = layer.weights * neurons[i] + layer.bias
-        dy = M*(deltas[i])  # TODO rename variable
-        ubounds = lbounds + dy
+        ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
             @constraints(model, begin
-                                    neurons[i+1][j] >= lbounds[j]
-                                    neurons[i+1][j] <= ubounds[j]
-                                    neurons[i+1][j] >= 0.0
-                                    neurons[i+1][j] <= M-dy[j]
+                                    z[i+1][j] >= ẑ[j]
+                                    z[i+1][j] >= 0.0
+                                    z[i+1][j] <= ẑ[j] + m * δ[i][j]
+                                    z[i+1][j] <= m - m * δ[i][j]
                                 end)
         end
     end
@@ -99,24 +95,23 @@ end
 
 # Encode constraint as MIP with bounds
 # This function is called in MIPVerify
-function encode_mip_constraint!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, neurons, deltas)
+function encode_mip_constraint!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, z, δ)
     for (i, layer) in enumerate(nnet.layers)
-        (W, b, act) = (layer.weights, layer.bias, layer.activation)
-        before_act = W * neurons[i] + b
-        before_act_rectangle = linear_transformation(layer, bounds[i])
-        lower, upper = low(before_act_rectangle), high(before_act_rectangle)
+        ẑ = layer.weights * z[i] + layer.bias
+        ẑ_bound = linear_transformation(layer, bounds[i])
+        l̂, û = low(ẑ_bound), high(ẑ_bound)
 
         for j in 1:length(layer.bias) # For evey node
-            if lower[j] >= 0.0
-                @constraint(model, neurons[i+1][j] == before_act[j])
-            elseif upper[j] <= 0.0
-                @constraint(model, neurons[i+1][j] == 0.0)
+            if l̂[j] >= 0.0
+                @constraint(model, z[i+1][j] == ẑ[j])
+            elseif û[j] <= 0.0
+                @constraint(model, z[i+1][j] == 0.0)
             else
                 @constraints(model, begin
-                                        neurons[i+1][j] >= before_act[j]
-                                        neurons[i+1][j] <= upper[j] * deltas[i][j]
-                                        neurons[i+1][j] >= 0.0
-                                        neurons[i+1][j] <= before_act[j] - lower[j] * (1 - deltas[i][j])
+                                        z[i+1][j] >= ẑ[j]
+                                        z[i+1][j] >= 0.0
+                                        z[i+1][j] <= û[j] * δ[i][j]
+                                        z[i+1][j] <= ẑ[j] - l̂[j] * (1 - δ[i][j])
                                     end)
             end
         end

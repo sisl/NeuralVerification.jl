@@ -12,7 +12,7 @@ Depth = 2
 ## Installation
 To download this library, clone it from the julia package manager like so:
 ```@example
-(v1.0) pkg> clone https://github.com/sisl/NeuralVerification.jl.git
+(v1.0) pkg> add https://github.com/sisl/NeuralVerification.jl
 ```
 
 ## Setting up a problem

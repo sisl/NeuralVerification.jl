@@ -32,7 +32,7 @@ end
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
-    model = JuMP.Model(solver = solver.optimizer)
+    model = Model(solver = solver.optimizer)
     c, d = tosimplehrep(problem.output)
     v = c * problem.network.layers[2].weights
     W = problem.network.layers[1].weights
