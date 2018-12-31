@@ -63,7 +63,7 @@ function init_ψ(bounds::Vector{Hyperrectangle})
     return ψ
 end
 
-function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
+function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
@@ -127,13 +127,13 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
 end
 
 function get_assignment(nnet::Network, list::Vector{Int64})
-    p = Vector{Vector{Int64}}(undef, length(nnet.layers))
+    p = Vector{Vector{Bool}}(undef, length(nnet.layers))
     n = 0
     for (i, layer) in enumerate(nnet.layers)
-        p[i] = zeros(Int, length(layer.bias))
+        p[i] = zeros(Bool, length(layer.bias))
         for j in 1:length(p[i])
             if list[n+j] > 0
-                p[i][j] = 1
+                p[i][j] = true
             end
         end
         n += length(p[i])
