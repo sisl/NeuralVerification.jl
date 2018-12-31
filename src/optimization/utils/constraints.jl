@@ -3,7 +3,11 @@
 
 # Encode constraint as LP according to the activation pattern
 # this is used in Sherlock
-function encode_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
+function encode_lp!(model::Model,
+                    nnet::Network,
+                    δ::Vector{Vector{Bool}},
+                    z::Vector{Vector{Variable}})
+
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
@@ -20,7 +24,11 @@ function encode_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
 end
 
 # This function is called in iLP
-function encode_relaxed_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
+function encode_relaxed_lp!(model::Model,
+                            nnet::Network,
+                            δ::Vector{Vector{Bool}},
+                            z::Vector{Vector{Variable}})
+
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
@@ -36,7 +44,11 @@ end
 
 # Encode constraint as LP according to the Δ relaxation of ReLU
 # This function is called in planet and bab
-function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, z)
+function encode_Δ_lp!(model::Model,
+                      nnet::Network,
+                      bounds::Vector{Hyperrectangle},
+                      z::Vector{Vector{Variable}})
+
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         ẑ_bound = linear_transformation(layer, bounds[i])
@@ -58,7 +70,11 @@ function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangl
     return nothing
 end
 
-function encode_slack_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
+function encode_slack_lp!(model::Model,
+                          nnet::Network,
+                          δ::Vector{Vector{Bool}},
+                          z::Vector{Vector{Variable}})
+
     slack = Vector{Vector{Variable}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
@@ -78,7 +94,12 @@ end
 
 # Encode constraint as MIP without bounds
 # This function is called in Reverify
-function encode_mip_constraint!(model::Model, nnet::Network, m::Float64, z, δ)
+function encode_mip_constraint!(model::Model,
+                                nnet::Network,
+                                m::Float64,
+                                z::Vector{Vector{Variable}},
+                                δ::Vector{Vector{Variable}})
+
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         for j in 1:length(layer.bias)
@@ -95,7 +116,12 @@ end
 
 # Encode constraint as MIP with bounds
 # This function is called in MIPVerify
-function encode_mip_constraint!(model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, z, δ)
+function encode_mip_constraint!(model::Model,
+                                nnet::Network,
+                                bounds::Vector{Hyperrectangle},
+                                z::Vector{Vector{Variable}},
+                                δ::Vector{Vector{Variable}})
+
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         ẑ_bound = linear_transformation(layer, bounds[i])
