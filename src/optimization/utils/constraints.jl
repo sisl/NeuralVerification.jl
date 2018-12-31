@@ -58,13 +58,13 @@ function encode_Δ_lp!(model::Model, nnet::Network, bounds::Vector{Hyperrectangl
     return nothing
 end
 
-function encode_slack_lp!(model::Model, nnet::Network, δ::Vector{Vector{Int64}}, z)
+function encode_slack_lp!(model::Model, nnet::Network, δ::Vector{Vector{Bool}}, z)
     slack = Vector{Vector{Variable}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
         ẑ = layer.weights * z[i] + layer.bias
         slack[i] = @variable(model, [1:length(layer.bias)])
         for j in 1:length(layer.bias)
-            if δ[i][j] == 1
+            if δ[i][j]
                 @constraint(model, z[i+1][j] == ẑ[j] + slack[i][j])
                 @constraint(model, ẑ[j] + slack[i][j] >= 0.0)
             else
