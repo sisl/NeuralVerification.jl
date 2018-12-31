@@ -109,7 +109,7 @@ end
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMathProgSolver, type::Symbol)
     bounds = get_bounds(nnet, dom)
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, dom, first(neurons))
     encode_Δ_lp!(model, nnet, bounds, neurons)

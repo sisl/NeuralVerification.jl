@@ -64,7 +64,7 @@ function init_ψ(bounds::Vector{Hyperrectangle})
 end
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint!(model, problem.output, last(neurons))
@@ -77,8 +77,10 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::
         status == :Optimal || return (:Infeasible, conflict)
         (m, index) = max_slack(getvalue(slack))
         m > 0.0 || return (:Feasible, conflict)
-        node = -δ[index[1]][index[2]] * get_node_id(problem.network, index)
-        append!(conflict, Any[node])
+        # activated neurons get a factor of (-1)
+        coeff = δ[index[1]][index[2]] ? -1 : 1
+        node = coeff * get_node_id(problem.network, index)
+        push!(conflict, node)
         @constraint(model, slack[index[1]][index[2]] == 0.0)
     end
 end
@@ -101,7 +103,7 @@ end
 
 function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     bounds = get_bounds(problem)
-    model = JuMP.Model(solver = optimizer)
+    model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_output_constraint!(model, problem.output, last(neurons))
@@ -128,9 +130,11 @@ function get_assignment(nnet::Network, list::Vector{Int64})
     p = Vector{Vector{Int64}}(undef, length(nnet.layers))
     n = 0
     for (i, layer) in enumerate(nnet.layers)
-        p[i] = fill(0, length(layer.bias))
+        p[i] = zeros(Int, length(layer.bias))
         for j in 1:length(p[i])
-            p[i][j] = ifelse(list[n+j] > 0, 1, -1)
+            if list[n+j] > 0
+                p[i][j] = 1
+            end
         end
         n += length(p[i])
     end
@@ -227,7 +231,7 @@ end
 # end
 
 # function get_tight_clause(problem::Problem, p::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle})
-#     model = JuMP.Model(solver = optimizer)
+#     model = Model(solver = optimizer)
 
 #     neurons = init_neurons(solver, model, problem.network)
 #     add_set_constraint!(model, problem.input, first(neurons))

@@ -31,7 +31,7 @@ end
 # Duality(optimizer::DataType = GLPKSolverMIP; kwargs...) =  Duality(optimizer(kwargs...))
 
 function solve(solver::Duality, problem::Problem)
-    model = JuMP.Model(solver = solver.optimizer)
+    model = Model(solver = solver.optimizer)
     bounds = get_bounds(problem)
     c, d = tosimplehrep(problem.output)
     λ = init_multipliers(model, problem.network)
