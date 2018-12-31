@@ -45,7 +45,7 @@ function solve(solver::ILP, problem::Problem)
             return AdversarialResult(:Unknown)
         end
         x = getvalue(first(neurons))
-        if satisfy(problem.network, x, act_pattern)
+        if match_activation(problem.network, x, act_pattern)
             radius = getvalue(J)
             if radius >= minimum(problem.input.radius)
                 return AdversarialResult(:SAT, radius)
@@ -58,7 +58,7 @@ function solve(solver::ILP, problem::Problem)
     return AdversarialResult(:Unknown)
 end
 
-function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
+function match_activation(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
