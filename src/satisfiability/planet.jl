@@ -70,7 +70,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
     slack = encode_slack_lp!(model, problem.network, neurons, δ)
-    o = min_sum_all!(model, slack)
+    o = min_sum!(model, slack)
     conflict = Vector{Int64}()
     while true
         status = solve(model, suppress_warnings = true)
@@ -109,12 +109,12 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
 
-    o = min_sum_all!(model, neurons)
+    o = min_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     lower = getvalue(neurons)
 
-    o = max_sum_all!(model, neurons)
+    o = max_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
     status == :Optimal || return (:Infeasible, [])
     upper = getvalue(neurons)
