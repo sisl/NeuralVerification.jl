@@ -24,7 +24,7 @@ E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via th
 struct ConvDual end
 
 function solve(solver::ConvDual, problem::Problem)
-    o = dual_cost(solver, problem.network, problem.input, problem.output)
+    o = dual_value(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
     if o >= 0.0
         return BasicResult(:SAT)
@@ -33,7 +33,7 @@ function solve(solver::ConvDual, problem::Problem)
 end
 
 # compute lower bound of the dual problem.
-function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
+function dual_value(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
 
     @assert all(iszero.(input.radius .- input.radius[1])) "input.radius must be uniform. Got $(input.radius)"
 

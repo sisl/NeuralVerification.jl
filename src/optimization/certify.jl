@@ -39,7 +39,7 @@ function solve(solver::Certify, problem::Problem)
     M = get_M(v[1, :], W)
     n = size(M, 1)
     @variable(model, P[1:n, 1:n], SDP)
-    # Compute cost
+    # Compute value
     Tr = M * P
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]

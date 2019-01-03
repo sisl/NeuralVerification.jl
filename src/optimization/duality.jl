@@ -36,7 +36,7 @@ function solve(solver::Duality, problem::Problem)
     c, d = tosimplehrep(problem.output)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
-    o = dual_cost(solver, model, problem.network, bounds, λ, μ)
+    o = dual_value(solver, model, problem.network, bounds, λ, μ)
     @constraint(model, last(λ) .== -c)
     status = solve(model, suppress_warnings = true)
     return interpret_result(solver, status, o - d[1])
@@ -51,7 +51,7 @@ end
 
 # For each layer l and node k
 # max { mu[l][k] * z - lambda[l][k] * act(z) }
-function activation_cost(layer, μ, λ, bound)
+function activation_value(layer, μ, λ, bound)
     o = zero(typeof(first(μ)))
     # (W, b, act) = (layer.weights, layer.bias, layer.activation)
     b_hat = linear_transformation(layer, bound)
@@ -73,7 +73,7 @@ end
 # max { λ[l-1]' * x[l] - μ[l]' * (W[l] * x[l] + b[l]) }
 # x[i] belongs to a Hyperrectangle
 # TODO consider bringing in μᵀ instead of μ
-function layer_cost(layer, μ, λ, bound)
+function layer_value(layer, μ, λ, bound)
     (W, b) = (layer.weights, layer.bias)
     o = λ' * bound.center - μ' * (W * bound.center + b)
     # instead of for-loop:
@@ -84,22 +84,22 @@ end
 # Input constraint
 # max { - mu[1]' * (W[1] * input + b[1]) }
 # input belongs to a Hyperrectangle
-function input_layer_cost(layer, μ, input)
+function input_layer_value(layer, μ, input)
     W, b = layer.weights, layer.bias
     o = - μ' * (W * input.center .+ b)
     o += sum(symbolic_abs.(μ' * W) .* input.radius)   # TODO check that this is equivalent to before
     return o
 end
 
-function dual_cost(solver::Duality, model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
+function dual_value(solver::Duality, model::Model, nnet::Network, bounds::Vector{Hyperrectangle}, λ, μ)
     layers = nnet.layers
     # input layer
-    o = input_layer_cost(layers[1], μ[1], bounds[1])
-    o += activation_cost(layers[1], μ[1], λ[1], bounds[1])
+    o = input_layer_value(layers[1], μ[1], bounds[1])
+    o += activation_value(layers[1], μ[1], λ[1], bounds[1])
     # other layers
     for i in 2:length(layers)
-        o += layer_cost(layers[i], μ[i], λ[i-1], bounds[i])
-        o += activation_cost(layers[i], μ[i], λ[i], bounds[i])
+        o += layer_value(layers[i], μ[i], λ[i-1], bounds[i])
+        o += activation_value(layers[i], μ[i], λ[i], bounds[i])
     end
     @objective(model, Min, o)
     return o
