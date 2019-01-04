@@ -31,19 +31,18 @@ end
 # Certify(optimizer::DataType = SCSSolver; kwargs...) =  Certify(optimizer(;kwargs...))
 
 function solve(solver::Certify, problem::Problem)
-    @assert length(problem.network.layers) == 2 "Network should only contain one hidden layer!"
+    @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
     model = Model(solver = solver.optimizer)
     c, d = tosimplehrep(problem.output)
     v = c * problem.network.layers[2].weights
     W = problem.network.layers[1].weights
     M = get_M(v[1, :], W)
     n = size(M, 1)
-    @variable(model, P[1:n, 1:n], SDP)
+    P = @variable(model, [1:n, 1:n], SDP)
     # Compute value
-    Tr = M * P
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
-    o = output + epsilon/4 * sum(Tr[i, i] for i in 1:n)
+    o = output + epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, o[1])
