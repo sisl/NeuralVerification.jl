@@ -18,9 +18,9 @@ Exact reachability analysis.
 Sound and complete.
 
 # Reference
-W. Xiang, H.-D. Tran, and T. T. Johnson,
+[W. Xiang, H.-D. Tran, and T. T. Johnson,
 "Reachable Set Computation and Safety Verification for Neural Networks with ReLU Activations,"
-*ArXiv Preprint ArXiv:1712.08163*, 2017.
+*ArXiv Preprint ArXiv:1712.08163*, 2017.](https://arxiv.org/abs/1712.08163)
 """
 struct ExactReach end
 

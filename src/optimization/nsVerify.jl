@@ -19,9 +19,9 @@ Default `optimizer` is `GLPKSolverMIP()`. Default `m` is `1000.0` (should be lar
 Sound and complete.
 
 # Reference
-A. Lomuscio and L. Maganti,
+[A. Lomuscio and L. Maganti,
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
-*ArXiv Preprint ArXiv:1706.07351*, 2017.
+*ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
 @with_kw struct NSVerify{O<:AbstractMathProgSolver}
     optimizer::O = GLPKSolverMIP()

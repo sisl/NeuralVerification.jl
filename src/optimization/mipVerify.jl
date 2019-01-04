@@ -21,8 +21,10 @@ Sound and complete.
 # Reference
 
 V. Tjeng, K. Xiao, and R. Tedrake,
-"Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
-*ArXiv Preprint ArXiv:1711.07356*, 2017.
+["Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
+*ArXiv Preprint ArXiv:1711.07356*, 2017.](https://arxiv.org/abs/1711.07356)
+
+[github.com/vtjeng/MIPVerify.jl](github.com/vtjeng/MIPVerify.jl)
 """
 @with_kw struct MIPVerify{O<:AbstractMathProgSolver}
     optimizer::O

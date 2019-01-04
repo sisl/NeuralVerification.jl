@@ -21,9 +21,9 @@ Lipschitz estimation + FastLin. All arguments are for FastLin.
 Sound but not complete.
 
 # Reference
-T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
+[T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
 "Towards Fast Computation of Certified Robustness for ReLU Networks,"
-*ArXiv Preprint ArXiv:1804.09699*, 2018.
+*ArXiv Preprint ArXiv:1804.09699*, 2018.](https://arxiv.org/abs/1804.09699)
 """
 @with_kw struct FastLip
     maxIter::Int64    = 10

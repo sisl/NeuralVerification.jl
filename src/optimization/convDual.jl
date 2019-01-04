@@ -18,8 +18,10 @@ Convex relaxation with duality.
 Sound but not complete.
 
 # Reference
-E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via the Convex Outer Adversarial Polytope,"
-*ArXiv Preprint ArXiv:1711.00851*, 2017.
+[E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via the Convex Outer Adversarial Polytope,"
+*ArXiv Preprint ArXiv:1711.00851*, 2017.](https://arxiv.org/abs/1711.00851)
+
+[github.com/locuslab/convex_adversarial](github.com/locuslab/convex_adversarial)
 """
 struct ConvDual end
 

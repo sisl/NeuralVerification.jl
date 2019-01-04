@@ -19,9 +19,9 @@ Default `optimizer` is `GLPKSolverMIP()`.
 Sound but not complete.
 
 # Reference
-K. Dvijotham, R. Stanforth, S. Gowal, T. Mann, and P. Kohli,
+[K. Dvijotham, R. Stanforth, S. Gowal, T. Mann, and P. Kohli,
 "A Dual Approach to Scalable Verification of Deep Networks,"
-*ArXiv Preprint ArXiv:1803.06567*, 2018.
+*ArXiv Preprint ArXiv:1803.06567*, 2018.](https://arxiv.org/abs/1803.06567)
 """
 @with_kw struct Duality{O<:AbstractMathProgSolver}
     optimizer::O = GLPKSolverMIP()

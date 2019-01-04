@@ -20,7 +20,11 @@ Symbolic reachability analysis and iterative interval refinement (search).
 Sound but not complete.
 
 # Reference
-S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, "Formal Security Analysis of Neural Networks Using Symbolic Intervals," *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.
+[S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana,
+"Formal Security Analysis of Neural Networks Using Symbolic Intervals,"
+*CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.](https://arxiv.org/abs/1804.10829)
+
+[github.com/tcwangshiqi-columbia/ReluVal](github.com/tcwangshiqi-columbia/ReluVal)
 """
 @with_kw struct ReluVal
     max_iter::Int64     = 10

@@ -19,9 +19,9 @@ Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
 Sound but not complete.
 
 # Reference
-O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
+[O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
 "Measuring Neural Net Robustness with Constraints,"
-in *Advances in Neural Information Processing Systems*, 2016.
+in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
 @with_kw struct ILP{O<:AbstractMathProgSolver}
     optimizer::O    = GLPKSolverMIP()

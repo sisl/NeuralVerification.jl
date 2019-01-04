@@ -22,9 +22,9 @@ For bound, it computes concrete bounds by sampling, approximated bound by optimi
 Sound and complete.
 
 # Reference
-R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
+[R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
 "A Unified View of Piecewise Linear Neural Network Verification,"
-*ArXiv Preprint ArXiv:1711.00455*, 2017.
+*ArXiv Preprint ArXiv:1711.00455*, 2017.](https://arxiv.org/abs/1711.00455)
 """
 @with_kw struct BaB
     optimizer::AbstractMathProgSolver = GLPKSolverMIP()

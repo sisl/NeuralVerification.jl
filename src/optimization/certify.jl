@@ -19,9 +19,9 @@ Default `optimizer` is `SCSSolver()`.
 Sound but not complete.
 
 # Reference
-A. Raghunathan, J. Steinhardt, and P. Liang,
+[A. Raghunathan, J. Steinhardt, and P. Liang,
 "Certified Defenses against Adversarial Examples,"
-*ArXiv Preprint ArXiv:1801.09344*, 2018.
+*ArXiv Preprint ArXiv:1801.09344*, 2018.](https://arxiv.org/abs/1801.09344)
 """
 @with_kw struct Certify{O<:AbstractMathProgSolver}
     optimizer::O  = SCSSolver()

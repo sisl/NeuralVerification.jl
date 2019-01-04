@@ -21,9 +21,11 @@ Global search: solve a feasibilty problem using MILP encoding (default calling N
 Sound but not complete.
 
 # Reference
-S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
+[S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
 "Output Range Analysis for Deep Neural Networks,"
-*ArXiv Preprint ArXiv:1709.09130*, 2017.
+*ArXiv Preprint ArXiv:1709.09130*, 2017.](https://arxiv.org/abs/1709.09130)
+
+[github.com/souradeep-111/sherlock](github.com/souradeep-111/sherlock)
 """
 @with_kw struct Sherlock
     optimizer::AbstractMathProgSolver = GLPKSolverMIP()

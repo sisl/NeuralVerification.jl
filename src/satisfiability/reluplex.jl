@@ -18,9 +18,9 @@ Binary search of activations (0/1) and pruning by optimization.
 Sound and complete.
 
 # Reference
-G. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer,
+[G. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer,
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
-*International Conference on Computer Aided Verification*, 2017.
+*International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
 struct Reluplex end
 
