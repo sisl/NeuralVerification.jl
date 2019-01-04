@@ -16,7 +16,9 @@ function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol; in
     all_layers_n = n_nodes.(layers)
 
     if include_input
-        input_layer_n = size(first(layers).weights, 2) # input layer gets special treatment
+        # input to the first layer also gets variables
+        # essentially an input constraint
+        input_layer_n = size(first(layers).weights, 2)
         prepend!(all_layers_n, input_layer_n)
         push!(vars, Vector{Variable}())        # expand vars by one to account
     end
@@ -51,16 +53,11 @@ symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
 function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
     aux = @variable(m)
     @constraint(m, aux >= 0)
-    for (i, a) in enumerate(v)
-        @constraint(m, aux >= a)
-        @constraint(m, aux >= -a)
-    end
+    @constraint(m, aux .>= a)
+    @constraint(m, aux .>= -a)
     return aux
 end
-
-symbolic_infty_norm(m::Model, v::Variable)          = symbolic_abs(m, v)
-symbolic_infty_norm(m::Model, v::GenericAffExpr)    = symbolic_abs(m, v)
-
-symbolic_infty_norm(v::Variable)                = symbolic_infty_norm(v.m, v)
-symbolic_infty_norm(v::GenericAffExpr)          = symbolic_infty_norm(first(v.vars).m, v)
+# # in general, default to symbolic_abs behavior:
+# symbolic_infty_norm(v) = symbolic_abs(v)
+# only Array{<:GenericAffExpr} is needed
 symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(first(first(v).vars).m, v)
