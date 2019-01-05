@@ -53,6 +53,6 @@ julia> result.status
 
 A result status of `:UNSAT` means that the input-output relationship is "unsatisfied", i.e. that the property being tested for in the network does not hold.
 A result status of `:SAT` means that the specified input-output relationship is "satisfied" (note the completeness/soundness properties of the chosen algorithm in interpretting `:SAT` and `:UNSAT`).
-A status of `:Undetermined` is also possible.
+A status of `:Unknown` is also possible.
 
 For a full list of `Solvers` and their properties, requirements, and `Result` types, please refer to the documentation.
