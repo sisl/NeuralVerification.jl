@@ -25,9 +25,11 @@ The argument `ϵ` is the resolution of the initial search tree. Default `1.0`.
 Sound but not complete.
 
 # Reference
-X. Huang, M. Kwiatkowska, S. Wang, and M. Wu,
+[X. Huang, M. Kwiatkowska, S. Wang, and M. Wu,
 "Safety Verification of Deep Neural Networks,"
-in *International Conference on Computer Aided Verification*, 2017.
+in *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1610.06940)
+
+[github.com/VeriDeep/DLV](github.com/VeriDeep/DLV)
 """
 @with_kw struct DLV
     ϵ::Float64 = 1.0
@@ -41,6 +43,11 @@ function solve(solver::DLV, problem::Problem)
     # The list of sample intervals
     δ = Vector{Vector{Float64}}(undef,length(η))
     δ[1] = fill(solver.ϵ, dim(η[1]))
+    println(last(η))
+    println(problem.output)
+    if issubset(last(η), problem.output)
+        return CounterExampleResult(:SAT)
+    end
 
     output = compute_output(problem.network, problem.input.center)
     for (i, layer) in enumerate(problem.network.layers)
@@ -61,7 +68,7 @@ function solve(solver::DLV, problem::Problem)
             end
         end
     end
-    return CounterExampleResult(:SAT)
+    return ReachabilityResult(:UNSAT, [last(η)])
 end
 
 # For simplicity, we just cut the sample interval into half
@@ -80,7 +87,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     add_set_constraint!(model, input, first(neurons))
     add_set_constraint!(model, output, last(neurons))
     encode_mip_constraint!(model, nnet, bounds, neurons, deltas)
-    J = max_disturbance!(model, first(neurons) - input.center)
+    o = max_disturbance!(model, first(neurons) - input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Optimal
         return (true, getvalue(first(neurons)))
