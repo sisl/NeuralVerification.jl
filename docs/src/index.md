@@ -5,7 +5,7 @@ At the moment, all of the algorithms are written under the assumption of feedfor
 and some of them also assume ReLU activation, but both of these assumptions will be relaxed in the future.*
 
 ```@contents
-Pages = ["problem.md", "solvers.md", "functions.md"]
+Pages = ["index.md", "problem.md", "solvers.md", "functions.md"]
 Depth = 2
 ```
 
@@ -26,7 +26,7 @@ using NeuralVerification
 solver = MaxSens(resolution = 0.3)
 ```
 
-### Setting up a problem
+### Creating up a Problem
 A `Problem` consists of a `Network` to be tested, a set representing the domain of the *input test region*, and another set representing the range of the *output region*.
 In this example, we use a small neural network with only one hidden layer consisting of 2 neurons.
 
@@ -46,7 +46,7 @@ The input region is bounded by [-1.0, 1.0], and the output region is bounded by 
 This can be seen by carrying out `A .* [1.0, 1.0]`, etc. to create the constraints associated with the sets `input` and `output`.
 For more information about `HPolytope`s and `Hyperrectangle`s, which are commonly used to represent the input/output sets in this package, please refer to the [`LazySets` documentation](https://juliareach.github.io/LazySets.jl/latest/index.html).
 
-### Solving the problem
+### Calling the solver
 To solve the problem, we simply call the `solve` function. This syntax is independent of the solver selected.
 ```@example ex1
 solve(solver, problem)
@@ -58,7 +58,7 @@ A result status of `:SAT` means that the specified input-output relationship is 
 A result status of `:UNSAT` means that the input-output relationship is "unsatisfied", i.e. that the property being tested for in the network does not hold.
 A status of `:Unknown` is also possible.
 All of the algorithms considered in this library are sound, but most are not complete; it is important to note these properties when interpreting the result status.
-For more information about result types, see [`Results`](@ref).
+For more information about result types, see [`Result`](@ref).
 
 The accompanying `Hyperrectangle{Float64}[]` is an empty vector that is meaningless in this case.
 If the result was instead `:UNSAT`, then this vector would contain the reachable set (which exceeds the allowed output set).
