@@ -14,15 +14,13 @@ using Reexport # once development slows down, remove this requirement in favor o
 using Polyhedra
 using CDDLib
 using LinearAlgebra
-using SparseArrays
 using Parameters
 using Interpolations # only for PiecewiseLinear
 
-import LazySets: dim, HalfSpace # dim is necessary to avoid conflict with Polyhedra.dim, HalfSpace is not defined unless imported
+import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 # abstract type Solver end # no longer needed
 
-# NOTE: the first 3 can probably be unified in one file.
 include("utils/activation.jl")
 include("utils/network.jl")
 include("utils/problem.jl")
