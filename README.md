@@ -24,7 +24,7 @@ Please note that the implementations of the algorithms are pedagogical in nature
 Derivation and discussion of these algorithms is presented in _link to paper_.
 
 *Note:* At present, `Ai2`, `ExactReach`, and `Duality` do not work in higher dimensions (e.g. image classification).
-This is being addressed in [#9](@ref)
+This is being addressed in [#9](https://github.com/sisl/NeuralVerification.jl/issues/9)
 
 The implementations run in Julia 1.0.
 
