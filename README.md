@@ -1,7 +1,7 @@
 # NeuralVerification.jl
 
-This repo contains implementation of various methods to soundly verify deep neural networks.
-We verify whether a neural network satisfies certain input-output constraints.
+This library contains implementations of various methods to soundly verify deep neural networks.
+In general, we verify whether a neural network satisfies certain input-output constraints.
 The verification methods are divided into five categories:
 * *Reachability methods:*
 ExactReach, Ai2, MaxSens
@@ -23,8 +23,8 @@ To download this library, clone it from the julia package manager like so:
 Please note that the implementations of the algorithms are pedagogical in nature, and so may not perform optimally.
 Derivation and discussion of these algorithms is presented in _link to paper_.
 
-*Note* At present, `Ai2`, `ExactReach`, and `Duality` do not work in higher dimensions (e.g. image classification).
-This is being addressed in [#9](https://github.com/sisl/NeuralVerification.jl/issues/9)
+*Note:* At present, `Ai2`, `ExactReach`, and `Duality` do not work in higher dimensions (e.g. image classification).
+This is being addressed in [#9](@ref)
 
 ## Example Usage
 ### Choose a solver
