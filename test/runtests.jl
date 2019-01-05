@@ -15,7 +15,7 @@ end
 
 at = @__DIR__
 
-small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
+small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 A = Matrix{Float64}(undef, 2,1)
 A[1:2] = [1, -1]
 
