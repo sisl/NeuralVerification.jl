@@ -32,7 +32,7 @@ function solve(solver::ILP, problem::Problem)
     x = problem.input.center
     i = 0
     while i < solver.max_iter
-        model = JuMP.Model(solver = solver.optimizer)
+        model = Model(solver = solver.optimizer)
         act_pattern = get_activation(problem.network, x)
 
         neurons = init_neurons(model, problem.network)

@@ -29,7 +29,7 @@ A. Lomuscio and L. Maganti,
 end
 
 function solve(solver::NSVerify, problem::Problem)
-    model = JuMP.Model(solver = solver.optimizer)
+    model = Model(solver = solver.optimizer)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))

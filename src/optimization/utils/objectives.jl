@@ -5,21 +5,21 @@
 ##
 # Objective: L∞ norm of the disturbance
 function max_disturbance!(model::Model, var)
-    J = symbolic_infty_norm(var)
-    @objective(model, Min, J)
-    return J
+    o = symbolic_infty_norm(var)
+    @objective(model, Min, o)
+    return o
 end
 
 function min_sum_all!(model::Model, var)
-    J = sum(sum.(var))
-    @objective(model, Min, J)
-    return J
+    o = sum(sum.(var))
+    @objective(model, Min, o)
+    return o
 end
 
 function max_sum_all!(model::Model, var)
-    J = sum(sum.(var))
-    @objective(model, Max, J)
-    return J
+    o = sum(sum.(var))
+    @objective(model, Max, o)
+    return o
 end
 
 function zero_objective!(model::Model)
@@ -28,7 +28,7 @@ end
 
 function linear_objective!(mode::Model, map::HPolytope, var)
     c, d = tosimplehrep(map)
-    J = c * var - d
-    @objective(model, Min, J)
-    return J
+    o = c * var - d
+    @objective(model, Min, o)
+    return o
 end
