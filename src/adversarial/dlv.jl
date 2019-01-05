@@ -43,8 +43,7 @@ function solve(solver::DLV, problem::Problem)
     # The list of sample intervals
     δ = Vector{Vector{Float64}}(undef,length(η))
     δ[1] = fill(solver.ϵ, dim(η[1]))
-    println(last(η))
-    println(problem.output)
+
     if issubset(last(η), problem.output)
         return CounterExampleResult(:SAT)
     end

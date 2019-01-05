@@ -36,18 +36,20 @@ function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # refine bounds
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return BasicResult(:SAT)
+    # status == :Optimal || return BasicResult(:SAT)
+    issubset(last(bounds), problem.output) && return BasicResult(:SAT)
     ψ = init_ψ(bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
+        # println("Elastic filter status: ", status, "; Conflicting array: ", conflict)
         status == :Infeasible || return BasicResult(:UNSAT)
         append!(ψ, Any[conflict])
         δ = PicoSAT.solve(ψ)
     end
-    return BasicResult(:SAT)
+    return BasicResult(:Unknown)
 end
 
 function init_ψ(bounds::Vector{Hyperrectangle})
@@ -113,12 +115,12 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
 
     o = min_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, [])
+    status == :Optimal || return (:Infeasible, bounds)
     lower = getvalue(neurons)
 
     o = max_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, [])
+    status == :Optimal || return (:Infeasible, bounds)
     upper = getvalue(neurons)
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
