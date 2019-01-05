@@ -17,6 +17,8 @@ Sherlock, BaB, Planet, Reluplex
 Please note that the implementations of the algorithms are pedagogical in nature, and so may not perform optimally.
 Derivation and discussion of these algorithms is presented in _link to paper_.
 
+The implementations run in Julia 1.0.
+
 ## Example Usage
 ### Choose a solver
 ```julia
