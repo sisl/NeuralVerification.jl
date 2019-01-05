@@ -20,8 +20,10 @@ Binary search of activations (0/1) and pruning by optimization. Our implementati
 Sound and complete.
 
 # Reference
-R. Ehlers, "Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,"
-in *International Symposium on Automated Technology for Verification and Analysis*, 2017.
+[R. Ehlers, "Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,"
+in *International Symposium on Automated Technology for Verification and Analysis*, 2017.](https://arxiv.org/abs/1705.01320)
+
+[https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
 @with_kw struct Planet
     optimizer::AbstractMathProgSolver
@@ -34,18 +36,20 @@ function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # refine bounds
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return BasicResult(:SAT)
+    # status == :Optimal || return BasicResult(:SAT)
+    issubset(last(bounds), problem.output) && return BasicResult(:SAT)
     ψ = init_ψ(bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
+        # println("Elastic filter status: ", status, "; Conflicting array: ", conflict)
         status == :Infeasible || return BasicResult(:UNSAT)
         append!(ψ, Any[conflict])
         δ = PicoSAT.solve(ψ)
     end
-    return BasicResult(:SAT)
+    return BasicResult(:Unknown)
 end
 
 function init_ψ(bounds::Vector{Hyperrectangle})
@@ -63,14 +67,14 @@ function init_ψ(bounds::Vector{Hyperrectangle})
     return ψ
 end
 
-function elastic_filtering(problem::Problem, δ::Vector{Vector{Int64}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
+function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_output_constraint!(model, problem.output, last(neurons))
+    add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
-    slack = encode_slack_lp!(model, problem.network, δ, neurons)
-    J = min_sum_all!(model, slack)
+    slack = encode_slack_lp!(model, problem.network, neurons, δ)
+    o = min_sum!(model, slack)
     conflict = Vector{Int64}()
     while true
         status = solve(model, suppress_warnings = true)
@@ -106,17 +110,17 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_output_constraint!(model, problem.output, last(neurons))
+    add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
 
-    J = min_sum_all!(model, neurons)
+    o = min_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, [])
+    status == :Optimal || return (:Infeasible, bounds)
     lower = getvalue(neurons)
 
-    J = max_sum_all!(model, neurons)
+    o = max_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, [])
+    status == :Optimal || return (:Infeasible, bounds)
     upper = getvalue(neurons)
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
@@ -127,13 +131,13 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
 end
 
 function get_assignment(nnet::Network, list::Vector{Int64})
-    p = Vector{Vector{Int64}}(undef, length(nnet.layers))
+    p = Vector{Vector{Bool}}(undef, length(nnet.layers))
     n = 0
     for (i, layer) in enumerate(nnet.layers)
-        p[i] = zeros(Int, length(layer.bias))
+        p[i] = zeros(Bool, length(layer.bias))
         for j in 1:length(p[i])
             if list[n+j] > 0
-                p[i][j] = 1
+                p[i][j] = true
             end
         end
         n += length(p[i])
@@ -239,16 +243,16 @@ end
 #     encode_Δ_lp!(model, problem.network, bounds, neurons)
 #     encode_partial_assignment(model, problem.network, p, neurons, false)
 
-#     J = 0.0
+#     o = 0.0
 #     for i in 1:length(p)
 #         for j in 1:length(p[i])
 #             if p[i][j] == 0
-#                 J += neurons[i+1][j]
+#                 o += neurons[i+1][j]
 #             end
 #         end
 #     end
 
-#     @objective(model, Min, J)
+#     @objective(model, Min, o)
 #     status = solve(model, suppress_warnings = true)
 #     if status != :Optimal
 #         return (:Infeasible, [])
