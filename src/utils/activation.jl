@@ -103,4 +103,4 @@ end
 (f::Max)(x) = max(maximum(x), zero(eltype(x)))
 (f::Id)(x) = x
 (G::GeneralAct)(x) = G.f(x)
-(f::PiecewiseLinear)(x) = f.f(x)
+(PL::PiecewiseLinear)(x) = PL.f(x)
