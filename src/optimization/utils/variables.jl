@@ -53,8 +53,8 @@ symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
 function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
     aux = @variable(m)
     @constraint(m, aux >= 0)
-    @constraint(m, aux .>= a)
-    @constraint(m, aux .>= -a)
+    @constraint(m, aux .>= v)
+    @constraint(m, aux .>= -v)
     return aux
 end
 # # in general, default to symbolic_abs behavior:
