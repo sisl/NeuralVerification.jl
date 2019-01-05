@@ -19,9 +19,9 @@ Default `optimizer` is `GLPKSolverMIP()`. Default `max_iter` is `10`.
 Sound but not complete.
 
 # Reference
-O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
+[O. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi,
 "Measuring Neural Net Robustness with Constraints,"
-in *Advances in Neural Information Processing Systems*, 2016.
+in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
 @with_kw struct ILP{O<:AbstractMathProgSolver}
     optimizer::O    = GLPKSolverMIP()
@@ -36,17 +36,17 @@ function solve(solver::ILP, problem::Problem)
         act_pattern = get_activation(problem.network, x)
 
         neurons = init_neurons(model, problem.network)
-        add_complementary_output_constraint!(model, problem.output, last(neurons))
-        encode_relaxed_lp!(model, problem.network, act_pattern, neurons)
-        J = max_disturbance!(model, first(neurons) - problem.input.center)
+        add_complementary_set_constraint!(model, problem.output, last(neurons))
+        encode_relaxed_lp!(model, problem.network, neurons, act_pattern)
+        o = max_disturbance!(model, first(neurons) - problem.input.center)
 
         status = solve(model, suppress_warnings = true)
         if status != :Optimal
             return AdversarialResult(:Unknown)
         end
         x = getvalue(first(neurons))
-        if satisfy(problem.network, x, act_pattern)
-            radius = getvalue(J)
+        if match_activation(problem.network, x, act_pattern)
+            radius = getvalue(o)
             if radius >= minimum(problem.input.radius)
                 return AdversarialResult(:SAT, radius)
             else
@@ -58,7 +58,7 @@ function solve(solver::ILP, problem::Problem)
     return AdversarialResult(:Unknown)
 end
 
-function satisfy(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
+function match_activation(nnet::Network, x::Vector{Float64}, act_pattern::Vector{Vector{Bool}})
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias

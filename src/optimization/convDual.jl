@@ -18,22 +18,24 @@ Convex relaxation with duality.
 Sound but not complete.
 
 # Reference
-E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via the Convex Outer Adversarial Polytope,"
-*ArXiv Preprint ArXiv:1711.00851*, 2017.
+[E. Wong and J. Z. Kolter, "Provable Defenses against Adversarial Examples via the Convex Outer Adversarial Polytope,"
+*ArXiv Preprint ArXiv:1711.00851*, 2017.](https://arxiv.org/abs/1711.00851)
+
+[https://github.com/locuslab/convex_adversarial](https://github.com/locuslab/convex_adversarial)
 """
 struct ConvDual end
 
 function solve(solver::ConvDual, problem::Problem)
-    J = dual_cost(solver, problem.network, problem.input, problem.output)
+    o = dual_value(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
-    if J >= 0.0
+    if o >= 0.0
         return BasicResult(:SAT)
     end
     return BasicResult(:Unknown)
 end
 
 # compute lower bound of the dual problem.
-function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
+function dual_value(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
 
     @assert all(iszero.(input.radius .- input.radius[1])) "input.radius must be uniform. Got $(input.radius)"
 
@@ -42,32 +44,32 @@ function dual_cost(solver::ConvDual, network::Network, input::Hyperrectangle{N},
     v0, d = tosimplehrep(output)
 
     v = vec(v0)
-    J = d[1]
+    o = d[1]
 
     for i in reverse(1:length(layers))
-        J -= v'*layers[i].bias
+        o -= v'*layers[i].bias
         v = layers[i].weights'*v
         if i>1
-            J += backprop!(v, U[i-1], L[i-1])
+            o += backprop!(v, U[i-1], L[i-1])
         end
     end
-    J -= input.center' * v + input.radius[1] * sum(abs.(v))
-    return J
+    o -= input.center' * v + input.radius[1] * sum(abs.(v))
+    return o
 end
 
 #=
-modifies v and returns J
+modifies v and returns o
 =#
 function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
-    J = 0.0
+    o = 0.0
     for j in 1:length(v)
         val = relaxed_ReLU(l[j], u[j])
         if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
             v[j] = v[j] * val
-            J += v[j] * l[j]
+            o += v[j] * l[j]
         end
     end
-    return J
+    return o
 end
 
 # Forward_network and forward_layer:

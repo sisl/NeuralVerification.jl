@@ -31,8 +31,9 @@ MaxSens
 ## Primal Optimization Methods
 
 #### Example
-```@example
-nnet = read_nnet("examples/networks/small_nnet.txt")
+```@example optim
+using NeuralVerification # hide
+nnet = read_nnet("../../examples/networks/small_nnet.txt")
 input  = Hyperrectangle([0.0], [.5])
 output = HPolytope(ones(1,1), [102.5])
 
@@ -40,8 +41,7 @@ problem = Problem(nnet, input, output)
 # set the JuMP solver with `optimizer` keyword or use default:
 solver = MIPVerify(optimizer = GLPKSolverMIP())
 
-julia> solve(solver_mipverify,  problem_mipverify)
-AdversarialResult(:SAT, -1.0)
+solve(solver,  problem)
 ```
 
 ### NSVerify

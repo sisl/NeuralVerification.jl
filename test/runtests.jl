@@ -57,7 +57,7 @@ solver_ai2 = Ai2()
 
 ### BaB
 inputSet  = Hyperrectangle([-1.0], [0.5])
-outputSet = HPolytope(ones(1,1), [18.5])
+outputSet = Hyperrectangle([1.0], [18.5])
 problem_bab = Problem(small_nnet, inputSet, outputSet)
 solver_bab = BaB()
 

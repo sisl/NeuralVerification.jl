@@ -18,11 +18,12 @@ function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPoly
     for poly in reach
         issubset(poly, output) || return ReachabilityResult(:UNSAT, reach) # TODO shouldn't this be poly, not the full reach?
     end
-    return ReachabilityResult(:SAT, reach)
+    return ReachabilityResult(:SAT, similar(reach, 0))
 end
-function check_inclusion(reach::AbstractPolytope, output::AbstractPolytope)
+
+function check_inclusion(reach::P, output::AbstractPolytope) where P<:AbstractPolytope
     if issubset(reach, output)
-        return ReachabilityResult(:SAT, [reach])
+        return ReachabilityResult(:SAT, P[])
     end
     return ReachabilityResult(:UNSAT, [reach])
 end

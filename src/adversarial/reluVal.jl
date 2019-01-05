@@ -20,7 +20,11 @@ Symbolic reachability analysis and iterative interval refinement (search).
 Sound but not complete.
 
 # Reference
-S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, "Formal Security Analysis of Neural Networks Using Symbolic Intervals," *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.
+[S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana,
+"Formal Security Analysis of Neural Networks Using Symbolic Intervals,"
+*CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.](https://arxiv.org/abs/1804.10829)
+
+[https://github.com/tcwangshiqi-columbia/ReluVal](https://github.com/tcwangshiqi-columbia/ReluVal)
 """
 @with_kw struct ReluVal
     max_iter::Int64     = 10
@@ -77,8 +81,8 @@ end
 
 function symbol_to_concrete(reach::SymbolicInterval)
     n_output = size(reach.Low, 1)
-    upper = fill(0.0, n_output)
-    lower = fill(0.0, n_output)
+    upper = zeros(n_output)
+    lower = zeros(n_output)
     for i in 1:n_output
         lower[i] = lower_bound(reach.Low[i, :], reach.interval)
         upper[i] = upper_bound(reach.Low[i, :], reach.interval)
@@ -86,7 +90,6 @@ function symbol_to_concrete(reach::SymbolicInterval)
     return Hyperrectangle(low = lower, high = upper)
 end
 
-# This overwrites check_inclusion in utils/reachability.jl
 function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
     reachable = symbol_to_concrete(reach)
     issubset(reachable, output) && return BasicResult(:SAT)
@@ -128,22 +131,22 @@ end
 function forward_act(input::SymbolicIntervalMask)
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
-    mask_lower, mask_upper = fill(0, n_node), fill(1, n_node)
+    mask_lower, mask_upper = zeros(Int, n_node), ones(Int, n_node)
     for i in 1:n_node
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
             mask_lower[i], mask_upper[i] = 0, 0
-            output_Up[i, :] = fill(0.0, n_input)
-            output_Low[i, :] = fill(0.0, n_input)
+            output_Up[i, :] = zeros(n_input)
+            output_Low[i, :] = zeros(n_input)
         elseif lower_bound(input.sym.Low[i, :], input.sym.interval) >= 0
             # Keep dependency
             mask_lower[i], mask_upper[i] = 1, 1
         else
             # Concretization
             mask_lower[i], mask_upper[i] = 0, 1
-            output_Low[i, :] = fill(0.0, n_input)
+            output_Low[i, :] = zeros(n_input)
             if lower_bound(input.sym.Up[i, :], input.sym.interval) < 0
-                output_Up[i, :] = fill(0.0, n_input)
+                output_Up[i, :] = zeros(n_input)
                 output_Up[i, end] = upper_bound(input.sym.Up[i, :], input.sym.interval)
             end
         end
@@ -194,8 +197,8 @@ end
 # Concrete forward_linear
 # function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
 #     n_output = size(W, 1)
-#     output_upper = fill(0.0, n_output)
-#     output_lower = fill(0.0, n_output)
+#     output_upper = zeros(n_output)
+#     output_lower = zeros(n_output)
 #     for j in 1:n_output
 #         output_upper[j] = upper_bound(W[j, :], input) + b[j]
 #         output_lower[j] = lower_bound(W[j, :], input) + b[j]
@@ -208,10 +211,10 @@ end
 # function forward_act(input::Hyperrectangle)
 #     input_upper = high(input)
 #     input_lower = low(input)
-#     output_upper = fill(0.0, dim(input))
-#     output_lower = fill(0.0, dim(input))
-#     mask_upper = fill(1, dim(input))
-#     mask_lower = fill(0, dim(input))
+#     output_upper = zeros(dim(input))
+#     output_lower = zeros(dim(input))
+#     mask_upper = ones(Int, dim(input))
+#     mask_lower = zeros(Int, dim(input))
 #     for i in 1:dim(input)
 #         if input_upper[i] <= 0
 #             mask_upper[i] = mask_lower[i] = 0
