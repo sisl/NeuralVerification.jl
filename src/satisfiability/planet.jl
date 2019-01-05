@@ -23,7 +23,7 @@ Sound and complete.
 [R. Ehlers, "Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,"
 in *International Symposium on Automated Technology for Verification and Analysis*, 2017.](https://arxiv.org/abs/1705.01320)
 
-[github.com/progirep/planet](github.com/progirep/planet)
+[https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
 @with_kw struct Planet
     optimizer::AbstractMathProgSolver

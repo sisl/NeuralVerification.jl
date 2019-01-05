@@ -25,7 +25,7 @@ Sound but not complete.
 "Output Range Analysis for Deep Neural Networks,"
 *ArXiv Preprint ArXiv:1709.09130*, 2017.](https://arxiv.org/abs/1709.09130)
 
-[github.com/souradeep-111/sherlock](github.com/souradeep-111/sherlock)
+[https://github.com/souradeep-111/sherlock](https://github.com/souradeep-111/sherlock)
 """
 @with_kw struct Sherlock
     optimizer::AbstractMathProgSolver = GLPKSolverMIP()

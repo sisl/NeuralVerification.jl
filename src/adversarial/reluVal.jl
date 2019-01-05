@@ -24,7 +24,7 @@ Sound but not complete.
 "Formal Security Analysis of Neural Networks Using Symbolic Intervals,"
 *CoRR*, vol. abs/1804.10829, 2018. arXiv: 1804.10829.](https://arxiv.org/abs/1804.10829)
 
-[github.com/tcwangshiqi-columbia/ReluVal](github.com/tcwangshiqi-columbia/ReluVal)
+[https://github.com/tcwangshiqi-columbia/ReluVal](https://github.com/tcwangshiqi-columbia/ReluVal)
 """
 @with_kw struct ReluVal
     max_iter::Int64     = 10
