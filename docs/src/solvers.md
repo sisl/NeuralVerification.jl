@@ -33,7 +33,7 @@ MaxSens
 #### Example
 ```@example optim
 using NeuralVerification # hide
-nnet = read_nnet("../../examples/networks/small_nnet.txt")
+nnet = read_nnet("../../examples/networks/small_nnet.nnet")
 input  = Hyperrectangle([0.0], [.5])
 output = HPolytope(ones(1,1), [102.5])
 
