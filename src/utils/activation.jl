@@ -32,7 +32,8 @@ act = GeneralAct(tanh)
 
 act(0) == tanh(0)           # true
 act(10.0) == tanh(10.0)     # true
-
+```
+```julia
 act = GeneralAct(x->tanh.(x))
 
 julia> act(-2:2)
@@ -42,7 +43,7 @@ julia> act(-2:2)
   0.0
   0.7615941559557649
   0.9640275800758169
- ```
+```
 """
 struct GeneralAct <: ActivationFunction
     f::Function
