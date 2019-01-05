@@ -21,7 +21,7 @@ A[1:2] = [1, -1]
 
 ### NSVerify
 inputSet  = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A, [1.0,1.0])
+outputSet = HPolytope(ones(1,1), [2.1])
 problem_NSVerify = Problem(small_nnet, inputSet, outputSet)
 solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
 
