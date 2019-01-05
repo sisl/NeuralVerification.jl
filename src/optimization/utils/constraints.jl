@@ -158,6 +158,9 @@ function add_complementary_set_constraint!(model::Model, output::HPolytope, neur
         # So the complementary is just out_A * y .> out_b
         @constraint(model, -out_A * neuron_vars .<= -out_b)
     else
+        LC = length(constraints_list(output))
+        @assert LC == 1 "Quadratic constraints are not yet supported. Please make sure that the
+        output constraint is a HalfSpace (an HPolytope with a single constraint). Got $LC constraints."
         # Here the complementary is a union of different constraints
         # We use binary variable to encode the union of constraints
         out_deltas = @variable(model, [1:n], Bin)

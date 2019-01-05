@@ -5,7 +5,7 @@ At the moment, all of the algorithms are written under the assumption of feedfor
 and some of them also assume ReLU activation, but both of these assumptions will be relaxed in the future.*
 
 ```@contents
-Pages = ["index.md", "problem.md", "solvers.md", "functions.md"]
+Pages = ["index.md", "problem.md", "solvers.md", "functions.md", "existing_implementations.md"]
 Depth = 2
 ```
 
@@ -33,7 +33,7 @@ In this example, we use a small neural network with only one hidden layer consis
 Note that the input and output sets may be of different types for different solvers.
 `MaxSens` requires a `Hyperrectangle` or `HPolytope` as its input and output constraints, so that is what we will use here:
 ```@example ex1
-nnet = read_nnet("../../examples/networks/small_nnet.txt")
+nnet = read_nnet("../../examples/networks/small_nnet.nnet")
 
 A = reshape([-1.0, 1.0], 2, 1)
 input  = HPolytope(A, [1.0, 1.0])
