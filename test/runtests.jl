@@ -109,6 +109,12 @@ outputSet = Hyperrectangle([10.0], [10.0])
 problem_sherlock = Problem(small_nnet, inputSet, outputSet)
 solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
 
+### FastLin/FastLip
+solver_fastlin = FastLin()
+solver_fastlip = FastLip()
+problem_fastlin = problem_fastlip = problem_reluVal
+
+
 @test @no_error solve(solver_maxSens,    problem_maxSens)
 @test @no_error solve(solver_exactReach, problem_exactReach)
 @test @no_error solve(solver_reluVal,    problem_reluVal)
@@ -121,6 +127,8 @@ solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
 @test @no_error solve(solver_planet,     problem_planet)
 @test @no_error solve(solver_reluplex,   problem_reluplex)
 @test @no_error solve(solver_sherlock,   problem_sherlock)
+@test @no_error solve(solver_fastlin,    problem_fastlin)
+@test @no_error solve(solver_fastlip,    problem_fastlip)
 @test @no_error solve(solver_bab,        problem_bab)
 @test @no_error solve(solver_NSVerify,   problem_NSVerify)
 @test @no_error solve(solver_ai2,        problem_ai2)
