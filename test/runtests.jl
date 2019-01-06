@@ -119,7 +119,6 @@ problem_fastlin = problem_fastlip = problem_reluVal
 @test @no_error solve(solver_exactReach, problem_exactReach)
 @test @no_error solve(solver_reluVal,    problem_reluVal)
 @test @no_error solve(solver_dlv,        problem_dlv)
-# @test @no_error solve(solver_certify,    problem_certify) # only works for tinynet (single hidden layer)
 @test @no_error solve(solver_convdual,   problem_convdual)
 @test @no_error solve(solver_duality,    problem_duality)
 @test @no_error solve(solver_ilp,        problem_ilp)
@@ -133,3 +132,10 @@ problem_fastlin = problem_fastlip = problem_reluVal
 @test @no_error solve(solver_NSVerify,   problem_NSVerify)
 # @test @no_error solve(solver_ai2,        problem_ai2)
 
+### Certify - only works for single hidden layer
+tiny_nnet = read_nnet("$at/../examples/networks/tiny_nnet.nnet")
+solver_certify = Certify()
+inputSet  = Hyperrectangle([2.0], [.5])
+outputSet = HPolytope(ones(1,1), [2.5])
+problem_certify = Problem(tiny_nnet, inputSet, outputSet)
+@test @no_error solve(solver_certify, problem_certify)
