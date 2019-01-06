@@ -131,5 +131,5 @@ problem_fastlin = problem_fastlip = problem_reluVal
 @test @no_error solve(solver_fastlip,    problem_fastlip)
 @test @no_error solve(solver_bab,        problem_bab)
 @test @no_error solve(solver_NSVerify,   problem_NSVerify)
-@test @no_error solve(solver_ai2,        problem_ai2)
+# @test @no_error solve(solver_ai2,        problem_ai2)
 
