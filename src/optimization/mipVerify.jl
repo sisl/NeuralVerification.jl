@@ -21,8 +21,10 @@ Sound and complete.
 # Reference
 
 V. Tjeng, K. Xiao, and R. Tedrake,
-"Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
-*ArXiv Preprint ArXiv:1711.07356*, 2017.
+["Evaluating Robustness of Neural Networks with Mixed Integer Programming,"
+*ArXiv Preprint ArXiv:1711.07356*, 2017.](https://arxiv.org/abs/1711.07356)
+
+[https://github.com/vtjeng/MIPVerify.jl](https://github.com/vtjeng/MIPVerify.jl)
 """
 @with_kw struct MIPVerify{O<:AbstractMathProgSolver}
     optimizer::O
@@ -32,17 +34,17 @@ function solve(solver::MIPVerify, problem::Problem)
     model = Model(solver = solver.optimizer)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
-    add_complementary_output_constraint!(model, problem.output, last(neurons))
+    add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
     encode_mip_constraint!(model, problem.network, bounds, neurons, deltas)
-    J = max_disturbance!(model, first(neurons) - problem.input.center)
+    o = max_disturbance!(model, first(neurons) - problem.input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
         return AdversarialResult(:SAT)
     end
-    if getvalue(J) >= minimum(problem.input.radius)
+    if getvalue(o) >= minimum(problem.input.radius)
         return AdversarialResult(:SAT)
     else
-        return AdversarialResult(:UNSAT, getvalue(J))
+        return AdversarialResult(:UNSAT, getvalue(o))
     end
 end

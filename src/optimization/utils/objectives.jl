@@ -10,13 +10,13 @@ function max_disturbance!(model::Model, var)
     return o
 end
 
-function min_sum_all!(model::Model, var)
+function min_sum!(model::Model, var)
     o = sum(sum.(var))
     @objective(model, Min, o)
     return o
 end
 
-function max_sum_all!(model::Model, var)
+function max_sum!(model::Model, var)
     o = sum(sum.(var))
     @objective(model, Max, o)
     return o

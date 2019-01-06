@@ -15,13 +15,13 @@ end
 
 at = @__DIR__
 
-small_nnet = read_nnet("$at/../examples/networks/small_nnet.txt")
+small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 A = Matrix{Float64}(undef, 2,1)
 A[1:2] = [1, -1]
 
 ### NSVerify
 inputSet  = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(A, [1.0,1.0])
+outputSet = HPolytope(ones(1,1), [2.1])
 problem_NSVerify = Problem(small_nnet, inputSet, outputSet)
 solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
 
@@ -57,7 +57,7 @@ solver_ai2 = Ai2()
 
 ### BaB
 inputSet  = Hyperrectangle([-1.0], [0.5])
-outputSet = HPolytope(ones(1,1), [18.5])
+outputSet = Hyperrectangle([1.0], [18.5])
 problem_bab = Problem(small_nnet, inputSet, outputSet)
 solver_bab = BaB()
 

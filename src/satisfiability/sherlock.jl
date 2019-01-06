@@ -21,9 +21,11 @@ Global search: solve a feasibilty problem using MILP encoding (default calling N
 Sound but not complete.
 
 # Reference
-S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
+[S. Dutta, S. Jha, S. Sanakaranarayanan, and A. Tiwari,
 "Output Range Analysis for Deep Neural Networks,"
-*ArXiv Preprint ArXiv:1709.09130*, 2017.
+*ArXiv Preprint ArXiv:1709.09130*, 2017.](https://arxiv.org/abs/1709.09130)
+
+[https://github.com/souradeep-111/sherlock](https://github.com/souradeep-111/sherlock)
 """
 @with_kw struct Sherlock
     optimizer::AbstractMathProgSolver = GLPKSolverMIP()
@@ -63,10 +65,10 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractM
     model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, problem.input, first(neurons))
-    encode_lp!(model, nnet, act_pattern, neurons)
-    J = gradient * neurons[1]
+    encode_lp!(model, nnet, neurons, act_pattern)
+    o = gradient * neurons[1]
     index = ifelse(type == :max, 1, -1)
-    @objective(model, Max, index * J[1])
+    @objective(model, Max, index * o[1])
     solve(model, suppress_warnings = true)
     x_new = getvalue(neurons[1])
     bound_new = compute_output(nnet, x_new)

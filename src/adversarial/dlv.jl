@@ -29,7 +29,7 @@ Sound but not complete.
 "Safety Verification of Deep Neural Networks,"
 in *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1610.06940)
 
-[github.com/VeriDeep/DLV](github.com/VeriDeep/DLV)
+[https://github.com/VeriDeep/DLV](https://github.com/VeriDeep/DLV)
 """
 @with_kw struct DLV
     ϵ::Float64 = 1.0
@@ -43,8 +43,7 @@ function solve(solver::DLV, problem::Problem)
     # The list of sample intervals
     δ = Vector{Vector{Float64}}(undef,length(η))
     δ[1] = fill(solver.ϵ, dim(η[1]))
-    println(last(η))
-    println(problem.output)
+
     if issubset(last(η), problem.output)
         return CounterExampleResult(:SAT)
     end

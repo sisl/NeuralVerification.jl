@@ -22,9 +22,9 @@ For bound, it computes concrete bounds by sampling, approximated bound by optimi
 Sound and complete.
 
 # Reference
-R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
+[R. Bunel, I. Turkaslan, P. H. Torr, P. Kohli, and M. P. Kumar,
 "A Unified View of Piecewise Linear Neural Network Verification,"
-*ArXiv Preprint ArXiv:1711.00455*, 2017.
+*ArXiv Preprint ArXiv:1711.00455*, 2017.](https://arxiv.org/abs/1711.00455)
 """
 @with_kw struct BaB
     optimizer::AbstractMathProgSolver = GLPKSolverMIP()
@@ -114,9 +114,9 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     add_set_constraint!(model, dom, first(neurons))
     encode_Δ_lp!(model, nnet, bounds, neurons)
     index = ifelse(type == :max, 1, -1)
-    J = sum(last(neurons))
-    @objective(model, Max, index * J)
+    o = sum(last(neurons))
+    @objective(model, Max, index * o)
     status = solve(model, suppress_warnings = true)
-    status == :Optimal && return getvalue(J)
+    status == :Optimal && return getvalue(o)
     error("Could not find bound for dom: ", dom)
 end

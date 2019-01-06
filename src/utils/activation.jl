@@ -33,6 +33,17 @@ act = GeneralAct(tanh)
 act(0) == tanh(0)           # true
 act(10.0) == tanh(10.0)     # true
 ```
+```julia
+act = GeneralAct(x->tanh.(x))
+
+julia> act(-2:2)
+5-element Array{Float64,1}:
+ -0.9640275800758169
+ -0.7615941559557649
+  0.0
+  0.7615941559557649
+  0.9640275800758169
+```
 """
 struct GeneralAct <: ActivationFunction
     f::Function
@@ -78,7 +89,7 @@ act(Inf)    # 1.5
 `PiecewiseLinear` uses [Interpolations.jl](http://juliamath.github.io/Interpolations.jl/latest/).
 """
 struct PiecewiseLinear <: ActivationFunction
-    etp::Interpolations.Extrapolation
+    f::Interpolations.Extrapolation
 end
 
 # default extrapolation is Line(). Can also do Flat() or supply a constant,
@@ -93,4 +104,4 @@ end
 (f::Max)(x) = max(maximum(x), zero(eltype(x)))
 (f::Id)(x) = x
 (G::GeneralAct)(x) = G.f(x)
-(f::PiecewiseLinear)(x) = f.etp(x)
+(PL::PiecewiseLinear)(x) = PL.f(x)

@@ -21,9 +21,9 @@ Lipschitz estimation + FastLin. All arguments are for FastLin.
 Sound but not complete.
 
 # Reference
-T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
+[T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel,
 "Towards Fast Computation of Certified Robustness for ReLU Networks,"
-*ArXiv Preprint ArXiv:1804.09699*, 2018.
+*ArXiv Preprint ArXiv:1804.09699*, 2018.](https://arxiv.org/abs/1804.09699)
 """
 @with_kw struct FastLip
     maxIter::Int64    = 10
@@ -31,18 +31,14 @@ T.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, a
     accuracy::Float64 = 0.1
 end
 
-# since FastLip is "higher" on the hierarchy, it defines both:
 convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
-convert(::Type{FastLip}, S::FastLin) = FastLip(S.maxIter, S.ϵ0, S.accuracy)
-
-FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
     c, d = tosimplehrep(problem.output)
     y = compute_output(problem.network, problem.input.center)
-    J = (c * y - d)[1]
-    if J > 0
-        return AdversarialResult(:UNSAT, -J)
+    o = (c * y - d)[1]
+    if o > 0
+        return AdversarialResult(:UNSAT, -o)
     end
     result = solve(FastLin(solver), problem)
     result.status == :UNSAT && return result
@@ -59,7 +55,7 @@ function solve(solver::FastLip, problem::Problem)
 
     a, b = interval_map(c, LG, UG)
     v = max.(abs.(a), abs.(b))
-    ϵ = min(-J/sum(v), ϵ_fastLin)
+    ϵ = min(-o/sum(v), ϵ_fastLin)
 
     if ϵ > minimum(problem.input.radius)
         return AdversarialResult(:SAT, ϵ)

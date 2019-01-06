@@ -19,9 +19,9 @@ Default `optimizer` is `GLPKSolverMIP()`. Default `m` is `1000.0` (should be lar
 Sound and complete.
 
 # Reference
-A. Lomuscio and L. Maganti,
+[A. Lomuscio and L. Maganti,
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
-*ArXiv Preprint ArXiv:1706.07351*, 2017.
+*ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
 @with_kw struct NSVerify{O<:AbstractMathProgSolver}
     optimizer::O = GLPKSolverMIP()
@@ -33,7 +33,7 @@ function solve(solver::NSVerify, problem::Problem)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_output_constraint!(model, problem.output, last(neurons))
+    add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_mip_constraint!(model, problem.network, solver.m, neurons, deltas)
     zero_objective!(model)
     status = solve(model, suppress_warnings = true)

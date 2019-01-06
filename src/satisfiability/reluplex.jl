@@ -18,9 +18,9 @@ Binary search of activations (0/1) and pruning by optimization.
 Sound and complete.
 
 # Reference
-G. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer,
+[G. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer,
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
-*International Conference on Computer Aided Verification*, 2017.
+*International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
 struct Reluplex end
 
@@ -46,7 +46,7 @@ function find_relu_to_fix(b_vars, f_vars)
     return (0, 0)
 end
 
-type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)
+type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
 type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 
 # NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
