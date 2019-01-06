@@ -102,20 +102,16 @@ function bounded_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{
     # step 2: check the 0-variation in all dimension
     var, y = zero_variation(bound, mapping, δ)
     var && return (var, y)
-
     return (false, similar(y, 0))
 end
 
 function uniform_boundary_class(bound::Hyperrectangle, mapping::Function)
     y = bound.center
     for i = 1:dim(bound)
-
         y[i] += bound.radius[i]
         mapping(y) || return (true, y)
-
         y[i] -= 2 * bound.radius[i]
         mapping(y) || return (true, y)
-
         y[i] += bound.radius[i]
     end
     return (false, similar(y, 0))
@@ -124,19 +120,16 @@ end
 function zero_variation(bound::Hyperrectangle, mapping::Function, δ::Vector{Float64})
     y = bound.center
     for i = 1:dim(bound)
-
         z = deepcopy(y)
         while maximum(z - high(bound)) < 0
             z[i] += δ[i]
             mapping(z) || return (true, z)
         end
-
         z = deepcopy(y)
         while minimum(z - high(bound)) > 0
             z[i] -= δ[i]
             mapping(z) || return (true, z)
         end
-
     end
     return (false, similar(y, 0))
 end
