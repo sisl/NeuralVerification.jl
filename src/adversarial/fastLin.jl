@@ -34,11 +34,11 @@ Sound but not complete.
 end
 
 function solve(solver::FastLin, problem::Problem)
-    ϵ = fill(solver.ϵ0, solver.maxIter)
+    ϵ = fill(solver.ϵ0, solver.maxIter+1)
     ϵ_upper = 2 * max(solver.ϵ0, maximum(problem.input.radius))
     ϵ_lower = 0.0
     n_input = dim(problem.input)
-    for i = 1:solver.maxIter-1
+    for i = 1:solver.maxIter
         input_bounds = Hyperrectangle(problem.input.center, fill(ϵ[i], n_input))
         output_bounds = forward_network(solver, problem.network, input_bounds)
         if issubset(output_bounds, problem.output)
