@@ -1,3 +1,7 @@
+| Testing | Coverage | Documentation |
+| :-----: | :------: | :-----------: |
+| [![Build Status](https://travis-ci.org/sisl/NeuralVerification.jl.svg?branch=master)](https://travis-ci.org/sisl/NeuralVerification.jl) | [![Coverage Status](https://coveralls.io/repos/github/sisl/NeuralVerification.jl/badge.svg?branch=master)](https://coveralls.io/github/sisl/NeuralVerification.jl?branch=master) | [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://sisl.github.io/NeuralVerification.jl/latest) |
+
 # NeuralVerification.jl
 
 This library contains implementations of various methods to soundly verify deep neural networks.
