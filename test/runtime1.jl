@@ -56,13 +56,10 @@ A1 = -Matrix{Float64}(I, 784, 784)
 A = vcat(A0, A1)
 
 b0 = ones(784)*255.0
-b1 = -ones(784)*1.0
+b1 = -ones(784)*250.0
 b = vcat(b0, b1)
 
 inputSet = HPolytope(A, b)
-
-
-
 
 A = Matrix(undef, 2, 1)
 A = [1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ,0.0]'
@@ -71,17 +68,70 @@ outputSet = HPolytope(A, b)
 
 # version with polytopes as seen in the repo, doesnt work either
 problem_polytope_polytope_small = Problem(mnist_small, inputSet, outputSet)
-solver = MaxSens(.3, false)
+solver = MaxSens(1.0, false)
 print("\nMaxSens - Small - polytopes")
-@time solve(solver, problem_polytope_polytope_small)
-
+#timed_result =@timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = Ai2()
 print("\nAi2 - Small")
-@time solve(solver, problem_polytope_polytope_small)
+#timed_result = @timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = ExactReach()
 print("\nExactReach - Small")
-@time solve(solver, problem_polytope_polytope_small)
+#timed_result = @timed solve(solver, problem_polytope_polytope_small)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+# ACAS
+
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+# ACAS PROPERTY 10 - modified
+
+A0 = Matrix{Float64}(I, 5, 5)
+A1 = -Matrix{Float64}(I, 5, 5)
+A = vcat(A0, A1)
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+b = vcat(b_upper, b_lower)
+inputSet = HPolytope(A, b)
+
+
+A = Matrix(undef, 2, 1)
+A = [1.0, 0.0, 0.0, 0.0, -1.0]'
+b = [0.0]
+outputSet = HPolytope(A, b)
+
+problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
+
+solver = MaxSens(1.0, false)
+print("\nMaxSens - ACAS")
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+solver = Ai2()
+print("\nAi2 - ACAS")
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+solver = ExactReach()
+print("\nExactReach - ACAS")
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 

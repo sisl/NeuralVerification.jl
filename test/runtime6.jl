@@ -37,20 +37,31 @@ output_high = output_center .+ out_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
+print("\n\n################## Small ##################\n")
+
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Small")
-@time solve(solver_reluVal, problem_hyperrect_small)
+timed_result = @timed solve(solver_reluVal, problem_hyperrect_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Small")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrect_small)
+timed_result = @timed solve(solver, problem_hyperrect_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
+
 
 print("\nReluplex - Small")
 solver=Reluplex()
-@time solve(solver, problem_hyperrect_small)
-
+timed_result = @timed solve(solver, problem_hyperrect_small)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 
 # Deep MNIST network
@@ -72,19 +83,29 @@ output_high = output_center .+ out_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
+print("\n\n################## Deep ##################\n")
 problem_hyperrect_deep = Problem(mnist_large, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Deep")
-#@time solve(solver_reluVal, problem_hyperrect_deep)
+timed_result = @timed solve(solver_reluVal, problem_hyperrect_deep)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Deep")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-#@time solve(solver, problem_hyperrect_deep)
+timed_result = @timed solve(solver, problem_hyperrect_deep)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nReluplex - Deep")
 solver=Reluplex()
-#@time solve(solver, problem_hyperrect_deep)
+#timed_result = @timed solve(solver, problem_hyperrect_deep)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
 
 # Wide MNIST network
 
@@ -104,16 +125,69 @@ output_high = output_center .+ out_epsilon
 inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
+print("\n\n################## Wide ##################\n")
+
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
 solver_reluVal = ReluVal(max_iter = 2)
 print("\nReluval - Wide")
-@time solve(solver_reluVal, problem_hyperrect_wide)
+timed_result = @timed solve(solver_reluVal, problem_hyperrect_wide)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nPlanet - Wide")
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
-@time solve(solver, problem_hyperrect_wide)
+timed_result = @timed solve(solver, problem_hyperrect_wide)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
 
 print("\nReluplex - Wide")
 solver=Reluplex()
-@time solve(solver, problem_hyperrect_wide)
+#timed_result = @timed solve(solver, problem_hyperrect_wide)
+#t = timed_result[2]
+#out = timed_result[1]
+#print(" - Time: $t s - Output: $out")
+
+
+print("\n\n################## Acas ##################\n")
+
+acas_nnet = read_nnet("$at/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet")
+
+b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+
+inputSet = Hyperrectangle(low=b_lower, high=b_upper)
+
+out_lower = [-0.02088955, -0.01863226,  0.01521364, -0.01918539, 0.01563704]
+out_upper = [-0.02077696, -0.01852366,  0.01523927, -0.01912529, 0.015789]
+
+outputSet = Hyperrectangle(low=out_lower, high=out_upper)
+
+# TODO: compute output region - need to do some forward passes in the network
+# to get a sense of the output ranges.
+
+problem_hyperrectangle_hyperrectangle_acas = Problem(acas_nnet, inputSet, outputSet)
+solver_reluVal = ReluVal(max_iter = 2)
+print("\nReluval - Acas")
+timed_result = @timed solve(solver_reluVal, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
+
+print("\nPlanet - Acas")
+optimizer = GLPKSolverMIP()
+solver = Planet(optimizer)
+timed_result = @timed solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
+
+print("\nReluplex - Acas")
+solver=Reluplex()
+timed_result = @timed solve(solver, problem_hyperrectangle_hyperrectangle_acas)
+t = timed_result[2]
+out = timed_result[1]
+print(" - Time: $t s - Output: $out")
+
