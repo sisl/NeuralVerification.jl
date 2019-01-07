@@ -35,7 +35,7 @@ script:
 after_success:
   # Install required packages for coverage and documentation
   - julia --project -e 'import Pkg; Pkg.add("Coverage");'
-#  - julia --project -e 'import Pkg; Pkg.add("Documenter"); Pkg.add("DocumenterTools");'
+  - julia --project -e 'import Pkg; Pkg.add("Documenter"); Pkg.add("DocumenterTools");'
 #  - julia --project -e 'import Pkg; Pkg.add("Plots");'
 #  - julia --project -e 'import Pkg; Pkg.add("LaTeXStrings")'
 
@@ -43,4 +43,4 @@ after_success:
   - julia --project -e 'using Coverage; Coveralls.submit(Coveralls.process_folder())'
 
   # Build and deploy documentation
-#  - julia --project ./docs/make.jl
+  - julia --project ./docs/make.jl
