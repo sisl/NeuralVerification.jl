@@ -75,8 +75,8 @@ include("satisfiability/reluplex.jl")
 export BaB, Planet, Sherlock, Reluplex
 
 include("adversarial/reluVal.jl")
-include("adversarial/FastLin.jl")
-include("adversarial/FastLip.jl")
+include("adversarial/fastLin.jl")
+include("adversarial/fastLip.jl")
 include("adversarial/dlv.jl")
 export ReluVal, FastLin, FastLip, DLV
 
