@@ -677,7 +677,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Existing Implementations",
     "title": "Existing Implementations",
     "category": "section",
-    "text": "MIPVerifyConvDualReluValSherlockPlanetPLNNDLV"
+    "text": "MIPVerify\nConvDual\nReluVal\nSherlock\nPlanet\nPLNN\nDLV\nReluplex"
 },
 
 ]}
