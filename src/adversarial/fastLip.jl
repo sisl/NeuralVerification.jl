@@ -31,7 +31,8 @@ Sound but not complete.
     accuracy::Float64 = 0.1
 end
 
-convert(::Type{FastLin}, S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
+# Define a new constructor for FastLin
+FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
     c, d = tosimplehrep(HPolytope(problem.output))
