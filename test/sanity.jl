@@ -5,10 +5,21 @@ using Test
 
 function printtest(solver, problem_sat, problem_unsat)
     println(typeof(solver))
-    result_sat = solve(solver, problem_sat)
-    println("\tSAT test.   Result: $(result_sat.status)")
-    result_unsat = solve(solver, problem_unsat)
-    println("\tUNSAT test. Result: $(result_unsat.status)")
+    res_sat = solve(solver, problem_sat)
+    res_unsat = solve(solver, problem_unsat)
+
+    function col(s, rev = false)
+        cols = [:green, :red]
+        if rev
+            cols = reverse(cols)
+        end
+        s == :SAT   && return cols[1]
+        s == :UNSAT && return cols[2]
+        return (:yellow) #else
+    end
+
+    print("\tSAT test.   Result: "); printstyled("$(res_sat.status)\n", color = col(res_sat.status))
+    print("\tUNSAT test. Result: "); printstyled("$(res_unsat.status)\n", color = col(res_unsat.status, true))
     println("_"^70, "\n")
 end
 
@@ -19,13 +30,10 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 
 # The input set is always [-1:1]
 input_hyper  = Hyperrectangle(low = [-1.0], high = [1.0])
+input_hpoly  = HPolytope(input_hyper)
+
 out_hyper_70 = Hyperrectangle(low = [-1.0], high = [70.0])
 out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0])
-
-# A -> [1, -1]
-A = ones(2, 1) ; A[2] = -1.0
-input_hpoly = HPolytope(A, ones(2))
-
 
 # In all cases -1.0 < x < 1.0
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70)                    # -1.0 < y < 70.0
