@@ -35,9 +35,6 @@ input_hpoly  = HPolytope(input_hyper)
 out_hyper_70 = Hyperrectangle(low = [-1.0], high = [70.0])
 out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0])
 
-# A -> [1, -1]
-A = ones(2, 1) ; A[2] = -1.0
-
 # In all cases -1.0 < x < 1.0
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70)                    # -1.0 < y < 70.0
 problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                    # -1.0 < y < 50.0
