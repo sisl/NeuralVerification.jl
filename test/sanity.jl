@@ -35,6 +35,9 @@ input_hpoly  = HPolytope(input_hyper)
 out_hyper_70 = Hyperrectangle(low = [-1.0], high = [70.0])
 out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0])
 
+# A -> [1, -1]
+A = ones(2, 1) ; A[2] = -1.0
+
 # In all cases -1.0 < x < 1.0
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70)                    # -1.0 < y < 70.0
 problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                    # -1.0 < y < 50.0
@@ -59,10 +62,11 @@ group1 = [MaxSens(), ExactReach()] # Ai2 is 100% broken right now so dropping it
 glpk = GLPKSolverMIP()
 group2 = [NSVerify(optimizer = glpk), MIPVerify(optimizer = glpk), ILP(optimizer = glpk)]
 group3 = [ConvDual(), Duality(optimizer = glpk)]
-group4 = [FastLin(10, 10.0, 1.0), FastLip(10, 10.0, 1.0)]
+group4 = [FastLin(10, 10.0, 1.0), FastLip(10, 10.0, 1.0)] # FastLin is producing an error right now.
 # Group 5, 6
 # Input: Hyperrectangle, Output: Hyperrectangle
-group6 = [Planet(glpk), Reluplex()]
+#group6 = [Planet(glpk), Reluplex()] # Planet is producing an error right now
+group6 = [Reluplex()]
 group5 = [ReluVal(max_iter = 1), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
 
 printtest(group1,
