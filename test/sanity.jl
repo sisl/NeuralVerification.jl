@@ -32,19 +32,19 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 input_hyper  = Hyperrectangle(low = [-1.0], high = [1.0])
 input_hpoly  = HPolytope(input_hyper)
 
-out_hyper_70 = Hyperrectangle(low = [-1.0], high = [70.0])
-out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0])
+out_hyper_40_60 = Hyperrectangle(low = [40.0], high = [60.0])
+out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0]) # includes points in the output region ie y > 30.5
 
 # In all cases -1.0 < x < 1.0
-problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70)                    # -1.0 < y < 70.0
-problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                    # -1.0 < y < 50.0
+problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_40_60)                   # 40.0 < y < 60.0
+problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                      # -1.0 < y < 50.0
 
-problem_unsat_hyper_hpoly         = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [10.0]))    # y < 10.0
-problem_sat_hyper_hpoly           = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [100.0]))   # y < 100.0
+problem_unsat_hyper_hpoly         = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [10.0]))      # y < 10.0
+problem_sat_hyper_hpoly           = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [100.0]))     # y < 100.0
 
 A = ones(2, 1); A[2] = -1
-problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(A, [60.0, -40.0]))     # 40.0 < y < 60.0
-problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(A, [110.0, -100.0]))   # 100.0 < y < 110.0
+problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(A, [60.0, -40.0]))       # 40.0 < y < 60.0
+problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(A, [100.0, -110.0]))    # 100.0 < y < 110.0
 
 # NOTE: unused tests
 # problem_sat_hpoly_hpoly           = Problem(small_nnet, input_hpoly, HPolytope(ones(1,1), [100.0]))   # y < 100.0
@@ -64,8 +64,8 @@ group4 = [FastLin(10, 10.0, 1.0), FastLip(10, 10.0, 1.0)] # FastLin is producing
 # Group 5, 6
 # Input: Hyperrectangle, Output: Hyperrectangle
 #group6 = [Planet(glpk), Reluplex()] # Planet is producing an error right now
-group6 = [Reluplex()]
-group5 = [ReluVal(max_iter = 1), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
+#group6 = [Reluplex()]
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
 
 printtest(group1,
           problem_sat_hpoly_hpoly_bounded,
