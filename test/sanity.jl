@@ -42,11 +42,12 @@ A = ones(2, 1) ; A[2] = -1.0
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70)                    # -1.0 < y < 70.0
 problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                    # -1.0 < y < 50.0
 
-problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(A, [60.0, -40.0]))     # 40.0 < y < 60.0
-problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(A, [110.0, -100.0]))   # 100.0 < y < 110.0
-
 problem_unsat_hyper_hpoly         = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [10.0]))    # y < 10.0
 problem_sat_hyper_hpoly           = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [100.0]))   # y < 100.0
+
+A = ones(2, 1); A[2] = -1
+problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(A, [60.0, -40.0]))     # 40.0 < y < 60.0
+problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(A, [110.0, -100.0]))   # 100.0 < y < 110.0
 
 # NOTE: unused tests
 # problem_sat_hpoly_hpoly           = Problem(small_nnet, input_hpoly, HPolytope(ones(1,1), [100.0]))   # y < 100.0
