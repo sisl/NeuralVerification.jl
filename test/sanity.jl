@@ -36,7 +36,7 @@ out_hyper_20_80 = Hyperrectangle(low = [20.0], high = [80.0])
 out_hyper_50 = Hyperrectangle(low = [-1.0], high = [50.0]) # includes points in the output region ie y > 30.5
 
 # In all cases -1.0 < x < 1.0
-problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_20_80)                   # 40.0 < y < 60.0
+problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_20_80)                   # 20.0 < y < 80.0
 problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                      # -1.0 < y < 50.0
 
 problem_unsat_hyper_hpoly         = Problem(small_nnet, input_hyper, HPolytope(ones(1,1), [10.0]))      # y < 10.0
