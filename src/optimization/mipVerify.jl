@@ -42,7 +42,7 @@ function solve(solver::MIPVerify, problem::Problem)
     if status == :Infeasible
         return AdversarialResult(:SAT)
     end
-    if getvalue(o) >= minimum(problem.input.radius)
+    if getvalue(o) >= maximum(problem.input.radius)
         return AdversarialResult(:SAT)
     else
         return AdversarialResult(:UNSAT, getvalue(o))
