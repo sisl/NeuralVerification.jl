@@ -349,7 +349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.ILP",
     "category": "type",
-    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. Default optimizer is GLPKSolverMIP(). Default max_iter is 10.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
+    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.  It iteratively adds the linear constraint to the problem.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. It only considers the linear piece of the network that has the same activation pattern as the reference input. Default optimizer is GLPKSolverMIP(). We provide both iterative method and non-iterative method to solve the LP problem. Default iterative is true.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
 },
 
 {
