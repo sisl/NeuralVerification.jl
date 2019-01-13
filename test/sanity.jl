@@ -41,26 +41,23 @@ problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(o
 problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
 problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
 
-# GROUP 1
-# Input: HPolytope, Output: HPolytope
+# GROUP 1           # Input: HPolytope, Output: HPolytope
 # group1 = [MaxSens(), ExactReach(), Ai2()]
-group1 = [MaxSens(resolution = 0.03), ExactReach()] # Ai2 is 100% broken right now so dropping it
+group1 = [MaxSens(), ExactReach()] # Ai2 is 100% broken right now so dropping it
 for solver in group1
     printtest(solver, problem_sat_hpoly_hpoly_bounded, problem_unsat_hpoly_hpoly_bounded)
 end
-# GROUP 2, 3, 4
-# Input: HPolytope, Output: HPolytope
-group2 = [S(optimizer = GLPKSolverMIP()) for S in (NSVerify, MIPVerify, ILP)]
+# GROUP 2, 3, 4     # Input: HPolytope, Output: HPolytope
+glpk = GLPKSolverMIP()
+group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
 group3 = [ConvDual(), Duality(optimizer = glpk)]
-group4 = [FastLin(10, 10.0, 1.0), FastLip(10, 10.0, 1.0) ]
+group4 = [FastLin(), FastLip()]
 for solver in [group2; group3; group4]
     printtest(solver, problem_sat_hyper_hs, problem_unsat_hyper_hs)
 end
-# GROUP 5, 6
-# Input: Hyperrectangle, Output: Hyperrectangle
-group5 = [ ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk) ]
-#group6 = [Planet(glpk), Reluplex()] # Planet is producing an error right now
-group6 = [ Reluplex() ]
+# GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
+group6 = [Planet(glpk), Reluplex()]
 
 for solver in [group5; group6]
     printtest(solver, problem_sat_hyper_hyper, problem_unsat_hyper_hyper)
