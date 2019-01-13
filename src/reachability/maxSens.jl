@@ -65,44 +65,24 @@ end
 
 function partition(input::Hyperrectangle, delta::Float64)
     n_dim = dim(input)
-    hyperrectangle_list = Vector{Int64}(undef, n_dim)
-    n_hyperrectangle = 1
-
     lower, upper = low(input), high(input)
+    radius = fill(delta/2, n_dim)
 
-    for i in 1:n_dim
-        hyperrectangle_list[i] = n_hyperrectangle
-        n_hyperrectangle *= Int64(ceil((upper[i] - lower[i])/delta))
-    end
-    n_hyperrectangle = trunc(Int, n_hyperrectangle)
+    hyperrectangle_list = [1; ceil.(Int, (upper - lower)/delta)]
+    n_hyperrectangle = prod(hyperrectangle_list)
 
     hyperrectangles = Vector{Hyperrectangle}(undef, n_hyperrectangle)
     for k in 1:n_hyperrectangle
-        number = k
+        n = k
         center = Vector{Float64}(undef, n_dim)
-        radius = Vector{Float64}(undef, n_dim)
         for i in n_dim:-1:1
-            id = div(number-1, hyperrectangle_list[i])
-            number = mod(number-1, hyperrectangle_list[i])+1
-            center[i] = lower[i] + delta/2 + delta * id;
-            radius[i] = delta;
+            id = div(n-1, hyperrectangle_list[i])
+            n = mod(n-1, hyperrectangle_list[i])+1
+            center[i] = lower[i] + delta * (id + 0.5);
         end
         hyperrectangles[k] = Hyperrectangle(center, radius)
     end
     return hyperrectangles
 end
 
-# This function needs to be improved
-# Ad hoc implementation for now
-# Assuming the constraint only contains lower and upper bounds
-# [I; -I] x <= [Upper; Lower]
-function partition(input::HPolytope, delta::Float64)
-    n_dim = dim(input)
-
-    # This part is ad hoc
-    inputA, inputb = tosimplehrep(input)
-    upper = inputb[1:n_dim]
-    lower = -inputb[(n_dim+1):(2*n_dim)]
-
-    return partition(Hyperrectangle(low = lower, high = upper), delta)
-end
+partition(input::HPolytope, delta::Float64) = partition(overapproximate(input), delta)
