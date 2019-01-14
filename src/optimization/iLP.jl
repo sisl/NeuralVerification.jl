@@ -1,7 +1,7 @@
 """
     ILP(optimizer, max_iter)
 
-ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance. 
+ILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.
 It iteratively adds the linear constraint to the problem.
 
 # Problem requirement
@@ -53,8 +53,8 @@ function solve(solver::ILP, problem::Problem)
         status = solve(model, suppress_warnings = true)
         status != :Optimal && return AdversarialResult(:Unknown)
         x = getvalue(first(neurons))
-        status, index = match_activation(nnet, x, δ)
-        if status
+        matched, index = match_activation(nnet, x, δ)
+        if matched
             return interpret_result(solver, getvalue(o), problem.input)
         end
         add_constraint!(model, nnet, neurons, δ, index)
