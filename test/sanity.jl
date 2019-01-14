@@ -43,7 +43,7 @@ problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([
 
 # GROUP 1           # Input: HPolytope, Output: HPolytope
 # group1 = [MaxSens(), ExactReach(), Ai2()]
-group1 = [MaxSens(), ExactReach()] # Ai2 is 100% broken right now so dropping it
+group1 = [MaxSens(resolution = 0.6), ExactReach()] # Ai2 is 100% broken right now so dropping it
 for solver in group1
     printtest(solver, problem_sat_hpoly_hpoly_bounded, problem_unsat_hpoly_hpoly_bounded)
 end
