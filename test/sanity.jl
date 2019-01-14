@@ -27,7 +27,7 @@ at = @__DIR__
 small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 
 # The input set is always [-1:1]
-input_hyper  = Hyperrectangle(low = [-1.0], high = [1.0])
+input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 input_hpoly  = HPolytope(input_hyper)
 
 out_hyper_30_80 = Hyperrectangle(low = [30.0], high = [80.0])
