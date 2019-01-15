@@ -1,141 +1,84 @@
+# sanity checks
 
 using NeuralVerification
 using Test
 
-macro no_error(ex)
-    quote
-        try $(esc(ex))
-            true
-        catch ex
-            rethrow(ex)
-        end
+function printtest(solver, problem_sat, problem_unsat)
+    println(typeof(solver))
+    res_sat = solve(solver, problem_sat)
+    res_unsat = solve(solver, problem_unsat)
+
+    function col(s, rev = false)
+        cols = [:green, :red]
+        rev && reverse!(cols)
+        s == :SAT   && return cols[1]
+        s == :UNSAT && return cols[2]
+        return (:yellow) #else
     end
+
+    print("\tSAT test.   Result: "); printstyled("$(res_sat.status)\n", color = col(res_sat.status))
+    print("\tUNSAT test. Result: "); printstyled("$(res_unsat.status)\n", color = col(res_unsat.status, true))
+    println("_"^70, "\n")
+end
+
+printtest(solvers::Vector, p1, p2) = ([printtest(s, p1, p2) for s in solvers]; nothing)
+
+at = @__DIR__
+small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
+
+# The input set is always [-1:1]
+input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
+input_hpoly  = HPolytope(input_hyper)
+
+out_hyper_30_80 = Hyperrectangle(low = [30.0], high = [80.0])
+out_hyper_50    = Hyperrectangle(low = [-1.0], high = [50.0]) # includes points in the output region ie y > 30.5
+
+problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_30_80)                      # 40.0 < y < 60.0
+problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                         # -1.0 < y < 50.0
+problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_30_80))
+problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_50))
+# halfspace constraints:
+problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
+problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
+
+
+# GROUP 1           # Input: HPolytope, Output: HPolytope
+# group1 = [MaxSens(), ExactReach(), Ai2()]
+group1 = [MaxSens(resolution = 0.6), ExactReach()] # Ai2 is 100% broken right now so dropping it
+for solver in group1
+    printtest(solver, problem_sat_hpoly_hpoly_bounded, problem_unsat_hpoly_hpoly_bounded)
+    sat   = solve(solver, problem_sat_hpoly_hpoly_bounded)
+    unsat = solve(solver, problem_unsat_hpoly_hpoly_bounded)
+
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
 end
 
 
-at = @__DIR__
+# GROUP 2, 3, 4     # Input: HPolytope, Output: HPolytope
+glpk = GLPKSolverMIP()
+group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
+group3 = [ConvDual(), Duality(optimizer = glpk)]
+group4 = [FastLin(), FastLip()]
+for solver in [group2; group3; group4]
+    printtest(solver, problem_sat_hyper_hs, problem_unsat_hyper_hs)
+    sat   = solve(solver, problem_sat_hyper_hs)
+    unsat = solve(solver, problem_unsat_hyper_hs)
 
-small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
-A = Matrix{Float64}(undef, 2,1)
-A[1:2] = [1, -1]
-
-### NSVerify
-inputSet  = HPolytope(A, [1.0,1.0])
-outputSet = HPolytope(ones(1,1), [2.1])
-problem_NSVerify = Problem(small_nnet, inputSet, outputSet)
-solver_NSVerify = NSVerify(GLPKSolverMIP(), 1000.0)
-
-### maxSens
-inputSet  = HPolytope(A, [1.0, 1.0])
-outputSet = HPolytope(A, [100.0, 1.0])
-problem_maxSens = Problem(small_nnet, inputSet, outputSet)
-solver_maxSens = MaxSens(resolution = 0.3)
-
-### exactReach
-inputSet  = HPolytope(A,           [0.0, 2.0])
-outputSet = HPolytope(zeros(2, 1), [100.0, 1.0])
-problem_exactReach = Problem(small_nnet, inputSet, outputSet)
-solver_exactReach = ExactReach()
-
-### reluVal
-inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
-outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
-problem_reluVal = Problem(small_nnet, inputSet, outputSet)
-solver_reluVal = ReluVal(max_iter = 2)
-
-### DLV
-inputSet  = Hyperrectangle(low = [-1.0], high = [1.0])
-outputSet = Hyperrectangle(low = [-1.0], high = [50.0])
-problem_dlv = Problem(small_nnet, inputSet, outputSet)
-solver_dlv = DLV()
-
-### Ai2
-input  = HPolytope(A, [0.0, 0.0])
-output = HPolytope(A, [100.0, 0.0])
-problem_ai2 = Problem(small_nnet, input, output)
-solver_ai2 = Ai2()
-
-### BaB
-inputSet  = Hyperrectangle([-1.0], [0.5])
-outputSet = Hyperrectangle([1.0], [18.5])
-problem_bab = Problem(small_nnet, inputSet, outputSet)
-solver_bab = BaB()
-
-### Certify
-inputSet = Hyperrectangle([1.0], [1.0])
-outputSet = HPolytope(ones(1,1), [2.1])
-problem_certify = Problem(small_nnet, inputSet, outputSet)
-solver_certify = Certify(SCSSolver())
-
-### ConvDual
-inputSet  = Hyperrectangle([0.0], [1.0])
-outputSet = HPolytope(-ones(1,1), [1.0])
-problem_convdual = Problem(small_nnet, inputSet, outputSet)
-solver_convdual = ConvDual()
-
-### Duality
-inputSet  = Hyperrectangle([1.0], [1.0])
-outputSet = HPolytope(ones(1,1), [120.0])
-problem_duality = Problem(small_nnet, inputSet, outputSet)
-solver_duality = Duality(GLPKSolverMIP())
-
-### iLP
-inputSet  = Hyperrectangle([-2.0], [.5])
-outputSet = HPolytope(ones(1,1),[72.5])
-problem_ilp = Problem(small_nnet, inputSet, outputSet)
-solver_ilp = ILP(GLPKSolverMIP(), 1)
-
-### MIPVerify
-inputSet  = Hyperrectangle([0.0], [.5])
-outputSet = HPolytope(ones(1,1), [102.5])
-problem_mipverify = Problem(small_nnet, inputSet, outputSet)
-solver_mipverify = MIPVerify(GLPKSolverMIP())
-
-### Planet
-inputSet  = Hyperrectangle([-1.0], [0.5])
-outputSet = HPolytope(ones(1,1), [2.5])
-problem_planet = Problem(small_nnet, inputSet, outputSet)
-solver_planet = Planet(GLPKSolverMIP())
-
-### Reluplex
-inputSet  = Hyperrectangle([1.0],[.2])
-outputSet = Hyperrectangle([2.0,], [100.0])
-problem_reluplex = Problem(small_nnet, inputSet, outputSet)
-solver_reluplex = Reluplex()
-
-### Sherlock
-inputSet  = Hyperrectangle([2.0], [.5])
-outputSet = Hyperrectangle([10.0], [10.0])
-problem_sherlock = Problem(small_nnet, inputSet, outputSet)
-solver_sherlock = Sherlock(GLPKSolverMIP(), 0.1)
-
-### FastLin/FastLip
-solver_fastlin = FastLin()
-solver_fastlip = FastLip()
-problem_fastlin = problem_fastlip = problem_reluVal
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
+end
 
 
-@test @no_error solve(solver_maxSens,    problem_maxSens)
-@test @no_error solve(solver_exactReach, problem_exactReach)
-@test @no_error solve(solver_reluVal,    problem_reluVal)
-@test @no_error solve(solver_dlv,        problem_dlv)
-@test @no_error solve(solver_convdual,   problem_convdual)
-@test @no_error solve(solver_duality,    problem_duality)
-@test @no_error solve(solver_ilp,        problem_ilp)
-@test @no_error solve(solver_mipverify,  problem_mipverify)
-@test @no_error solve(solver_planet,     problem_planet)
-@test @no_error solve(solver_reluplex,   problem_reluplex)
-@test @no_error solve(solver_sherlock,   problem_sherlock)
-@test @no_error solve(solver_fastlin,    problem_fastlin)
-@test @no_error solve(solver_fastlip,    problem_fastlip)
-@test @no_error solve(solver_bab,        problem_bab)
-@test @no_error solve(solver_NSVerify,   problem_NSVerify)
-# @test @no_error solve(solver_ai2,        problem_ai2)
+# GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
+group6 = [Planet(glpk), Reluplex()]
 
-### Certify - only works for single hidden layer
-tiny_nnet = read_nnet("$at/../examples/networks/tiny_nnet.nnet")
-solver_certify = Certify()
-inputSet  = Hyperrectangle([2.0], [.5])
-outputSet = HPolytope(ones(1,1), [2.5])
-problem_certify = Problem(tiny_nnet, inputSet, outputSet)
-@test @no_error solve(solver_certify, problem_certify)
+for solver in [group5; group6]
+    printtest(solver, problem_sat_hyper_hyper, problem_unsat_hyper_hyper)
+    sat   = solve(solver, problem_sat_hyper_hyper)
+    unsat = solve(solver, problem_unsat_hyper_hyper)
+
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
+end
