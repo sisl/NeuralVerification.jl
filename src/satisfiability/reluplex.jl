@@ -140,6 +140,7 @@ function reluplex_step(solver::Reluplex,
             result = reluplex_step(solver, new_m, bs, fs, relu_status)
 
             relu_status[i][j] = 0
+            print(relu_status)
             result.status == :UNSAT && return result
         end
     else
