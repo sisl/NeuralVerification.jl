@@ -549,7 +549,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.Reluplex",
     "category": "type",
-    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
+    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: hyperrectangle\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
 },
 
 {
