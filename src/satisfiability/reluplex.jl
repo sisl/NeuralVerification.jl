@@ -6,7 +6,7 @@ Reluplex uses binary tree search to find an activation pattern that maps a feasi
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle
-3. Output: halfspace
+3. Output: hyperrectangle
 
 # Return
 `CounterExampleResult`
