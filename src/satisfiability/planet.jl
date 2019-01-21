@@ -37,7 +37,6 @@ function solve(solver::Planet, problem::Problem)
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
     status == :Optimal || return BasicResult(:SAT)
-    issubset(last(bounds), problem.output) && return BasicResult(:SAT)
     ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
@@ -48,7 +47,7 @@ function solve(solver::Planet, problem::Problem)
         append!(ψ, Any[conflict])
         δ = PicoSAT.solve(ψ)
     end
-    return BasicResult(:Unknown)
+    return BasicResult(:SAT)
 end
 
 function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})
