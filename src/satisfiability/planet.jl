@@ -36,18 +36,18 @@ function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return BasicResult(:SAT)
+    status == :Optimal || return CounterExampleResult(:SAT)
     ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # Main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
-        status == :Infeasible || return BasicResult(:UNSAT)
+        status == :Infeasible || return CounterExampleResult(:UNSAT, conflict)
         append!(ψ, Any[conflict])
         δ = PicoSAT.solve(ψ)
     end
-    return BasicResult(:SAT)
+    return CounterExampleResult(:SAT)
 end
 
 function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})
@@ -81,7 +81,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
         status = solve(model, suppress_warnings = true)
         status == :Optimal || return (:Infeasible, conflict)
         (m, index) = max_slack(getvalue(slack), act)
-        m > 0.0 || return (:Feasible, conflict)
+        m > 0.0 || return (:Feasible, getvalue(neurons[1]))
         # activated neurons get a factor of (-1)
         coeff = δ[index[1]][index[2]] ? -1 : 1
         node = coeff * get_node_id(problem.network, index)
