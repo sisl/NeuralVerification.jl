@@ -81,10 +81,10 @@ function encode_slack_lp!(model::Model,
         slack[i] = @variable(model, [1:length(layer.bias)])
         for j in 1:length(layer.bias)
             if δ[i][j]
-                #@constraint(model, z[i+1][j] == ẑ[j] + slack[i][j])
+                @constraint(model, z[i+1][j] == ẑ[j] + slack[i][j])
                 @constraint(model, ẑ[j] + slack[i][j] >= 0.0)
             else
-                #@constraint(model, z[i+1][j] == 0.0)
+                @constraint(model, z[i+1][j] == slack[i][j])
                 @constraint(model, 0.0 >= ẑ[j] - slack[i][j])
             end
         end
