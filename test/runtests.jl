@@ -83,3 +83,21 @@ for solver in [group5;]
     @test sat.status ∈ (:SAT, :Unknown)
     @test unsat.status ∈ (:UNSAT, :Unknown)
 end
+
+macro no_error(ex)
+    quote
+        try $(esc(ex))
+            true
+        catch
+            false
+        end
+    end
+end
+
+### Certify - only works for single hidden layer
+tiny_nnet = read_nnet("$at/../examples/networks/tiny_nnet.nnet")
+solver_certify = Certify()
+inputSet  = Hyperrectangle([2.0], [.5])
+outputSet = HPolytope(ones(1,1), [2.5])
+problem_certify = Problem(tiny_nnet, inputSet, outputSet)
+@test @no_error solve(solver_certify, problem_certify)
