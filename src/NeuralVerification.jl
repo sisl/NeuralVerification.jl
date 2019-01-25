@@ -26,6 +26,7 @@ include("utils/activation.jl")
 include("utils/network.jl")
 include("utils/problem.jl")
 include("utils/util.jl")
+include("utils/flux.jl")
 export
     Solver,
     Network,
