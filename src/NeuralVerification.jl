@@ -11,6 +11,7 @@ using Reexport # once development slows down, remove this requirement in favor o
 @reexport using SCS     # needed for Certify and Duality
 # for Reachability
 @reexport using LazySets
+using LazySets.Approximations
 using Polyhedra
 using CDDLib
 using LinearAlgebra
