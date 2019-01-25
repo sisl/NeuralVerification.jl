@@ -349,7 +349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.ILP",
     "category": "type",
-    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance.  It iteratively adds the linear constraint to the problem.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. It only considers the linear piece of the network that has the same activation pattern as the reference input. Default optimizer is GLPKSolverMIP(). We provide both iterative method and non-iterative method to solve the LP problem. Default iterative is true.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
+    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance. It iteratively adds the linear constraint to the problem.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. It only considers the linear piece of the network that has the same activation pattern as the reference input. Default optimizer is GLPKSolverMIP(). We provide both iterative method and non-iterative method to solve the LP problem. Default iterative is true.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
 },
 
 {
@@ -549,7 +549,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.Reluplex",
     "category": "type",
-    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: hyperrectangle\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
+    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
 },
 
 {
