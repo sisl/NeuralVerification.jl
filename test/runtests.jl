@@ -60,7 +60,8 @@ glpk = GLPKSolverMIP()
 group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
 group3 = [ConvDual(), Duality(optimizer = glpk)]
 group4 = [FastLin(), FastLip()]
-group6 = [Reluplex()]
+group6 = [Reluplex(), Planet(GLPKSolverMIP())]
+
 for solver in [group2; group3; group4; group6]
     printtest(solver, problem_sat_hyper_hs, problem_unsat_hyper_hs)
     sat   = solve(solver, problem_sat_hyper_hs)
