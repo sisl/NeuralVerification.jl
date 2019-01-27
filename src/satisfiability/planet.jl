@@ -34,29 +34,29 @@ Planet(x::AbstractMathProgSolver) = Planet(optimizer = x)
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
-    # refine bounds
+    # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    # status == :Optimal || return BasicResult(:SAT)
-    issubset(last(bounds), problem.output) && return BasicResult(:SAT)
-    ψ = init_ψ(bounds)
+    status == :Optimal || return CounterExampleResult(:SAT)
+    ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
-    # main loop to compute the SAT problem
+    # Main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
-        # println("Elastic filter status: ", status, "; Conflicting array: ", conflict)
-        status == :Infeasible || return BasicResult(:UNSAT)
+        status == :Infeasible || return CounterExampleResult(:UNSAT, conflict)
         append!(ψ, Any[conflict])
         δ = PicoSAT.solve(ψ)
     end
-    return BasicResult(:Unknown)
+    return CounterExampleResult(:SAT)
 end
 
-function init_ψ(bounds::Vector{Hyperrectangle})
+function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})
     ψ = Vector{Vector{Int64}}(undef, 0)
     index = 0
-    for i in 2:length(bounds)
-        lower, upper = low(bounds[i]), high(bounds[i])
+    for i in 1:length(bounds)-1
+        before_act_bound = linear_transformation(nnet.layers[i], bounds[i])
+        lower = low(before_act_bound)
+        upper = high(before_act_bound)
         for j in 1:length(lower)
             index += 1
             lower[j] > 0 && push!(ψ, [index])
@@ -74,13 +74,14 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_Δ_lp!(model, problem.network, bounds, neurons)
     slack = encode_slack_lp!(model, problem.network, neurons, δ)
-    o = min_sum!(model, slack)
+    min_sum!(model, slack)
     conflict = Vector{Int64}()
+    act = get_activation(problem.network, bounds)
     while true
         status = solve(model, suppress_warnings = true)
         status == :Optimal || return (:Infeasible, conflict)
-        (m, index) = max_slack(getvalue(slack))
-        m > 0.0 || return (:Feasible, conflict)
+        (m, index) = max_slack(getvalue(slack), act)
+        m > 0.0 || return (:Feasible, getvalue(neurons[1]))
         # activated neurons get a factor of (-1)
         coeff = δ[index[1]][index[2]] ? -1 : 1
         node = coeff * get_node_id(problem.network, index)
@@ -91,12 +92,12 @@ end
 
 elastic_filtering(problem::Problem, list::Vector{Int64}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver) = elastic_filtering(problem, get_assignment(problem.network, list), bounds, optimizer)
 
-function max_slack(x::Vector{Vector{Float64}})
+function max_slack(x::Vector{Vector{Float64}}, act)
     m = 0.0
     index = (0, 0)
     for i in 1:length(x)
         for j in 1:length(x[i])
-            if x[i][j] > m
+            if x[i][j] > m && act[i][j] == 0 # Only return undetermined nodes
                 m = x[i][j]
                 index = (i, j)
             end

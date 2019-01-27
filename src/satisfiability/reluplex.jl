@@ -30,7 +30,7 @@ function solve(solver::Reluplex, problem::Problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
 
-    return reluplex_step(solver, basic_model, bs, fs, initial_status)
+    return reluplex_step(solver, problem, basic_model, bs, fs, initial_status)
 end
 
 function find_relu_to_fix(b_vars, f_vars)
@@ -40,7 +40,7 @@ function find_relu_to_fix(b_vars, f_vars)
 
         if type_one_broken(b, f) ||
            type_two_broken(b, f)
-            (i, j)
+            return (i, j)
         end
     end
     return (0, 0)
@@ -94,7 +94,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
             @constraint(model, fs[i] .>= bs[i+1])
         end
     end
-    add_set_constraint!(model, problem.output, last(bs))
+    add_complementary_set_constraint!(model, problem.output, last(bs))
 
     zero_objective!(model)
 
@@ -102,25 +102,26 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
 end
 
 function enforce_repairs!(model::Model, bs, fs, relu_status)
-    for i in 1:length(relu_status), j in 1:length(relu_status[i])
+    # Need to decide what to do with last layer, this assumes there is no ReLU.
+    for i in 1:(length(relu_status)-1), j in 1:length(relu_status[i])
         b = bs[i+1][j]
         f = fs[i][j]
         if relu_status[i][j] == 1
-            type_one_repair(m, b, f)
+            type_one_repair!(model, b, f)
         elseif relu_status[i][j] == 2
-            type_two_repair(m, b, f)
+            type_two_repair!(model, b, f)
         end
     end
 end
 
 function reluplex_step(solver::Reluplex,
+                       problem::Problem,
                        model::Model,
                        b_vars::Vector{Vector{Variable}},
                        f_vars::Vector{Vector{Variable}},
                        relu_status::Vector{Vector{Int}})
 
     status = solve(model, suppress_warnings = true)
-
     if status == :Infeasible
         return CounterExampleResult(:SAT)
 
@@ -137,10 +138,11 @@ function reluplex_step(solver::Reluplex,
             bs, fs = encode(solver, new_m, problem)
             enforce_repairs!(new_m, bs, fs, relu_status)
 
-            result = reluplex_step(solver, new_m, bs, fs, relu_status)
+            result = reluplex_step(solver, problem, new_m, bs, fs, relu_status)
 
             relu_status[i][j] = 0
-            result.status == :UNSAT && return result
+            
+            return result
         end
     else
         error("unexpected status $status") # are there alternatives to the if and elseif?

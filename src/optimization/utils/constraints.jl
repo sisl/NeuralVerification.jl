@@ -84,7 +84,7 @@ function encode_slack_lp!(model::Model,
                 @constraint(model, z[i+1][j] == ẑ[j] + slack[i][j])
                 @constraint(model, ẑ[j] + slack[i][j] >= 0.0)
             else
-                @constraint(model, z[i+1][j] == 0.0)
+                @constraint(model, z[i+1][j] == slack[i][j])
                 @constraint(model, 0.0 >= ẑ[j] - slack[i][j])
             end
         end

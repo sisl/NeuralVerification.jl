@@ -30,7 +30,7 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
 input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 input_hpoly  = HPolytope(input_hyper)
 
-out_hyper_30_80 = Hyperrectangle(low = [30.0], high = [80.0])
+out_hyper_30_80 = Hyperrectangle(low = [20.0], high = [90.0])
 out_hyper_50    = Hyperrectangle(low = [-1.0], high = [50.0]) # includes points in the output region ie y > 30.5
 
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_30_80)                      # 40.0 < y < 60.0
@@ -59,7 +59,8 @@ glpk = GLPKSolverMIP()
 group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
 group3 = [ConvDual(), Duality(optimizer = glpk)]
 group4 = [FastLin(), FastLip()]
-for solver in [group2; group3; group4]
+group6 = [Reluplex()]
+for solver in [group2; group3; group4; group6]
     printtest(solver, problem_sat_hyper_hs, problem_unsat_hyper_hs)
     sat   = solve(solver, problem_sat_hyper_hs)
     unsat = solve(solver, problem_unsat_hyper_hs)
@@ -71,9 +72,9 @@ end
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
 group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
-group6 = [Planet(glpk), Reluplex()]
 
-for solver in [group5; group6]
+
+for solver in [group5;]
     printtest(solver, problem_sat_hyper_hyper, problem_unsat_hyper_hyper)
     sat   = solve(solver, problem_sat_hyper_hyper)
     unsat = solve(solver, problem_unsat_hyper_hyper)
@@ -81,3 +82,21 @@ for solver in [group5; group6]
     @test sat.status ∈ (:SAT, :Unknown)
     @test unsat.status ∈ (:UNSAT, :Unknown)
 end
+
+macro no_error(ex)
+    quote
+        try $(esc(ex))
+            true
+        catch
+            false
+        end
+    end
+end
+
+### Certify - only works for single hidden layer
+tiny_nnet = read_nnet("$at/../examples/networks/tiny_nnet.nnet")
+solver_certify = Certify()
+inputSet  = Hyperrectangle([2.0], [.5])
+outputSet = HPolytope(ones(1,1), [2.5])
+problem_certify = Problem(tiny_nnet, inputSet, outputSet)
+@test @no_error solve(solver_certify, problem_certify)
