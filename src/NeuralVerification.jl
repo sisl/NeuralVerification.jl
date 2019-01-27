@@ -1,7 +1,5 @@
 module NeuralVerification
 
-__precompile__(false)
-
 using Reexport # once development slows down, remove this requirement in favor of only exporting what we need from each package
 # for Feasibility
 @reexport using JuMP
