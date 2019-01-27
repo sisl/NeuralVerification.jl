@@ -78,16 +78,6 @@ function activation_value(layer::Layer,
 
     o += sum(symbolic_max.(μᵢ.*l_hat, μᵢ.*u_hat))
     o += sum(symbolic_max.(λᵢ.*l, λᵢ.*u))
-
-    # also possible
-    # o += sum(@. symbolic_max(μᵢ*l_hat, μᵢ*u_hat))
-    # o += sum(@. symbolic_max(λᵢ*l, λᵢ*u))
-
-    # original
-    # for j in 1:length(l)
-    #     o += symbolic_max(μᵢ[j]*l_hat[j], μᵢ[j]*u_hat[j])
-    #     o += symbolic_max(λᵢ[j]*l[j], λᵢ[j]*u[j])
-    # end
     return o
 end
 
