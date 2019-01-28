@@ -1,4 +1,4 @@
-using Flux
+using .Flux
 
 # Network -> Flux
 
