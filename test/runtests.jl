@@ -1,6 +1,6 @@
 # sanity checks
 
-using NeuralVerification
+using NeuralVerification, LazySets, GLPKMathProgInterface
 using Test
 
 function printtest(solver, problem_sat, problem_unsat)
