@@ -65,7 +65,7 @@ end
 
 Propagate a given vector through a nnet and compute the output.
 """
-function compute_output(nnet::Network, input::Vector{Float64})
+function compute_output(nnet::Network, input)
     curr_value = input
     layers = nnet.layers
     for i = 1:length(layers) # layers does not include input layer (which has no weights/biases)
