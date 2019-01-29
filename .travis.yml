@@ -15,6 +15,7 @@ notifications:
 matrix:
   allow_failures:
     - julia: nightly
+    - julia: 1.1
 
 before_install:
   # Install TeX and Qt5 to build plots for documentation
