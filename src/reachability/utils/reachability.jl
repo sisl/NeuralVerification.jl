@@ -28,6 +28,8 @@ function check_inclusion(reach::P, output::AbstractPolytope) where P<:AbstractPo
     return ReachabilityResult(:UNSAT, [reach])
 end
 
+forward_partition(act::Id, input::HPolytope) = input
+
 function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
     output = Vector{HPolytope}(undef, 0)

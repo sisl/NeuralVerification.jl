@@ -38,10 +38,10 @@ function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
 end
 
 # extend lazysets convex_hull to a vector of polytopes
-function LazySets.convex_hull(sets::Vector{<:AbstractPolytope})
+function LazySets.convex_hull(sets::Vector{<:AbstractPolytope}; backend = CDDLib.Library())
     hull = first(sets)
     for P in sets
-        hull = convex_hull(hull, P, backend = CDDLib.Library())
+        hull = convex_hull(hull, P, backend = backend)
     end
     return hull
 end
