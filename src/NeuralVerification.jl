@@ -1,16 +1,12 @@
 module NeuralVerification
 
-__precompile__(false)
-
-using Reexport # once development slows down, remove this requirement in favor of only exporting what we need from each package
-# for Feasibility
-@reexport using JuMP
-@reexport using MathProgBase.SolverInterface
-@reexport using GLPKMathProgInterface
-@reexport using PicoSAT # needed for Planet
-@reexport using SCS     # needed for Certify and Duality
+using JuMP
+using MathProgBase.SolverInterface
+using GLPKMathProgInterface
+using PicoSAT # needed for Planet
+using SCS     # needed for Certify and Duality
 # for Reachability
-@reexport using LazySets
+using LazySets
 using LazySets.Approximations
 using Polyhedra
 using CDDLib
@@ -53,9 +49,8 @@ export
     forward_network,
     check_inclusion
 
-solve(m::Model) = JuMP.solve(m) ## TODO find a place for this
 solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
-# export solve
+export solve
 
 # TODO: consider creating sub-modules for each of these.
 include("optimization/utils/constraints.jl")

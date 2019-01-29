@@ -1,6 +1,6 @@
 # General structure for reachability methods
 
-# This function performs layer-by-layer propagation
+# Performs layer-by-layer propagation
 # It is called by all solvers under reachability
 # TODO: also called by ReluVal and FastLin, so move to general utils (or to network.jl)
 function forward_network(solver, nnet::Network, input::AbstractPolytope)
@@ -11,12 +11,12 @@ function forward_network(solver, nnet::Network, input::AbstractPolytope)
     return reach
 end
 
-# This function checks whether the reachable set belongs to the output constraint
+# Checks whether the reachable set belongs to the output constraint
 # It is called by all solvers under reachability
 # Note vertices_list is not defined for HPolytope: to be defined
 function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
     for poly in reach
-        issubset(poly, output) || return ReachabilityResult(:UNSAT, reach) # TODO shouldn't this be poly, not the full reach?
+        issubset(poly, output) || return ReachabilityResult(:UNSAT, reach)
     end
     return ReachabilityResult(:SAT, similar(reach, 0))
 end
@@ -26,4 +26,29 @@ function check_inclusion(reach::P, output::AbstractPolytope) where P<:AbstractPo
         return ReachabilityResult(:SAT, P[])
     end
     return ReachabilityResult(:UNSAT, [reach])
+end
+
+function forward_partition(act::ReLU, input::HPolytope)
+    n = dim(input)
+    output = Vector{HPolytope}(undef, 0)
+    C, d = tosimplehrep(input)
+    dh = [d; zeros(n)]
+    for h in 0:(2^n)-1
+        P = getP(h, n)
+        Ch = [C; I - 2P]
+        input_h = HPolytope(Ch, dh)
+        if !isempty(input_h)
+            push!(output, linear_transformation(Matrix(P), input_h))
+        end
+    end
+    return output
+end
+
+function getP(h::Int64, n::Int64)
+    str = string(h, pad = n, base = 2)
+    vec = Vector{Int64}(undef, n)
+    for i in 1:n
+        vec[i] = ifelse(str[i] == '1', 1, 0)
+    end
+    return Diagonal(vec)
 end

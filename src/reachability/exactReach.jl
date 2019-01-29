@@ -42,28 +42,3 @@ function forward_layer(solver::ExactReach, layer::Layer, input::HPolytope)
     input = linear_transformation(layer, input)
     return forward_partition(layer.activation, input)
 end
-
-function forward_partition(act::ReLU, input::HPolytope)
-    n = dim(input)
-    output = Vector{HPolytope}(undef, 0)
-    C, d = tosimplehrep(input)
-    dh = [d; zeros(n)]
-    for h in 0:(2^n)-1
-        P = getP(h, n)
-        Ch = [C; I - 2P]
-        input_h = HPolytope(Ch, dh)
-        if !isempty(input_h)
-            push!(output, linear_transformation(Matrix(P), input_h))
-        end
-    end
-    return output
-end
-
-function getP(h::Int64, n::Int64)
-    str = string(h, pad = n, base = 2)
-    vec = Vector{Int64}(undef, n)
-    for i in 1:n
-        vec[i] = ifelse(str[i] == '1', 1, 0)
-    end
-    return Diagonal(vec)
-end
