@@ -34,7 +34,7 @@ function solve(solver::NSVerify, problem::Problem)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_mip_constraint!(model, problem.network, solver.m, neurons, deltas)
+    encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(solver.m))
     zero_objective!(model)
     status = solve(model, suppress_warnings = true)
     if status == :Optimal

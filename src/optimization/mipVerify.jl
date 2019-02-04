@@ -36,7 +36,7 @@ function solve(solver::MIPVerify, problem::Problem)
     deltas = init_deltas(model, problem.network)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
-    encode_mip_constraint!(model, problem.network, bounds, neurons, deltas)
+    encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - problem.input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible

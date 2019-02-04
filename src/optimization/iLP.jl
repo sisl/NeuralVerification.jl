@@ -42,13 +42,13 @@ function solve(solver::ILP, problem::Problem)
     o = max_disturbance!(model, first(neurons) - problem.input.center)
 
     if !solver.iterative
-        encode_lp!(model, nnet, neurons, δ)
+        encode_network!(model, nnet, neurons, δ, StandardLP())
         status = solve(model, suppress_warnings = true)
         status != :Optimal && return AdversarialResult(:Unknown)
         return interpret_result(solver, getvalue(o), problem.input)
     end
 
-    encode_relaxed_lp!(model, nnet, neurons, δ)
+    encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
     while true
         status = solve(model, suppress_warnings = true)
         status != :Optimal && return AdversarialResult(:Unknown)

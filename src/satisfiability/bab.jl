@@ -112,7 +112,7 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMat
     model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, dom, first(neurons))
-    encode_Δ_lp!(model, nnet, bounds, neurons)
+    encode_network!(model, nnet, neurons, bounds, TriangularRelaxedLP())
     index = ifelse(type == :max, 1, -1)
     o = sum(last(neurons))
     @objective(model, Max, index * o)

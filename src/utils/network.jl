@@ -34,7 +34,7 @@ struct Network
 end
 
 """
-    n_node(L::Layer)
+    n_nodes(L::Layer)
 
 Returns the number of neurons in a layer.
 """
