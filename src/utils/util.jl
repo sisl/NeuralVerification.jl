@@ -1,63 +1,47 @@
 """
-    read_nnet(fname::String)
+    read_nnet(fname::String; last_layer_activation = Id())
 
-Read in neural net from file and return Network struct
+Read in neural net from a `.nnet` file and return Network struct.
+The `.nnet` format is borrowed from [NNet](https://github.com/sisl/NNet).
+The format assumes all hidden layers have ReLU activation.
+Keyword argument `last_layer_activation` sets the activation of the last
+layer, and defaults to `Id()`, for identity (i.e. a linear output layer).
 """
-function read_nnet(fname::String)
+function read_nnet(fname::String; last_layer_activation = Id())
     f = open(fname)
     line = readline(f)
     while occursin("//", line) #skip comments
         line = readline(f)
     end
-    # read in layer sizes and populate array
-    record = split(line, ",")
-    nLayers = parse(Int64, record[1])
-    record = split(readline(f), ",")
-    layerSizes = Vector{Int64}(undef, nLayers + 1)
-    for i = 1: nLayers + 1
-        layerSizes[i] = parse(Int64, record[i])
-    end
+    # read in layer sizes
+    layer_sizes = parse.(Int64, split(readline(f), ","))
     # read past additonal information
-    for i = 1: 5
+    # NOTE always 5??
+    for i in 1:5
         line = readline(f)
     end
-    # initialize layers
-    layers = Vector{Layer}(undef, nLayers)
-    for i = 1:nLayers
-        curr_layer = init_layer(i, layerSizes, f)
-        layers[i] = curr_layer
-    end
+    # i=1 corresponds to the input dimension, so it's ignored
+    layers = Layer[read_layer(dim, f) for dim in layer_sizes[2:end-1]]
+    push!(layers, read_layer(last(layer_sizes), f, last_layer_activation))
 
     return Network(layers)
 end
 
 """
-    init_layer(i::Int64, layerSizes::Array{Int64}, f::IOStream)
+    read_layer(output_dim::Int, f::IOStream, [act = ReLU()])
 
-Read in layer from nnet file and return a Layer struct containing its weights/biases
+Read in layer from nnet file and return a `Layer` containing its weights/biases.
+Optional argument `act` sets the activation function for the layer.
 """
-function init_layer(i::Int64, layerSizes::Array{Int64}, f::IOStream)
-     bias = Vector{Float64}(undef, layerSizes[i+1])
-     weights = Matrix{Float64}(undef, layerSizes[i+1], layerSizes[i])
+function read_layer(output_dim::Int64, f::IOStream, act = ReLU())
      # first read in weights
-     for r = 1: layerSizes[i+1]
-        line = readline(f)
-        record = split(line, ",")
-        token = record[1]
-        c = 1
-        for c = 1: layerSizes[i]
-            weights[r, c] = parse(Float64, token)
-            token = record[c]
-        end
-     end
+     W_str_vec = [parse.(Float64, split(readline(f), ",")) for i in 1:output_dim]
+     weights = vcat(W_str_vec'...)
      # now read in bias
-     for r = 1: layerSizes[i+1]
-        line = readline(f)
-        record = split(line, ",")
-        bias[r] = parse(Float64, record[1])
-     end
+     bias_string = [readline(f) for j in 1:output_dim]
+     bias = parse.(Float64, bias_string)
      # activation function is set to ReLU as default
-     return Layer(weights, bias, ReLU())
+     return Layer(weights, bias, act)
 end
 
 """
