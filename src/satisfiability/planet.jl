@@ -72,9 +72,9 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_Δ_lp!(model, problem.network, bounds, neurons, TriangularRelaxedLP())
-    LP = encode_slack_lp!(model, problem.network, neurons, δ, SlackLP())
-    slack = LP.slack
+    encode_network!(model, problem.network, bounds, neurons, TriangularRelaxedLP())
+    SLP = encode_network!(model, problem.network, neurons, δ, SlackLP())
+    slack = SLP.slack
     min_sum!(model, slack)
     conflict = Vector{Int64}()
     act = get_activation(problem.network, bounds)
@@ -113,7 +113,7 @@ function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_Δ_lp!(model, problem.network, bounds, neurons)
+    encode_network!(model, problem.network, bounds, neurons, TriangularRelaxedLP())
 
     o = min_sum!(model, neurons)
     status = solve(model, suppress_warnings = true)
