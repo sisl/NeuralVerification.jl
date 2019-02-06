@@ -16,7 +16,6 @@ function read_nnet(fname::String; last_layer_activation = Id())
     # read in layer sizes
     layer_sizes = parse.(Int64, split(readline(f), ","))
     # read past additonal information
-    # NOTE always 5??
     for i in 1:5
         line = readline(f)
     end
