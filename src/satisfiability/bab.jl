@@ -41,10 +41,10 @@ end
 
 function interpret_result(reach, bound, output, x_l, x_u)
     if high(reach) < high(output) && low(reach) > low(output)
-        return ReachabilityResult(:SAT, [reach])
+        return ReachabilityResult(:holds, [reach])
     end
-    high(bound) > high(output)    && return CounterExampleResult(:UNSAT, x_u)
-    low(bound) < low(output)      && return CounterExampleResult(:UNSAT, x_l)
+    high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
+    low(bound) < low(output)      && return CounterExampleResult(:violated, x_l)
     return ReachabilityResult(:Unknown, reach)
 end
 

@@ -82,7 +82,7 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
     problem_new = Problem(problem.network, problem.input, output_set)
     solver  = NSVerify(optimizer = optimizer)
     result  = solve(solver, problem_new)
-    if result.status == :UNSAT
+    if result.status == :violated
         x = result.counter_example
         bound = compute_output(problem.network, x)
         return (x, bound[1], true)

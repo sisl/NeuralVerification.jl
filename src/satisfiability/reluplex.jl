@@ -125,13 +125,13 @@ function reluplex_step(solver::Reluplex,
 
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
-        return CounterExampleResult(:SAT)
+        return CounterExampleResult(:holds)
 
     elseif status == :Optimal
         i, j = find_relu_to_fix(b_vars, f_vars)
 
         # in case no broken relus could be found, return the "input" as a countereexample
-        i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
+        i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
             relu_status[i][j] = repair_type

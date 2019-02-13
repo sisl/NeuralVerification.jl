@@ -66,10 +66,10 @@ problem = Problem(nnet, input_set, output_set)
 ### Solve
 ```julia
 julia> result = solve(solver, problem)
-CounterExampleResult(:UNSAT, [1.0])
+CounterExampleResult(:violated, [1.0])
 
 julia> result.status
-:UNSAT
+:violated
 ```
 
 For a full list of `Solvers` and their properties, requirements, and `Result` types, please refer to the documentation.
