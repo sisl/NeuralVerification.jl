@@ -39,10 +39,10 @@ function solve(solver::FastLip, problem::Problem)
     y = compute_output(problem.network, problem.input.center)
     o = (c * y - d)[1]
     if o > 0
-        return AdversarialResult(:UNSAT, -o)
+        return AdversarialResult(:violated, -o)
     end
     result = solve(FastLin(solver), problem)
-    result.status == :UNSAT && return result
+    result.status == :violated && return result
     ϵ_fastLin = result.max_disturbance
     LG, UG = get_gradient(problem.network, problem.input)
 
@@ -59,9 +59,9 @@ function solve(solver::FastLip, problem::Problem)
     ϵ = min(-o/sum(v), ϵ_fastLin)
 
     if ϵ > minimum(problem.input.radius)
-        return AdversarialResult(:SAT, ϵ)
+        return AdversarialResult(:holds, ϵ)
     else
-        return AdversarialResult(:UNSAT, ϵ)
+        return AdversarialResult(:violated, ϵ)
     end
 end
 

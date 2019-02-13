@@ -38,10 +38,10 @@ function solve(solver::NSVerify, problem::Problem)
     zero_objective!(model)
     status = solve(model, suppress_warnings = true)
     if status == :Optimal
-        return CounterExampleResult(:UNSAT, getvalue(first(neurons)))
+        return CounterExampleResult(:violated, getvalue(first(neurons)))
     end
     if status == :Infeasible
-        return CounterExampleResult(:SAT)
+        return CounterExampleResult(:holds)
     end
     return CounterExampleResult(:Unknown)
 end

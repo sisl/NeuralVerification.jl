@@ -51,9 +51,9 @@ function solve(solver::FastLin, problem::Problem)
         end
     end
     if ϵ_lower > minimum(problem.input.radius)
-        return AdversarialResult(:SAT, ϵ_lower) # previously :True
+        return AdversarialResult(:holds, ϵ_lower) # previously :True
     else
-        return AdversarialResult(:UNSAT, ϵ_lower)
+        return AdversarialResult(:violated, ϵ_lower)
     end
 end
 
