@@ -63,7 +63,7 @@ abstract type Result end
 status(result::Result) = result.status
 
 function validate_status(st::Symbol)
-    @assert st ∈ (:SAT, :UNSAT, :Unknown) "unexpected status code: `:$st`.\nOnly (:SAT, :UNSAT, :Unknown) are accepted"
+    @assert st ∈ (:holds, :violated, :Unknown) "unexpected status code: `:$st`.\nOnly (:holds, :violated, :Unknown) are accepted"
     return st
 end
 
@@ -72,8 +72,8 @@ end
 
 Result type that captures whether the input-output constraint is satisfied.
 Possible status values:\n
-    :SAT (io constraint is satisfied always)\n
-    :UNSAT (io constraint is violated)\n
+    :holds (io constraint is satisfied always)\n
+    :violated (io constraint is violated)\n
     :Unknown (could not be determined)
 """
 struct BasicResult <: Result
@@ -83,7 +83,7 @@ end
 """
     CounterExampleResult(status, counter_example)
 
-Like `BasicResult`, but also returns a `counter_example` if one is found (if status = :UNSAT).
+Like `BasicResult`, but also returns a `counter_example` if one is found (if status = :violated).
 The `counter_example` is a point in the input set that, after the NN, lies outside the output set.
 """
 struct CounterExampleResult <: Result
@@ -95,7 +95,7 @@ end
 """
     AdversarialResult(status, max_disturbance)
 
-Like `BasicResult`, but also returns the maximum allowable disturbance in the input (if status = :UNSAT).
+Like `BasicResult`, but also returns the maximum allowable disturbance in the input (if status = :violated).
 """
 struct AdversarialResult <: Result
 	status::Symbol
@@ -106,7 +106,7 @@ end
 """
     ReachabilityResult(status, reachable)
 
-Like `BasicResult`, but also returns the output reachable set given the input constraint (if status = :UNSAT).
+Like `BasicResult`, but also returns the output reachable set given the input constraint (if status = :violated).
 """
 struct ReachabilityResult <: Result
 	status::Symbol
