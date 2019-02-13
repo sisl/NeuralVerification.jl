@@ -165,6 +165,16 @@ function act_gradient(act::ReLU, z_hat::Vector)
 end
 
 """
+    act_gradient(act::Id, z_hat::Vector{N}) where N
+
+Computing the gradient of an activation function at point z_hat.
+Currently only support ReLU.
+"""
+function act_gradient(act::Id, z_hat::Vector)
+    return ones(length(z_hat))
+end
+
+"""
     get_gradient(nnet::Network, input::AbstractPolytope)
 
 Get lower and upper bounds on network gradient for a given input set.
