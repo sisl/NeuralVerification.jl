@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "NeuralVerification.jl",
     "title": "Calling the solver",
     "category": "section",
-    "text": "To solve the problem, we simply call the solve function. This syntax is independent of the solver selected.solve(solver, problem)In this case, the solver returns a ReachabilityResult and indicates that the property is satisfied. That is, no input in the input region can produce a point that is outside of the specified output region.A result status of :SAT means that the specified input-output relationship is \"satisfied\", i.e. that the property being tested for in the network holds. A result status of :UNSAT means that the input-output relationship is \"unsatisfied\", i.e. that the property being tested for in the network does not hold. A status of :Unknown is also possible. All of the algorithms considered in this library are sound, but most are not complete; it is important to note these properties when interpreting the result status. For more information about result types, see Result.The accompanying Hyperrectangle{Float64}[] is an empty vector that is meaningless in this case. If the result was instead :UNSAT, then this vector would contain the reachable set (which exceeds the allowed output set). Note that since MaxSens uses Hyperrectangles to express the interval arithmetic used in the search, the vector type is Hyperrectangle. For other solvers that return ReachbilityResult, the reachable vector could contain other subtypes of AbstractPolytope."
+    "text": "To solve the problem, we simply call the solve function. This syntax is independent of the solver selected.solve(solver, problem)In this case, the solver returns a ReachabilityResult and indicates that the property is satisfied. That is, no input in the input region can produce a point that is outside of the specified output region.A result status of :holds means that the specified input-output relationship is \"satisfied\", i.e. that the property being tested for in the network holds. A result status of :violated means that the input-output relationship is \"unsatisfied\", i.e. that the property being tested for in the network does not hold. A status of :Unknown is also possible. All of the algorithms considered in this library are sound, but most are not complete; it is important to note these properties when interpreting the result status. For more information about result types, see Result.The accompanying Hyperrectangle{Float64}[] is an empty vector that is meaningless in this case. If the result was instead :violated, then this vector would contain the reachable set (which exceeds the allowed output set). Note that since MaxSens uses Hyperrectangles to express the interval arithmetic used in the search, the vector type is Hyperrectangle. For other solvers that return ReachbilityResult, the reachable vector could contain other subtypes of AbstractPolytope."
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.BasicResult",
     "category": "type",
-    "text": "BasicResult(status::Symbol)\n\nResult type that captures whether the input-output constraint is satisfied. Possible status values:\n\n:SAT (io constraint is satisfied always)\n\n:UNSAT (io constraint is violated)\n\n:Unknown (could not be determined)\n\n\n\n\n\n"
+    "text": "BasicResult(status::Symbol)\n\nResult type that captures whether the input-output constraint is satisfied. Possible status values:\n\n:holds (io constraint is satisfied always)\n\n:violated (io constraint is violated)\n\n:Unknown (could not be determined)\n\n\n\n\n\n"
 },
 
 {
@@ -197,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.CounterExampleResult",
     "category": "type",
-    "text": "CounterExampleResult(status, counter_example)\n\nLike BasicResult, but also returns a counter_example if one is found (if status = :UNSAT). The counter_example is a point in the input set that, after the NN, lies outside the output set.\n\n\n\n\n\n"
+    "text": "CounterExampleResult(status, counter_example)\n\nLike BasicResult, but also returns a counter_example if one is found (if status = :violated). The counter_example is a point in the input set that, after the NN, lies outside the output set.\n\n\n\n\n\n"
 },
 
 {
@@ -205,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.AdversarialResult",
     "category": "type",
-    "text": "AdversarialResult(status, max_disturbance)\n\nLike BasicResult, but also returns the maximum allowable disturbance in the input (if status = :UNSAT).\n\n\n\n\n\n"
+    "text": "AdversarialResult(status, max_disturbance)\n\nLike BasicResult, but also returns the maximum allowable disturbance in the input (if status = :violated).\n\n\n\n\n\n"
 },
 
 {
@@ -213,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.ReachabilityResult",
     "category": "type",
-    "text": "ReachabilityResult(status, reachable)\n\nLike BasicResult, but also returns the output reachable set given the input constraint (if status = :UNSAT).\n\n\n\n\n\n"
+    "text": "ReachabilityResult(status, reachable)\n\nLike BasicResult, but also returns the output reachable set given the input constraint (if status = :violated).\n\n\n\n\n\n"
 },
 
 {
