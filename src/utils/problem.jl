@@ -7,8 +7,6 @@ The complementary set to a given `AbstractPolytope`. Note that with the exceptio
 
 ### Examples
 ```julia
-
-
 julia> H = Hyperrectangle([0,0], [1,1])
 Hyperrectangle{Int64}([0, 0], [1, 1])
 
@@ -36,12 +34,9 @@ Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P
 
 
 """
-    Problem(network, input, output)
+    Problem{P, Q}(network::Network, input::P, output::Q)
 
 Problem definition for neural verification.
-- `network::Network`
-- `input::Union{AbstractPolytope, PolytopeComplement}`
-- `output::Union{AbstractPolytope, PolytopeComplement}`
 
 The verification problem consists of: for all  points in the input set,
 the corresponding output of the network must belong to the output set.
