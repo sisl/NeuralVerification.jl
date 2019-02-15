@@ -6,7 +6,7 @@ MaxSens performs over-approximated reachability analysis to compute the over-app
 # Problem requirement
 1. Network: any depth, any activation that is monotone
 2. Input: `Hyperrectangle` or `HPolytope`
-3. Output: `HPolytope`
+3. Output: `AbstractPolytope` or `PolytopeComplement`
 
 # Return
 `ReachabilityResult`

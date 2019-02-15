@@ -26,7 +26,8 @@ struct PolytopeComplement{Q<:AbstractPolytope}
 end
 
 Base.show(io::IO, PC::PolytopeComplement) = (println(io, "PolytopeComplement of:"), println(io, "  ", PC.P))
-LazySets.issubset(PC::PolytopeComplement) = !LazySets.issubset(PC.P)
+LazySets.issubset(s, PC::PolytopeComplement) = LazySets.in_intersection_empty(s, PC.P)
+LazySets.is_intersection_empty(s, PC::PolytopeComplement) = LazySets.issubset(s, PC.P)
 complement(PC::AbstractPolytope) = PolytopeComplement(PC)
 complement(PC::PolytopeComplement) = PC.P
 Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P

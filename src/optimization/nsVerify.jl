@@ -6,7 +6,7 @@ NSVerify finds counter examples using mixed integer linear programming.
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle or hpolytope
-3. Output: halfspace
+3. Output: halfspace or PolytopeComplement
 
 # Return
 `CounterExampleResult`

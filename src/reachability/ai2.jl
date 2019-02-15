@@ -6,7 +6,7 @@ Ai2 performs over-approximated reachability analysis to compute the over-approxi
 # Problem requirement
 1. Network: any depth, ReLU activation (more activations to be supported in the future)
 2. Input: HPolytope
-3. Output: HPolytope
+3. Output: AbstractPolytope or PolytopeComplement
 
 # Return
 `ReachabilityResult`

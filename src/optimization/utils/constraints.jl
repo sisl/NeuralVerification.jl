@@ -172,11 +172,7 @@ function add_complementary_set_constraint!(model::Model, output::HPolytope, neur
     return nothing
 end
 
-function add_complementary_set_constraint!(model::Model, output::Hyperrectangle, neuron_vars::Vector{Variable})
-    @constraint(model, neuron_vars .>= -high(output))
-    @constraint(model, neuron_vars .<= -low(output))
-    return nothing
-end
+add_complementary_set_constraint!(model::Model, output::PolytopeComplement, neuron_vars::Vector{Variable}) = add_set_constraint!(model, output.P, neuron_vars)
 
 function add_set_constraint!(model::Model, set::HPolytope, neuron_vars::Vector{Variable})
     A, b = tosimplehrep(set)
