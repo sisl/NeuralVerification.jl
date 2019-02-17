@@ -117,7 +117,7 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 end
 
 function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
-    before_act_bound = linear_transformation(L, bounds[i])
+    before_act_bound = linear_transformation(L, bounds)
     lower = low(before_act_bound)
     upper = high(before_act_bound)
     act_pattern = zeros(n_nodes(L))
