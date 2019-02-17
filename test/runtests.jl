@@ -24,7 +24,7 @@ end
 printtest(solvers::Vector, p1, p2) = ([printtest(s, p1, p2) for s in solvers]; nothing)
 
 at = @__DIR__
-small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet")
+small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet", last_layer_activation = NeuralVerification.ReLU())
 
 # The input set is always [-1:1]
 input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
