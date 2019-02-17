@@ -27,9 +27,9 @@ Sound but not complete.
 "Measuring Neural Net Robustness with Constraints,"
 in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
-@with_kw struct ILP{O<:AbstractMathProgSolver}
-    optimizer::O    = GLPKSolverMIP()
-    iterative::Bool = true
+@with_kw struct ILP
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    iterative::Bool                   = true
 end
 
 function solve(solver::ILP, problem::Problem)
