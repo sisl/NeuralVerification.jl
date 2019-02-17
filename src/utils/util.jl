@@ -5,7 +5,7 @@ Read in neural net from a `.nnet` file and return Network struct.
 The `.nnet` format is borrowed from [NNet](https://github.com/sisl/NNet).
 The format assumes all hidden layers have ReLU activation.
 Keyword argument `last_layer_activation` sets the activation of the last
-layer, and defaults to `Id()`, for identity (i.e. a linear output layer).
+layer, and defaults to `Id()`, (i.e. a linear output layer).
 """
 function read_nnet(fname::String; last_layer_activation = Id())
     f = open(fname)
@@ -58,37 +58,26 @@ function compute_output(nnet::Network, input)
     return curr_value # would another name be better?
 end
 
-# """
-#     compute_output(nnet::Network, input::Vector{Float64}, i, j)
-
-# Returns ouput of neuron j in layer i for a given input.
-# NOTE: The was necessary for the sampling methods, but now might not be.
-# """
-# function compute_output(nnet::Network, input::Vector{Float64}, i, j)
-#     layers = nnet.layers
-#     @assert 0 <= i <= length(layers)         "number of layers in nnet is $(length(layers)). Got $i for number of layers to compute"
-#     @assert 0 <= j <= length(layers[i].bias) "number of neurons in layer is $(length(layers[i].bias)). Got $j for neuron index"
-#     curr_value = input
-#     for m = 1:i
-#         curr_value = (layers[m].weights * curr_value) + layers[m].bias
-#         curr_value = layers[m].activation(curr_value)
-#     end
-#     return curr_value[j]
-# end
+"""
+    get_activation(L, x::Vector)
+Finds the activation pattern of a vector `x` subject to the activation function given by the layer `L`.
+Returns a Vector{Bool} where `true` denotes the node is "active". In the sense of ReLU, this would be `x[i] >= 0`.
+"""
+get_activation(L::Layer{ReLU}, x::Vector) = x .>= 0.0
+get_activation(L::Layer{Id}, args...) = trues(n_nodes(L))
 
 """
-    get_activation(nnet::Network, x::Vector{Float64})
+    get_activation(nnet::Network, x::Vector)
 
 Given a network, find the activation pattern of all neurons at a given point x.
-Assume ReLU.
-return Vector{Vector{Bool}}. Each Vector{Bool} refers to the activation pattern of a particular layer.
+Returns Vector{Vector{Bool}}. Each Vector{Bool} refers to the activation pattern of a particular layer.
 """
 function get_activation(nnet::Network, x::Vector{Float64})
     act_pattern = Vector{Vector{Bool}}(undef, length(nnet.layers))
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
-        act_pattern[i] = curr_value .>= 0.0
+        act_pattern[i] = get_activation(layer, curr_value)
         curr_value = layer.activation(curr_value)
     end
     return act_pattern
@@ -122,16 +111,21 @@ return Vector{Vector{Int64}}.
 function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
     act_pattern = Vector{Vector{Int}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = linear_transformation(layer, bounds[i])
-        lower = low(before_act_bound)
-        upper = high(before_act_bound)
-        act_pattern[i] = fill(0, length(layer.bias))
-        for j in 1:length(layer.bias) # For evey node
-            if lower[j] > 0.0
-                act_pattern[i][j] = 1
-            elseif upper[j] < 0.0
-                act_pattern[i][j] = -1
-            end
+        act_pattern[i] = get_activation(layer, bounds[i])
+    end
+    return act_pattern
+end
+
+function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
+    before_act_bound = linear_transformation(L, bounds[i])
+    lower = low(before_act_bound)
+    upper = high(before_act_bound)
+    act_pattern = zeros(n_nodes(L))
+    for j in 1:n_nodes(L) # For evey node
+        if lower[j] > 0.0
+            act_pattern[j] = 1
+        elseif upper[j] < 0.0
+            act_pattern[j] = -1
         end
     end
     return act_pattern
@@ -158,21 +152,10 @@ end
     act_gradient(act::ReLU, z_hat::Vector{N}) where N
 
 Computing the gradient of an activation function at point z_hat.
-Currently only support ReLU.
+Currently only support ReLU and Id.
 """
-function act_gradient(act::ReLU, z_hat::Vector)
-    return z_hat .>= 0.0
-end
-
-"""
-    act_gradient(act::Id, z_hat::Vector{N}) where N
-
-Computing the gradient of an activation function at point z_hat.
-Currently only support ReLU.
-"""
-function act_gradient(act::Id, z_hat::Vector)
-    return ones(length(z_hat))
-end
+act_gradient(act::ReLU, z_hat::Vector) = z_hat .>= 0.0
+act_gradient(act::Id,   z_hat::Vector) = trues(length(z_hat))
 
 """
     get_gradient(nnet::Network, input::AbstractPolytope)
@@ -243,8 +226,7 @@ Inputs:
 - `LΛ::Vector{Vector{N}}`: lower bounds on activation gradients
 - `UΛ::Vector{Vector{N}}`: upper bounds on activation gradients
 Return:
-- `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds
+- `(LG, UG)` lower and upper bounds
 """
 function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
     n_input = size(nnet.layers[1].weights, 2)
@@ -259,88 +241,45 @@ function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{
 end
 
 """
-    interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N
+    interval_map(W::Matrix, l, u)
 
 Simple linear mapping on intervals
 Inputs:
-- `W::Matrix{N}`: the linear mapping
-- `l::Vector{N}`: the lower bound
-- `u::Vector{N}`: the upper bound
+- `W::Matrix{N}`: linear mapping
+- `l::Vector{N}`: lower bound
+- `u::Vector{N}`: upper bound
 Outputs:
-- `l_new::Vector{N}`: the lower bound after mapping
-- `u_new::Vector{N}`: the upper bound after mapping
+- `(lbound, ubound)` (after the mapping)
 """
-function interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N
+function interval_map(W::Matrix, l::AbstractVecOrMat, u::AbstractVecOrMat)
     l_new = max.(W, 0) * l + min.(W, 0) * u
     u_new = max.(W, 0) * u + min.(W, 0) * l
     return (l_new, u_new)
 end
 
 """
-    interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N
-
-Simple linear mapping on intervals
-Inputs:
-- `W::Matrix{N}`: the linear mapping
-- `l::Matrix{N}`: the lower bound
-- `u::Matrix{N}`: the upper bound
-Outputs:
-- `l_new::Matrix{N}`: the lower bound after mapping
-- `u_new::Matrix{N}`: the upper bound after mapping
-"""
-function interval_map(W::Matrix{N}, l::Matrix{N}, u::Matrix{N}) where N
-    l_new = max.(W, 0) * l + min.(W, 0) * u
-    u_new = max.(W, 0) * u + min.(W, 0) * l
-    return (l_new, u_new)
-end
-
-"""
+    get_bounds(problem::Problem)
     get_bounds(nnet::Network, input::Hyperrectangle)
 
 This function calls maxSens to compute node-wise bounds given a input set.
 
 Return:
-- `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
+- `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
 """
-function get_bounds(nnet::Network, input::Hyperrectangle) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    solver = MaxSens(0.0, true)
-    bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
-    bounds[1] = input
-    for (i, layer) in enumerate(nnet.layers)
-        bounds[i+1] = forward_layer(solver, layer, bounds[i])
-    end
-    return bounds
-end
-
-"""
-    get_bounds(problem::Problem)
-
-This function calls maxSens to compute node-wise bounds given a problem.
-
-Return:
-- `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
-"""
-get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
-
-"""
-    get_bounds(nnet::Network, input::Hyperrectangle, act::Bool)
-
-Compute bounds before or after activation by interval arithmetic. To be implemented.
-
-Inputs:
-- `nnet::Network`: network
-- `input::Hyperrectangle`: input set
-- `act::Bool`: `true` for after activation bound; `false` for before activation bound
-Return:
-- `bounds::Vector{Hyperrectangle}`: bounds for all nodes AFTER activation. `bounds[1]` is the input set.
-"""
-function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool)
+function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
     if act
-        return get_bounds(nnet, input)
+        solver = MaxSens(0.0, true)
+        bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
+        bounds[1] = input
+        for (i, layer) in enumerate(nnet.layers)
+            bounds[i+1] = forward_layer(solver, layer, bounds[i])
+        end
+        return bounds
     else
-        error("before activation bounds not supported yet.")
+       error("before activation bounds not supported yet.")
     end
 end
+get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 """
     linear_transformation(layer::Layer, input::Hyperrectangle)
