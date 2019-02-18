@@ -159,7 +159,11 @@ end
 
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
-    return input
+    sym = input.sym
+    n_node = size(input.sym.Up, 1)
+    LΛ = push!(input.LΛ, ones(Int, n_node))
+    UΛ = push!(input.UΛ, ones(Int, n_node))
+    return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
 # Return the splited intervals
