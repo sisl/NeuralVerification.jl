@@ -33,15 +33,15 @@ input_hpoly  = HPolytope(input_hyper)
 # output is straight line with range (-69.1, -25.900000000000002 ) 
 
 out_hyper_30_80 = Hyperrectangle(low = [-70.0], high = [-23.0]) # superset of the output
-out_hyper_50    = Hyperrectangle(low = [-100.0], high = [-50.0]) # includes points in the output region ie y > 30.5
+out_hyper_50    = Hyperrectangle(low = [-100.0], high = [-45.0]) # includes points in the output region
 
 problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_30_80)                      # 40.0 < y < 60.0
 problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                         # -1.0 < y < 50.0
 problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_30_80))
 problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_50))
 # halfspace constraints:
-problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 1.0)]))     # y < 100.0
-problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([-1.], -20.0)]))      # y < 10.0
+problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], -10.0)]))     # y < -10.0
+problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([-1.], -20.0)]))      # y > 20.0
 
 
 # GROUP 1           # Input: HPolytope, Output: HPolytope
@@ -73,8 +73,8 @@ end
 
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
-group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
-
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
+#group5 = [DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
 
 for solver in [group5;]
     printtest(solver, problem_sat_hyper_hyper, problem_unsat_hyper_hyper)
