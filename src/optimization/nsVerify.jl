@@ -23,9 +23,9 @@ Sound and complete.
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
 *ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
-@with_kw struct NSVerify{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverMIP()
-    m::Float64   = 1000.0  # The big M in the linearization
+@with_kw struct NSVerify
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    m::Float64                        = 1000.0  # The big M in the linearization
 end
 
 function solve(solver::NSVerify, problem::Problem)

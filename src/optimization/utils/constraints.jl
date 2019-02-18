@@ -65,9 +65,14 @@ function encode_layer!(::AbstractLinearProgram,
 end
 
 # SlackLP is slightly different, because we need to keep track of the slack variables
-function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, z1, z2, δ)
+function encode_layer!(SLP::SlackLP,
+                       model::Model,
+                       layer::Layer{Id},
+                       z1::Array{Variable,1},
+                       z2::Array{Variable,1},
+                       δ...)
 
-    encode_layer!(StandardLP(), model, layer, z1, z2, δ)
+    encode_layer!(StandardLP(), model, layer, z1, z2)
     # We need identity layer slack variables so that the algorithm doesn't
     # "get confused", but they are set to 0 because they're not relevant
     slack_vars = @variable(model, [1:n_nodes(layer)])
@@ -111,7 +116,7 @@ function encode_layer!(SLP::SlackLP,
     ẑ = layer.weights * z_current + layer.bias
     slack_vars = @variable(model, [1:length(layer.bias)])
     for j in 1:length(layer.bias)
-        if δ[i][j]
+        if δ[j]
             @constraint(model, z_next[j] == ẑ[j] + slack_vars[j])
             @constraint(model, ẑ[j] + slack_vars[j] >= 0.0)
         else

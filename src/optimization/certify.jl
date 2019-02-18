@@ -23,8 +23,8 @@ Sound but not complete.
 "Certified Defenses against Adversarial Examples,"
 *ArXiv Preprint ArXiv:1801.09344*, 2018.](https://arxiv.org/abs/1801.09344)
 """
-@with_kw struct Certify{O<:AbstractMathProgSolver}
-    optimizer::O  = SCSSolver()
+@with_kw struct Certify
+    optimizer::AbstractMathProgSolver  = SCSSolver()
 end
 
 # can pass keyword args to optimizer
