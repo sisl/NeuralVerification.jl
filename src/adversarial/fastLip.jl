@@ -58,7 +58,7 @@ function solve(solver::FastLip, problem::Problem)
     v = max.(abs.(a), abs.(b))
     ϵ = min(-o/sum(v), ϵ_fastLin)
 
-    if ϵ > minimum(problem.input.radius)
+    if ϵ > maximum(problem.input.radius)
         return AdversarialResult(:SAT, ϵ)
     else
         return AdversarialResult(:UNSAT, ϵ)
