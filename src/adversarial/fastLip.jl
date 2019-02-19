@@ -35,7 +35,7 @@ end
 FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
-    c, d = tosimplehrep(HPolytope(problem.output))
+    c, d = tosimplehrep(convert(HPolytope, problem.output))
     y = compute_output(problem.network, problem.input.center)
     o = (c * y - d)[1]
     if o > 0
