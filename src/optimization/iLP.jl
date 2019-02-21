@@ -88,13 +88,16 @@ function match_activation(nnet::Network, x::Vector{Float64}, δ::Vector{Vector{B
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
-        for (j, val) in enumerate(curr_value)
-            act = δ[i][j]
-            if act && val < -0.0001 # Floating point operation
-                return (false, (i, j))
-            end
-            if !act && val > 0.0001 # Floating point operation
-                return (false, (i, j))
+        if layer.activation == ReLU
+            for (j, val) in enumerate(curr_value)
+                act = δ[i][j]
+
+                if act && val < -0.0001 # Floating point operation
+                    return (false, (i, j))
+                end
+                if !act && val > 0.0001 # Floating point operation
+                    return (false, (i, j))
+                end
             end
         end
         curr_value = layer.activation(curr_value)
