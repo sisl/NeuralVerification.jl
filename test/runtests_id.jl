@@ -73,7 +73,7 @@ end
 
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
-group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
 #group5 = [DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
 
 for solver in [group5;]
