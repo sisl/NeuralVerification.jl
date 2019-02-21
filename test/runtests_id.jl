@@ -61,7 +61,7 @@ glpk = GLPKSolverMIP()
 group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
 group3 = [ConvDual(), Duality(optimizer = glpk)]
 group4 = [FastLin(), FastLip()]
-group6 = [Reluplex()]
+group6 = [Reluplex(),  Planet()]
 for solver in [group2; group3; group4; group6]
     printtest(solver, problem_sat_hyper_hs, problem_unsat_hyper_hs)
     sat   = solve(solver, problem_sat_hyper_hs)
@@ -73,7 +73,7 @@ end
 
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
-group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
+group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
 #group5 = [DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
 
 for solver in [group5;]
