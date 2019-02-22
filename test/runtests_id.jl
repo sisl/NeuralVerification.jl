@@ -1,5 +1,3 @@
-# sanity checks
-
 using NeuralVerification, LazySets, GLPKMathProgInterface
 using Test
 
@@ -26,19 +24,17 @@ printtest(solvers::Vector, p1, p2) = ([printtest(s, p1, p2) for s in solvers]; n
 at = @__DIR__
 small_nnet = read_nnet("$at/../examples/networks/small_nnet_id.nnet", last_layer_activation = NeuralVerification.Id())
 
-# The input set is always [-1:1]
+# The input set is always in ∈[-1:1]
 input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
-input_hpoly  = HPolytope(input_hyper)
+input_hpoly  = convert(HPolytope, input_hyper)
 
-# output is straight line with range (-69.1, -25.900000000000002 ) 
+out_hyper_70_23  = Hyperrectangle(low = [-70.0], high = [-23.0]) # superset of the output
+out_hyper_100_45 = Hyperrectangle(low = [-100.0], high = [-45.0]) # includes points in the output region
 
-out_hyper_30_80 = Hyperrectangle(low = [-70.0], high = [-23.0]) # superset of the output
-out_hyper_50    = Hyperrectangle(low = [-100.0], high = [-45.0]) # includes points in the output region
-
-problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_30_80)                      # 40.0 < y < 60.0
-problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_50)                         # -1.0 < y < 50.0
-problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_30_80))
-problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, HPolytope(out_hyper_50))
+problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_hyper_70_23)                          # 40.0 < y < 60.0
+problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_hyper_100_45)                         # -1.0 < y < 50.0
+problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, convert(HPolytope, out_hyper_70_23))
+problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, convert(HPolytope, out_hyper_100_45))
 # halfspace constraints:
 problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], -10.0)]))     # y < -10.0
 problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([-1.], -20.0)]))      # y > 20.0
@@ -51,8 +47,8 @@ for solver in group1
     sat   = solve(solver, problem_sat_hpoly_hpoly_bounded)
     unsat = solve(solver, problem_unsat_hpoly_hpoly_bounded)
 
-    #@test sat.status ∈ (:SAT, :Unknown)
-    #@test unsat.status ∈ (:UNSAT, :Unknown)
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
 end
 
 
@@ -67,22 +63,21 @@ for solver in [group2; group3; group4; group6]
     sat   = solve(solver, problem_sat_hyper_hs)
     unsat = solve(solver, problem_unsat_hyper_hs)
 
-    #@test sat.status ∈ (:SAT, :Unknown)
-    #@test unsat.status ∈ (:UNSAT, :Unknown)
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
 end
 
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
 group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
-#group5 = [DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk), Planet()]
 
 for solver in [group5;]
     printtest(solver, problem_sat_hyper_hyper, problem_unsat_hyper_hyper)
     sat   = solve(solver, problem_sat_hyper_hyper)
     unsat = solve(solver, problem_unsat_hyper_hyper)
 
-    #@test sat.status ∈ (:SAT, :Unknown)
-    #@test unsat.status ∈ (:UNSAT, :Unknown)
+    @test sat.status ∈ (:SAT, :Unknown)
+    @test unsat.status ∈ (:UNSAT, :Unknown)
 end
 
 macro no_error(ex)
