@@ -58,6 +58,7 @@
     end
 
     @testset "Group 5" begin
+        glpk = GLPKSolverMIP()
         for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
             sat   = solve(solver, problem_sat_hyper_hyper)
             unsat = solve(solver, problem_unsat_hyper_hyper)
