@@ -117,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.n_nodes",
     "category": "method",
-    "text": "n_node(L::Layer)\n\nReturns the number of neurons in a layer.\n\n\n\n\n\n"
+    "text": "n_nodes(L::Layer)\n\nReturns the number of neurons in a layer.\n\n\n\n\n\n"
 },
 
 {
@@ -566,94 +566,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Helper Functions",
     "category": "page",
     "text": ""
-},
-
-{
-    "location": "functions/#NeuralVerification.read_nnet",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.read_nnet",
-    "category": "function",
-    "text": "read_nnet(fname::String)\n\nRead in neural net from file and return Network struct\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.init_layer",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.init_layer",
-    "category": "function",
-    "text": "init_layer(i::Int64, layerSizes::Array{Int64}, f::IOStream)\n\nRead in layer from nnet file and return a Layer struct containing its weights/biases\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.compute_output",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.compute_output",
-    "category": "function",
-    "text": "compute_output(nnet::Network, input::Vector{Float64})\n\nPropagate a given vector through a nnet and compute the output.\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.get_activation",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.get_activation",
-    "category": "function",
-    "text": "get_activation(nnet::Network, x::Vector{Float64})\n\nGiven a network, find the activation pattern of all neurons at a given point x. Assume ReLU. return Vector{Vector{Bool}}. Each Vector{Bool} refers to the activation pattern of a particular layer.\n\n\n\n\n\nget_activation(nnet::Network, input::Hyperrectangle)\n\nGiven a network, find the activation pattern of all neurons for a given input set. Assume ReLU. return Vector{Vector{Int64}}.\n\n1: activated\n0: undetermined\n-1: not activated\n\n\n\n\n\nget_activation(nnet::Network, bounds::Vector{Hyperrectangle})\n\nGiven a network, find the activation pattern of all neurons given the node-wise bounds. Assume ReLU. return Vector{Vector{Int64}}.\n\n1: activated\n0: undetermined\n-1: not activated\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.get_gradient",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.get_gradient",
-    "category": "function",
-    "text": "get_gradient(nnet::Network, x::Vector)\n\nGiven a network, find the gradient at the input x\n\n\n\n\n\nget_gradient(nnet::Network, input::AbstractPolytope)\n\nGet lower and upper bounds on network gradient for a given input set. Return:\n\nLG::Vector{Matrix}: lower bounds\nUG::Vector{Matrix}: upper bounds\n\n\n\n\n\nget_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})\n\nGet lower and upper bounds on network gradient for given gradient bounds on activations Inputs:\n\nLΛ::Vector{Matrix}: lower bounds on activation gradients\nUΛ::Vector{Matrix}: upper bounds on activation gradients\n\nReturn:\n\nLG::Vector{Matrix}: lower bounds\nUG::Vector{Matrix}: upper bounds\n\n\n\n\n\nget_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N\n\nGet lower and upper bounds on network gradient for given gradient bounds on activations Inputs:\n\nLΛ::Vector{Vector{N}}: lower bounds on activation gradients\nUΛ::Vector{Vector{N}}: upper bounds on activation gradients\n\nReturn:\n\nLG::Vector{Matrix}: lower bounds\nUG::Vector{Matrix}: upper bounds\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.act_gradient",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.act_gradient",
-    "category": "function",
-    "text": "act_gradient(act::ReLU, z_hat::Vector{N}) where N\n\nComputing the gradient of an activation function at point z_hat. Currently only support ReLU.\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.act_gradient_bounds",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.act_gradient_bounds",
-    "category": "function",
-    "text": "act_gradient_bounds(nnet::Network, input::AbstractPolytope)\n\nComputing the bounds on the gradient of all activation functions given an input set. Currently only support ReLU. Return:\n\nLΛ::Vector{Matrix}: lower bounds\nUΛ::Vector{Matrix}: upper bounds\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.interval_map",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.interval_map",
-    "category": "function",
-    "text": "interval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N\n\nSimple linear mapping on intervals Inputs:\n\nW::Matrix{N}: the linear mapping\nl::Vector{N}: the lower bound\nu::Vector{N}: the upper bound\n\nOutputs:\n\nl_new::Vector{N}: the lower bound after mapping\nu_new::Vector{N}: the upper bound after mapping\n\n\n\n\n\ninterval_map(W::Matrix{N}, l::Vector{N}, u::Vector{N}) where N\n\nSimple linear mapping on intervals Inputs:\n\nW::Matrix{N}: the linear mapping\nl::Matrix{N}: the lower bound\nu::Matrix{N}: the upper bound\n\nOutputs:\n\nl_new::Matrix{N}: the lower bound after mapping\nu_new::Matrix{N}: the upper bound after mapping\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.get_bounds",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.get_bounds",
-    "category": "function",
-    "text": "get_bounds(nnet::Network, input::Hyperrectangle)\n\nThis function calls maxSens to compute node-wise bounds given a input set.\n\nReturn:\n\nbounds::Vector{Hyperrectangle}: bounds for all nodes AFTER activation. bounds[1] is the input set.\n\n\n\n\n\nget_bounds(problem::Problem)\n\nThis function calls maxSens to compute node-wise bounds given a problem.\n\nReturn:\n\nbounds::Vector{Hyperrectangle}: bounds for all nodes AFTER activation. bounds[1] is the input set.\n\n\n\n\n\nget_bounds(nnet::Network, input::Hyperrectangle, act::Bool)\n\nCompute bounds before or after activation by interval arithmetic. To be implemented.\n\nInputs:\n\nnnet::Network: network\ninput::Hyperrectangle: input set\nact::Bool: true for after activation bound; false for before activation bound\n\nReturn:\n\nbounds::Vector{Hyperrectangle}: bounds for all nodes AFTER activation. bounds[1] is the input set.\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.linear_transformation",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.linear_transformation",
-    "category": "function",
-    "text": "linear_transformation(layer::Layer, input::Hyperrectangle)\n\nTransformation of a set considering linear mappings in a layer.\n\nInputs:\n\nlayer::Layer: a layer in a network\ninput::Hyperrectangle: input set\n\nReturn:\n\noutput::Hyperrectangle: set after transformation.\n\n\n\n\n\nlinear_transformation(layer::Layer, input::HPolytope)\n\nTransformation of a set considering linear mappings in a layer.\n\nInputs:\n\nlayer::Layer: a layer in a network\ninput::HPolytope: input set\n\nReturn:\n\noutput::HPolytope: set after transformation.\n\n\n\n\n\nlinear_transformation(W::Matrix, input::HPolytope)\n\nTransformation of a set considering a linear mapping.\n\nInputs:\n\nW::Matrix: a linear mapping\ninput::HPolytope: input set\n\nReturn:\n\noutput::HPolytope: set after transformation.\n\n\n\n\n\n"
-},
-
-{
-    "location": "functions/#NeuralVerification.split_interval",
-    "page": "Helper Functions",
-    "title": "NeuralVerification.split_interval",
-    "category": "function",
-    "text": "split_interval(dom::Hyperrectangle, index::Int64)\n\nSplit a set into two at the given index.\n\nInputs:\n\ndom::Hyperrectangle: the set to be split\nindex: the index to split at\n\nReturn:\n\n(left, right)::Tuple{Hyperrectangle, Hyperrectangle}: two sets after split\n\n\n\n\n\n"
 },
 
 {
