@@ -23,9 +23,9 @@ Sound and complete.
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
 *ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
-@with_kw struct NSVerify{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverMIP()
-    m::Float64   = 1000.0  # The big M in the linearization
+@with_kw struct NSVerify
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    m::Float64                        = 1000.0  # The big M in the linearization
 end
 
 function solve(solver::NSVerify, problem::Problem)
@@ -34,7 +34,7 @@ function solve(solver::NSVerify, problem::Problem)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_mip_constraint!(model, problem.network, solver.m, neurons, deltas)
+    encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(solver.m))
     zero_objective!(model)
     status = solve(model, suppress_warnings = true)
     if status == :Optimal

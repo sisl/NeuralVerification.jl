@@ -23,8 +23,8 @@ Sound but not complete.
 "A Dual Approach to Scalable Verification of Deep Networks,"
 *ArXiv Preprint ArXiv:1803.06567*, 2018.](https://arxiv.org/abs/1803.06567)
 """
-@with_kw struct Duality{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverMIP()
+@with_kw struct Duality
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
 end
 
 # can pass keyword args to optimizer

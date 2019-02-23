@@ -16,10 +16,10 @@ Layer consists of `weights` and `bias` for linear mapping, and `activation` for 
 
 See also: [`Network`](@ref)
 """
-struct Layer
+struct Layer{F<:ActivationFunction}
     weights::Matrix{Float64}
     bias::Vector{Float64}
-    activation::ActivationFunction
+    activation::F
 end
 
 """
@@ -34,7 +34,7 @@ struct Network
 end
 
 """
-    n_node(L::Layer)
+    n_nodes(L::Layer)
 
 Returns the number of neurons in a layer.
 """

@@ -85,7 +85,7 @@ function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrec
     deltas  = init_deltas(model, nnet)
     add_set_constraint!(model, input, first(neurons))
     add_set_constraint!(model, output, last(neurons))
-    encode_mip_constraint!(model, nnet, bounds, neurons, deltas)
+    encode_network!(model, nnet, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Optimal

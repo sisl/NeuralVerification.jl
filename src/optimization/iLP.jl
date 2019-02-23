@@ -27,9 +27,9 @@ Sound but not complete.
 "Measuring Neural Net Robustness with Constraints,"
 in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
-@with_kw struct ILP{O<:AbstractMathProgSolver}
-    optimizer::O    = GLPKSolverMIP()
-    iterative::Bool = true
+@with_kw struct ILP
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    iterative::Bool                   = true
 end
 
 function solve(solver::ILP, problem::Problem)
@@ -42,13 +42,13 @@ function solve(solver::ILP, problem::Problem)
     o = max_disturbance!(model, first(neurons) - problem.input.center)
 
     if !solver.iterative
-        encode_lp!(model, nnet, neurons, δ)
+        encode_network!(model, nnet, neurons, δ, StandardLP())
         status = solve(model, suppress_warnings = true)
         status != :Optimal && return AdversarialResult(:Unknown)
         return interpret_result(solver, getvalue(o), problem.input)
     end
 
-    encode_relaxed_lp!(model, nnet, neurons, δ)
+    encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
     while true
         status = solve(model, suppress_warnings = true)
         status != :Optimal && return AdversarialResult(:Unknown)
@@ -73,8 +73,7 @@ function add_constraint!(model::Model,
                          nnet::Network,
                          z::Vector{Vector{Variable}},
                          δ::Vector{Vector{Bool}},
-                         index::Tuple{Int64, Int64})
-    i, j = index
+                         (i, j)::Tuple{Int64, Int64})
     layer = nnet.layers[i]
     val = layer.weights[j, :]' * z[i] + layer.bias[j]
     if δ[i][j]
@@ -88,16 +87,25 @@ function match_activation(nnet::Network, x::Vector{Float64}, δ::Vector{Vector{B
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
-        for (j, val) in enumerate(curr_value)
-            act = δ[i][j]
-            if act && val < -0.0001 # Floating point operation
-                return (false, (i, j))
-            end
-            if !act && val > 0.0001 # Floating point operation
-                return (false, (i, j))
-            end
-        end
+        matched, j = match_activation(layer, δ[i], curr_value)
+
+        !matched && return false, (i,j)
+
         curr_value = layer.activation(curr_value)
     end
-    return (true, (0, 0))
+    return (true, nothing)
+end
+
+match_activation(L::Layer{Id}, args...) = (true, nothing)
+function match_activation(L::Layer{ReLU}, δᵢ, val, tol = 1e-4)
+    for (j, val) in enumerate(val)
+        act = δᵢ[j]
+        if act
+            val < -tol && return false, j
+        else
+            val > tol  && return false, j
+        end
+
+    end
+    return (true, nothing)
 end
