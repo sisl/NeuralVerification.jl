@@ -45,7 +45,7 @@ function solve(solver::DLV, problem::Problem)
     δ[1] = fill(solver.ϵ, dim(η[1]))
 
     if issubset(last(η), problem.output)
-        return CounterExampleResult(:SAT)
+        return CounterExampleResult(:holds)
     end
 
     output = compute_output(problem.network, problem.input.center)
@@ -63,11 +63,11 @@ function solve(solver::DLV, problem::Problem)
             backward_nnet = Network(problem.network.layers[1:i])
             status, x = backward_map(y, backward_nnet, η[1:i+1])
             if status
-                return CounterExampleResult(:UNSAT, x)
+                return CounterExampleResult(:violated, x)
             end
         end
     end
-    return ReachabilityResult(:UNSAT, [last(η)])
+    return ReachabilityResult(:violated, [last(η)])
 end
 
 # For simplicity, we just cut the sample interval into half

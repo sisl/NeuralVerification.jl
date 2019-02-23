@@ -52,7 +52,7 @@ function solve(solver::ReluVal, problem::Problem)
     result.status == :Unknown || return result
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
-        length(reach_list) > 0 || return BasicResult(:SAT)
+        length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         LG, UG = get_gradient(problem.network, reach.LΛ, reach.UΛ)
         feature = get_smear_index(problem.network, reach.sym.interval, LG, UG)
@@ -60,8 +60,8 @@ function solve(solver::ReluVal, problem::Problem)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            result.status == :UNSAT && return result
-            result.status == :SAT || (push!(reach_list, reach))
+            result.status == :violated && return result
+            result.status == :holds || (push!(reach_list, reach))
         end
     end
     return BasicResult(:Unknown)
@@ -92,13 +92,13 @@ end
 
 function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
     reachable = symbol_to_concrete(reach)
-    issubset(reachable, output) && return BasicResult(:SAT)
-    is_intersection_empty(reachable, output) && return BasicResult(:UNSAT)
+    issubset(reachable, output) && return BasicResult(:holds)
+    is_intersection_empty(reachable, output) && return BasicResult(:violated)
 
     # Sample the middle point
     middle_point = (high(reach.interval) + low(reach.interval))./2
     y = compute_output(nnet, middle_point)
-    ∈(y, output) || return CounterExampleResult(:UNSAT, middle_point)
+    ∈(y, output) || return CounterExampleResult(:violated, middle_point)
 
     return BasicResult(:Unknown)
 end

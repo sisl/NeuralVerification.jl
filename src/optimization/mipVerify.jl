@@ -40,11 +40,11 @@ function solve(solver::MIPVerify, problem::Problem)
     o = max_disturbance!(model, first(neurons) - problem.input.center)
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
-        return AdversarialResult(:SAT)
+        return AdversarialResult(:holds)
     end
     if getvalue(o) >= maximum(problem.input.radius)
-        return AdversarialResult(:SAT)
+        return AdversarialResult(:holds)
     else
-        return AdversarialResult(:UNSAT, getvalue(o))
+        return AdversarialResult(:violated, getvalue(o))
     end
 end

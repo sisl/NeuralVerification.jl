@@ -44,8 +44,8 @@ end
 # False if o > 0, True if o <= 0
 function interpret_result(solver::Duality, status, o)
     status != :Optimal && return BasicResult(:Unknown)
-    getvalue(o) <= 0.0 && return BasicResult(:SAT)
-    return BasicResult(:UNSAT)
+    getvalue(o) <= 0.0 && return BasicResult(:holds)
+    return BasicResult(:violated)
 end
 
 function dual_value(solver::Duality,

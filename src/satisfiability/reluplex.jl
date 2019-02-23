@@ -22,7 +22,9 @@ Sound and complete.
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
 *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
-struct Reluplex end
+@with_kw struct Reluplex{O<:AbstractMathProgSolver}
+    optimizer::O = GLPKSolverLP(method = :Exact)
+end
 
 function solve(solver::Reluplex, problem::Problem)
     basic_model = new_model(solver)
@@ -123,13 +125,13 @@ function reluplex_step(solver::Reluplex,
 
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
-        return CounterExampleResult(:SAT)
+        return CounterExampleResult(:holds)
 
     elseif status == :Optimal
         i, j = find_relu_to_fix(b_vars, f_vars)
 
         # in case no broken relus could be found, return the "input" as a countereexample
-        i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
+        i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
             relu_status[i][j] = repair_type
@@ -150,7 +152,7 @@ function reluplex_step(solver::Reluplex,
 end
 
 # for convenience:
-new_model(::Reluplex) = Model(solver = GLPKSolverLP(method = :Exact))
+new_model(solver::Reluplex) = Model(solver = solver.optimizer)
 
 
 # doesn't do what it should! TODO open feature request issue on JuMP

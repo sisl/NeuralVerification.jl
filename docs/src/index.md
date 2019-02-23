@@ -54,13 +54,13 @@ solve(solver, problem)
 In this case, the solver returns a `ReachabilityResult` and indicates that the property is satisfied.
 That is, no input in the input region can produce a point that is outside of the specified output region.
 
-A result status of `:SAT` means that the specified input-output relationship is "satisfied", i.e. that the property being tested for in the network holds.
-A result status of `:UNSAT` means that the input-output relationship is "unsatisfied", i.e. that the property being tested for in the network does not hold.
+A result status of `:holds` means that the specified input-output relationship is "satisfied", i.e. that the property being tested for in the network holds.
+A result status of `:violated` means that the input-output relationship is "unsatisfied", i.e. that the property being tested for in the network does not hold.
 A status of `:Unknown` is also possible.
 All of the algorithms considered in this library are sound, but most are not complete; it is important to note these properties when interpreting the result status.
 For more information about result types, see [`Result`](@ref).
 
 The accompanying `Hyperrectangle{Float64}[]` is an empty vector that is meaningless in this case.
-If the result was instead `:UNSAT`, then this vector would contain the reachable set (which exceeds the allowed output set).
+If the result was instead `:violated`, then this vector would contain the reachable set (which exceeds the allowed output set).
 Note that since `MaxSens` uses `Hyperrectangle`s to express the interval arithmetic used in the search, the vector type is `Hyperrectangle`.
 For other solvers that return `ReachbilityResult`, the `reachable` vector could contain other subtypes of `AbstractPolytope`.

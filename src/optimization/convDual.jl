@@ -29,7 +29,7 @@ function solve(solver::ConvDual, problem::Problem)
     o = dual_value(solver, problem.network, problem.input, problem.output)
     # Check if the lower bound satisfies the constraint
     if o >= 0.0
-        return BasicResult(:SAT)
+        return BasicResult(:holds)
     end
     return BasicResult(:Unknown)
 end

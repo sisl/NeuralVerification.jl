@@ -36,18 +36,18 @@ function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return CounterExampleResult(:SAT)
+    status == :Optimal || return CounterExampleResult(:holds)
     ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # Main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
-        status == :Infeasible || return CounterExampleResult(:UNSAT, conflict)
+        status == :Infeasible || return CounterExampleResult(:violated, conflict)
         push!(ψ, conflict)
         δ = PicoSAT.solve(ψ)
     end
-    return CounterExampleResult(:SAT)
+    return CounterExampleResult(:holds)
 end
 
 function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})

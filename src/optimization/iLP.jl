@@ -63,9 +63,9 @@ end
 
 function interpret_result(solver::ILP, o, input)
     if o >= maximum(input.radius)
-        return AdversarialResult(:SAT, o)
+        return AdversarialResult(:holds, o)
     else
-        return AdversarialResult(:UNSAT, o)
+        return AdversarialResult(:violated, o)
     end
 end
 

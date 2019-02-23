@@ -55,7 +55,7 @@ end
 function interpret_result(solver::Certify, status, o)
     # println("Upper bound: ", getvalue(o[1]))
     if getvalue(o) <= 0
-        return BasicResult(:SAT)
+        return BasicResult(:holds)
     else
         return BasicResult(:Unknown)
     end
