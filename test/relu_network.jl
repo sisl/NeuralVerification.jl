@@ -14,21 +14,21 @@
     # Includes some points in the output region but not all:
     out_overlapping  = Hyperrectangle(low = [-1.0], high = [50.0])    # -1.0 ≤ y ≤ 50.0
 
-    problem_sat_hyper_hyper           = Problem(small_nnet, input_hyper, out_superset)
-    problem_unsat_hyper_hyper         = Problem(small_nnet, input_hyper, out_overlapping)
-    problem_sat_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, convert(HPolytope, out_superset))
-    problem_unsat_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, convert(HPolytope, out_overlapping))
+    problem_holds_hyper_hyper           = Problem(small_nnet, input_hyper, out_superset)
+    problem_violated_hyper_hyper         = Problem(small_nnet, input_hyper, out_overlapping)
+    problem_holds_hpoly_hpoly_bounded   = Problem(small_nnet, input_hpoly, convert(HPolytope, out_superset))
+    problem_violated_hpoly_hpoly_bounded = Problem(small_nnet, input_hpoly, convert(HPolytope, out_overlapping))
     # halfspace only constraints:
-    problem_sat_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
-    problem_unsat_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
+    problem_holds_hyper_hs              = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
+    problem_violated_hyper_hs            = Problem(small_nnet, input_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
 
     @testset "Group 1" begin
         for solver in [MaxSens(resolution = 0.6), ExactReach(), Ai2()]
-            sat   = solve(solver, problem_sat_hpoly_hpoly_bounded)
-            unsat = solve(solver, problem_unsat_hpoly_hpoly_bounded)
+            holds   = solve(solver, problem_holds_hpoly_hpoly_bounded)
+            violated = solve(solver, problem_violated_hpoly_hpoly_bounded)
 
-            @test sat.status ∈ (:SAT, :Unknown)
-            @test unsat.status ∈ (:UNSAT, :Unknown)
+            @test holds.status ∈ (:holds, :Unknown)
+            @test violated.status ∈ (:violated, :Unknown)
         end
 
     end
@@ -42,29 +42,29 @@
         group6 = [Reluplex(), Planet()]
 
         for solver in [group2; group3; group4; group6]
-            sat   = solve(solver, problem_sat_hyper_hs)
-            unsat = solve(solver, problem_unsat_hyper_hs)
+            holds    = solve(solver, problem_holds_hyper_hs)
+            violated = solve(solver, problem_violated_hyper_hs)
 
-            @test sat.status ∈ (:SAT, :Unknown)
-            @test unsat.status ∈ (:UNSAT, :Unknown)
+            @test holds.status    ∈ (:holds, :Unknown)
+            @test violated.status ∈ (:violated, :Unknown)
         end
 
         # ConvDual can not handle ReLU networks at present.
         # We should ignore the result even if this particular network is trivial
-        sat   = solve(ConvDual(), problem_sat_hyper_hs)
-        unsat = solve(ConvDual(), problem_unsat_hyper_hs)
-        @test_skip sat.status ∈ (:SAT, :Unknown)
-        @test_skip unsat.status ∈ (:UNSAT, :Unknown)
+        holds    = solve(ConvDual(), problem_holds_hyper_hs)
+        violated = solve(ConvDual(), problem_violated_hyper_hs)
+        @test_skip holds.status    ∈ (:holds, :Unknown)
+        @test_skip violated.status ∈ (:violated, :Unknown)
     end
 
     @testset "Group 5" begin
         glpk = GLPKSolverMIP()
         for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
-            sat   = solve(solver, problem_sat_hyper_hyper)
-            unsat = solve(solver, problem_unsat_hyper_hyper)
+            holds    = solve(solver, problem_holds_hyper_hyper)
+            violated = solve(solver, problem_violated_hyper_hyper)
 
-            @test sat.status ∈ (:SAT, :Unknown)
-            @test unsat.status ∈ (:UNSAT, :Unknown)
+            @test holds.status    ∈ (:holds, :Unknown)
+            @test violated.status ∈ (:violated, :Unknown)
         end
     end
 
