@@ -34,3 +34,6 @@ end
 
 include("identity_network.jl")
 include("relu_network.jl")
+if Base.find_package("Flux") != nothing
+    include("flux.jl")
+end
