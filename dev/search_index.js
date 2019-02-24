@@ -93,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.Network",
     "category": "type",
-    "text": "Network(layers::Vector{Layer})\n\nNetwork consists of a Vector of layers.\n\nSee also: Layer\n\n\n\n\n\n"
+    "text": "A Vector of layers.\n\nNetwork([layer1, layer2, layer3, ...])\n\nSee also: Layer\n\n\n\n\n\n"
 },
 
 {
@@ -101,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.Layer",
     "category": "type",
-    "text": "Layer(weights::Matrix{Float64}, bias::Vector{Float64}, activation::ActivationFunction)\n\nLayer consists of weights and bias for linear mapping, and activation for nonlinear mapping.\n\nSee also: Network\n\n\n\n\n\n"
+    "text": "Layer{F, N}\n\nConsists of weights and bias for linear mapping, and activation for nonlinear mapping.\n\nFields\n\nweights::Matrix{N}\nbias::Vector{N}\nactivation::F\n\nSee also: Network\n\n\n\n\n\n"
 },
 
 {
@@ -109,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.Node",
     "category": "type",
-    "text": "Node(w::Vector{Float64}, b::Float64, activation::ActivationFunction)\n\nNode consists of w and b for linear mapping, and activation for nonlinear mapping.\n\n\n\n\n\n"
+    "text": "Node{N, F}\n\nA single node in a layer.\n\nFields\n\nw::Vector{N}\nb::N\nactivation::F\n\n\n\n\n\n"
 },
 
 {
