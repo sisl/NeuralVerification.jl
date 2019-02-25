@@ -28,7 +28,7 @@ before_install:
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export GKSwstype=svg; fi
 
 script:
-  - julia --project --check-bounds=yes -e 'import Pkg; pkg.add("Flux"); Pkg.build(); Pkg.test("NeuralVerification"; coverage=true)'
+  - julia --project --check-bounds=yes -e 'import Pkg; Pkg.build(); Pkg.test("NeuralVerification"; coverage=true)'
 
 # After successful build submit coverage report and deploy updated documentation
 # But limit deployment to the linux worker so this is done only once.
