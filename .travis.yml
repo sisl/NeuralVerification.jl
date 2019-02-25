@@ -15,7 +15,6 @@ notifications:
 matrix:
   allow_failures:
     - julia: nightly
-    - julia: 1.1
 
 before_install:
   # Install TeX and Qt5 to build plots for documentation
@@ -29,9 +28,9 @@ before_install:
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export GKSwstype=svg; fi
 
 script:
-  - julia --project --check-bounds=yes -e 'import Pkg; Pkg.build(); Pkg.test("NeuralVerification"; coverage=true)'
+  - julia --project --check-bounds=yes -e 'import Pkg; pkg.add("Flux"); Pkg.build(); Pkg.test("NeuralVerification"; coverage=true)'
 
-# After successfuly build submit coverage report and deploy updated documentation
+# After successful build submit coverage report and deploy updated documentation
 # But limit deployment to the linux worker so this is done only once.
 after_success:
   # Install required packages for coverage and documentation
