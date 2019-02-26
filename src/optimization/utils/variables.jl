@@ -4,7 +4,9 @@ init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, la
 init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin)
 init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
 # for reluplex:
-init_forward_facing_vars(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)[1:end-1] #discard the last one
+# TODO: determine is this function should be removed (might not be used with mixed-networks Reluplex)
+#init_forward_facing_vars(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)[1:end-1] #discard the last one
+init_forward_facing_vars(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
 # Allow ::Network input also (NOTE for legacy purposes mostly...)
 init_neurons(m,     network::Network) = init_neurons(m, network.layers)
 init_deltas(m,      network::Network) = init_deltas(m,  network.layers)

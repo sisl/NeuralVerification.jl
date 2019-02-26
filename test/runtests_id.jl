@@ -30,7 +30,7 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet_id.nnet", last_layer
 input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 input_hpoly  = HPolytope(input_hyper)
 
-# output is straight line with range (-69.1, -25.900000000000002 ) 
+# output is straight line with range (-69.1, -25.900000000000002 )
 
 out_hyper_30_80 = Hyperrectangle(low = [-70.0], high = [-23.0]) # superset of the output
 out_hyper_50    = Hyperrectangle(low = [-100.0], high = [-45.0]) # includes points in the output region

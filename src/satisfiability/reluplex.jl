@@ -29,24 +29,39 @@ function solve(solver::Reluplex, problem::Problem)
     bs, fs = encode(solver, basic_model, problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
+    #initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
 
     return reluplex_step(solver, problem, basic_model, bs, fs, initial_status)
 end
 
-function find_relu_to_fix(b_vars, f_vars)
+function check_layer_constraints(b, f, L::Layer{ReLU})
+    return type_one_broken(b, f) || type_two_broken(b, f)
+end
+
+function check_layer_constraints(b, f, L::Layer{Id})
+    @assert b == f
+    return false
+end
+
+function find_relu_to_fix(b_vars, f_vars, network::Network)
     for i in 1:length(f_vars), j in 1:length(f_vars[i])
         b = getvalue(b_vars[i+1][j])
         f = getvalue(f_vars[i][j])
+
+        #if check_layer_constraints(b, f, network.layers[i])
+        #    return (i, j)
+        #end
 
         if type_one_broken(b, f) ||
            type_two_broken(b, f)
             return (i, j)
         end
     end
+    print("\n====NO RELU TO FIX=====\n")
     return (0, 0)
 end
 
-type_one_broken(b::Real, f::Real) = (f >= 0.0) && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
+type_one_broken(b::Real, f::Real) = (f > 0.0) && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
 type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 
 # NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
@@ -61,15 +76,43 @@ function type_two_repair!(m::Model, b::Variable, f::Variable)
     return nothing
 end
 
+function add_layer_constraints(model, bs, fs, i, L::Layer{ReLU})
+    @constraint(model, fs[i] .>= bs[i+1])
+    @constraint(model, fs[i] .>= 0.0)
+end
+
+function add_layer_constraints(model, bs, fs, i, L::Layer{Id})
+    @constraint(model, fs[i] .== bs[i+1])
+end
+
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    bs = init_neurons(model, layers)
-    fs = init_forward_facing_vars(model, layers)
+    #bs = init_neurons(model, layers)
+    #fs = init_neurons(model, layers)
+    #fs = init_forward_facing_vars(model, layers)
+
+    ######
+    bs = [[@variable(model, b11)],
+         [@variable(model, b21),@variable(model, b22)],
+         [@variable(model, b31),@variable(model, b32)],  
+         [@variable(model, b41)]]
+
+    fs = [[@variable(model, f21),@variable(model, f22)],
+          [@variable(model, f31),@variable(model, f32)],
+          [@variable(model, f41)]]
+
+    ####
+
+    print("\n B vars: \n")
+    print(bs)
+
+    print("\n F vars: \n")
+    print(fs)
 
     # Positivity contraint for forward-facing variables
-    for i in 1:length(fs)
-        @constraint(model, fs[i] .>= 0.0)
-    end
+    #for i in 1:length(fs)
+    #    @constraint(model, fs[i] .>= 0.0)
+    #end
 
     # All layers (input and hidden) get an "input" constraint
     # In addition, each set of back-facing and forward-facing
@@ -90,25 +133,31 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
         end
 
         ## f >= b always, by definition
-        if i <= length(fs)
-            @constraint(model, fs[i] .>= bs[i+1])
-        end
+        #if i <= length(fs)
+        #    @constraint(model, fs[i] .>= bs[i+1])
+        #end
+        add_layer_constraints(model, bs, fs, i, L)
+
     end
-    add_complementary_set_constraint!(model, problem.output, last(bs))
+    add_complementary_set_constraint!(model, problem.output, last(fs))
+
 
     zero_objective!(model)
+
 
     return bs, fs
 end
 
 function enforce_repairs!(model::Model, bs, fs, relu_status)
     # Need to decide what to do with last layer, this assumes there is no ReLU.
-    for i in 1:(length(relu_status)-1), j in 1:length(relu_status[i])
+    for i in 1:length(relu_status), j in 1:length(relu_status[i])
         b = bs[i+1][j]
         f = fs[i][j]
         if relu_status[i][j] == 1
+            println("\nenforcing type 1 repair to node ($i, $j)\n")
             type_one_repair!(model, b, f)
         elseif relu_status[i][j] == 2
+            println("\nenforcing type 2 repair to node ($i, $j)\n")
             type_two_repair!(model, b, f)
         end
     end
@@ -120,18 +169,31 @@ function reluplex_step(solver::Reluplex,
                        b_vars::Vector{Vector{Variable}},
                        f_vars::Vector{Vector{Variable}},
                        relu_status::Vector{Vector{Int}})
-
+    print("relu_status: \n")
+    println(relu_status)
+    print(model)
     status = solve(model, suppress_warnings = true)
+    println("SOLVER STATUS:")
+    println(status)
     if status == :Infeasible
+        println("HITTING RETURN SAT COUNTER")
         return CounterExampleResult(:SAT)
 
     elseif status == :Optimal
-        i, j = find_relu_to_fix(b_vars, f_vars)
+        i, j = find_relu_to_fix(b_vars, f_vars, problem.network)
+        println("RELU TO FIX")
+        println([i,j])
+        println("last b:")
+        print(getvalue.(last(b_vars)))
+        println("\nlast f:")
+        print( getvalue.(last(f_vars)))
 
-        # in case no broken relus could be found, return the "input" as a countereexample
+        # in case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:UNSAT, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
+            println("doing repair of type:")
+            print(repair_type)
             relu_status[i][j] = repair_type
 
             new_m  = new_model(solver)
@@ -141,9 +203,18 @@ function reluplex_step(solver::Reluplex,
             result = reluplex_step(solver, problem, new_m, bs, fs, relu_status)
 
             relu_status[i][j] = 0
+
+            if result.status == :UNSAT
+                return result
+            end
+
+            #result.status == :UNSAT && return result
             
-            return result
+            #return result
         end
+
+        println("================WEIRD LINE HIT=================")
+        return CounterExampleResult(:SAT)
     else
         error("unexpected status $status") # are there alternatives to the if and elseif?
     end

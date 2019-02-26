@@ -30,6 +30,8 @@ small_nnet = read_nnet("$at/../examples/networks/small_nnet.nnet", last_layer_ac
 input_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 input_hpoly  = HPolytope(input_hyper)
 
+# output is straight line with range (32.900000000000006, 76.1) 
+
 out_hyper_30_80 = Hyperrectangle(low = [20.0], high = [90.0])
 out_hyper_50    = Hyperrectangle(low = [-1.0], high = [50.0]) # includes points in the output region ie y > 30.5
 
@@ -71,7 +73,7 @@ end
 
 
 # GROUP 5, 6        # Input: Hyperrectangle, Output: Hyperrectangle
-group5 = [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
+group5 = [Planet(), ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 1.0), BaB(optimizer = glpk)]
 
 
 for solver in [group5;]
