@@ -16,16 +16,16 @@ end
 # Note vertices_list is not defined for HPolytope: to be defined
 function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
     for poly in reach
-        issubset(poly, output) || return ReachabilityResult(:UNSAT, reach)
+        issubset(poly, output) || return ReachabilityResult(:violated, reach)
     end
-    return ReachabilityResult(:SAT, similar(reach, 0))
+    return ReachabilityResult(:holds, similar(reach, 0))
 end
 
 function check_inclusion(reach::P, output::AbstractPolytope) where P<:AbstractPolytope
     if issubset(reach, output)
-        return ReachabilityResult(:SAT, P[])
+        return ReachabilityResult(:holds, P[])
     end
-    return ReachabilityResult(:UNSAT, [reach])
+    return ReachabilityResult(:violated, [reach])
 end
 
 # return a vector so that append! is consistent with the relu forward_partition

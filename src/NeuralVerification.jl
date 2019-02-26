@@ -13,6 +13,7 @@ using CDDLib
 using LinearAlgebra
 using Parameters
 using Interpolations # only for PiecewiseLinear
+using Requires
 
 import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
@@ -22,6 +23,11 @@ include("utils/activation.jl")
 include("utils/network.jl")
 include("utils/problem.jl")
 include("utils/util.jl")
+
+function __init__()
+  @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" include("utils/flux.jl")
+end
+
 export
     Solver,
     Network,

@@ -251,9 +251,9 @@ Inputs:
 Outputs:
 - `(lbound, ubound)` (after the mapping)
 """
-function interval_map(W::Matrix, l::AbstractVecOrMat, u::AbstractVecOrMat)
-    l_new = max.(W, 0) * l + min.(W, 0) * u
-    u_new = max.(W, 0) * u + min.(W, 0) * l
+function interval_map(W::Matrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
+    l_new = max.(W, zero(N)) * l + min.(W, zero(N)) * u
+    u_new = max.(W, zero(N)) * u + min.(W, zero(N)) * l
     return (l_new, u_new)
 end
 

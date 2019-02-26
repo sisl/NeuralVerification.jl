@@ -35,6 +35,7 @@ end
 function solve(solver::Sherlock, problem::Problem)
     (x_u, u) = output_bound(solver, problem, :max)
     (x_l, l) = output_bound(solver, problem, :min)
+    println("bounds: [", l, ", ", u, "]")
     bound = Hyperrectangle(low = [l], high = [u])
     reach = Hyperrectangle(low = [l - solver.ϵ], high = [u + solver.ϵ])
     return interpret_result(reach, bound, problem.output, x_l, x_u) # This function is defined in bab.jl
@@ -45,8 +46,8 @@ function output_bound(solver::Sherlock, problem::Problem, type::Symbol)
     x = sample(problem.input)
     while true
         (x, bound) = local_search(problem, x, opt, type)
-        bound += ifelse(type == :max, solver.ϵ, -solver.ϵ)
-        (x_new, bound_new, feasibile) = global_search(problem, bound, opt, type)
+        bound_ϵ = bound + ifelse(type == :max, solver.ϵ, -solver.ϵ)
+        (x_new, bound_new, feasibile) = global_search(problem, bound_ϵ, opt, type)
         feasibile || return (x, bound)
         (x, bound) = (x_new, bound_new)
     end
@@ -82,7 +83,7 @@ function global_search(problem::Problem, bound::Float64, optimizer::AbstractMath
     problem_new = Problem(problem.network, problem.input, output_set)
     solver  = NSVerify(optimizer = optimizer)
     result  = solve(solver, problem_new)
-    if result.status == :UNSAT
+    if result.status == :violated
         x = result.counter_example
         bound = compute_output(problem.network, x)
         return (x, bound[1], true)

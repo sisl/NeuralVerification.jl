@@ -63,9 +63,9 @@ end
 
 function interpret_result(solver::ILP, o, input)
     if o >= maximum(input.radius)
-        return AdversarialResult(:SAT, o)
+        return AdversarialResult(:holds, o)
     else
-        return AdversarialResult(:UNSAT, o)
+        return AdversarialResult(:violated, o)
     end
 end
 
@@ -73,8 +73,7 @@ function add_constraint!(model::Model,
                          nnet::Network,
                          z::Vector{Vector{Variable}},
                          δ::Vector{Vector{Bool}},
-                         index::Tuple{Int64, Int64})
-    i, j = index
+                         (i, j)::Tuple{Int64, Int64})
     layer = nnet.layers[i]
     val = layer.weights[j, :]' * z[i] + layer.bias[j]
     if δ[i][j]
@@ -88,16 +87,25 @@ function match_activation(nnet::Network, x::Vector{Float64}, δ::Vector{Vector{B
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
         curr_value = layer.weights * curr_value + layer.bias
-        for (j, val) in enumerate(curr_value)
-            act = δ[i][j]
-            if act && val < -0.0001 # Floating point operation
-                return (false, (i, j))
-            end
-            if !act && val > 0.0001 # Floating point operation
-                return (false, (i, j))
-            end
-        end
+        matched, j = match_activation(layer, δ[i], curr_value)
+
+        !matched && return false, (i,j)
+
         curr_value = layer.activation(curr_value)
     end
-    return (true, (0, 0))
+    return (true, nothing)
+end
+
+match_activation(L::Layer{Id}, args...) = (true, nothing)
+function match_activation(L::Layer{ReLU}, δᵢ, val, tol = 1e-4)
+    for (j, val) in enumerate(val)
+        act = δᵢ[j]
+        if act
+            val < -tol && return false, j
+        else
+            val > tol  && return false, j
+        end
+
+    end
+    return (true, nothing)
 end
