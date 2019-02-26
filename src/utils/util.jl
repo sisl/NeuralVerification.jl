@@ -50,10 +50,8 @@ Propagate a given vector through a nnet and compute the output.
 """
 function compute_output(nnet::Network, input)
     curr_value = input
-    layers = nnet.layers
-    for i = 1:length(layers) # layers does not include input layer (which has no weights/biases)
-        curr_value = (layers[i].weights * curr_value) + layers[i].bias
-        curr_value = layers[i].activation(curr_value)
+    for layer in nnet.layers # layers does not include input layer (which has no weights/biases)
+        curr_value = layer.activation(affine_map(layer, curr_value))
     end
     return curr_value # would another name be better?
 end
@@ -76,7 +74,7 @@ function get_activation(nnet::Network, x::Vector{Float64})
     act_pattern = Vector{Vector{Bool}}(undef, length(nnet.layers))
     curr_value = x
     for (i, layer) in enumerate(nnet.layers)
-        curr_value = layer.weights * curr_value + layer.bias
+        curr_value = affine_map(layer, curr_value)
         act_pattern[i] = get_activation(layer, curr_value)
         curr_value = layer.activation(curr_value)
     end
@@ -117,7 +115,7 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 end
 
 function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
-    before_act_bound = linear_transformation(L, bounds)
+    before_act_bound = affine_map(L, bounds)
     lower = low(before_act_bound)
     upper = high(before_act_bound)
     act_pattern = zeros(n_nodes(L))
@@ -140,7 +138,7 @@ function get_gradient(nnet::Network, x::Vector)
     z = x
     gradient = Matrix(1.0I, length(x), length(x))
     for (i, layer) in enumerate(nnet.layers)
-        z_hat = layer.weights * z + layer.bias
+        z_hat = affine_map(layer, z)
         σ_gradient = act_gradient(layer.activation, z_hat)
         gradient = Diagonal(σ_gradient) * layer.weights * gradient
         z = layer.activation(z_hat)
@@ -184,7 +182,7 @@ function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     LΛ = Vector{Matrix}(undef, 0)
     UΛ = Vector{Matrix}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = linear_transformation(layer, bounds[i])
+        before_act_bound = affine_map(layer, bounds[i])
         lower = low(before_act_bound)
         upper = high(before_act_bound)
         l = act_gradient(layer.activation, lower)
@@ -282,79 +280,64 @@ end
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 """
-    linear_transformation(layer::Layer, input::Hyperrectangle)
+    affine_map(layer, input::AbstractPolytope)
 
-Transformation of a set considering linear mappings in a layer.
-
-Inputs:
-- `layer::Layer`: a layer in a network
-- `input::Hyperrectangle`: input set
-Return:
-- `output::Hyperrectangle`: set after transformation.
-"""
-function linear_transformation(layer::Layer, input::Hyperrectangle)
-    (W, b, act) = (layer.weights, layer.bias, layer.activation)
-    before_act_center = W * input.center + b
-    before_act_radius = abs.(W) * input.radius
-    return Hyperrectangle(before_act_center, before_act_radius)
-end
-
-"""
-    linear_transformation(layer::Layer, input::HPolytope)
-
-Transformation of a set considering linear mappings in a layer.
+Affine transformation of a set using the weights and bias of a layer.
 
 Inputs:
-- `layer::Layer`: a layer in a network
-- `input::HPolytope`: input set
+- `layer`: Layer
+- `input`: input set (Hyperrectangle, HPolytope)
 Return:
-- `output::HPolytope`: set after transformation.
-"""
-function linear_transformation(layer::Layer, input::HPolytope)
-    (W, b) = (layer.weights, layer.bias)
-    input_v = tovrep(input)
-    output_v = [W * v + b for v in vertices_list(input_v)]
-    output = tohrep(VPolytope(output_v))
-    return output
-end
+- `output`: set after transformation.
 
-"""
-    linear_transformation(W::Matrix, input::HPolytope)
 
-Transformation of a set considering a linear mapping.
+    affine_map(layer, input)
 
 Inputs:
-- `W::Matrix`: a linear mapping
-- `input::HPolytope`: input set
+- `layer`: Layer
+- `input`: Vector
 Return:
-- `output::HPolytope`: set after transformation.
+- `output`: Vector after mapping
 """
-function linear_transformation(W::Matrix, input::HPolytope)
-    input_v = tovrep(input)
-    output_v = [W * v for v in vertices_list(input_v)]
-    output = tohrep(VPolytope(output_v))
-    return output
+affine_map(layer::Layer, input) = layer.weights*input + layer.bias
+function affine_map(layer::Layer, input::AbstractPolytope)
+    W, b = layer.weights, layer.bias
+    return translate(b, linear_map(W, input))
+end
+function affine_map(layer::Layer, input::Hyperrectangle)
+    c = affine_map(layer, input.center)
+    r = abs.(layer.weights) * input.radius
+    return Hyperrectangle(c, r)
 end
 
+function translate(v::Vector, H::HPolytope)
+    # translate each halfpsace according to:
+    # a⋅(x-v) ≤ b  ⟶  a⋅x ≤ b+a⋅v
+    C, d = tosimplehrep(H)
+    return HPolytope(C, d+C*v)
+end
+# translate(v::Vector, H::Hyperrectangle)   = Hyperrectangle(H.center .+ v, H.radius)
+translate(v::Vector, V::AbstractPolytope) = tohrep(VPolytope([x+v for x in vertices_list(V)]))
+
 """
-    split_interval(dom::Hyperrectangle, index::Int64)
+    split_interval(dom, i)
 
 Split a set into two at the given index.
 
 Inputs:
 - `dom::Hyperrectangle`: the set to be split
-- `index`: the index to split at
+- `i`: the index to split at
 Return:
 - `(left, right)::Tuple{Hyperrectangle, Hyperrectangle}`: two sets after split
 """
-function split_interval(dom::Hyperrectangle, index::Int64)
+function split_interval(dom::Hyperrectangle, i::Int64)
     input_lower, input_upper = low(dom), high(dom)
 
-    input_upper[index] = dom.center[index]
+    input_upper[i] = dom.center[i]
     input_split_left = Hyperrectangle(low = input_lower, high = input_upper)
 
-    input_lower[index] = dom.center[index]
-    input_upper[index] = dom.center[index] + dom.radius[index]
+    input_lower[i] = dom.center[i]
+    input_upper[i] = dom.center[i] + dom.radius[i]
     input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
     return (input_split_left, input_split_right)
 end

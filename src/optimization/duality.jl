@@ -72,7 +72,7 @@ function activation_value(layer::Layer,
                           λᵢ::Vector{Variable},
                           bound::Hyperrectangle)
     o = zero(eltype(μᵢ))
-    b_hat = linear_transformation(layer, bound)
+    b_hat = affine_map(layer, bound)
     l_hat, u_hat = low(b_hat), high(b_hat)
     l, u = layer.activation(l_hat), layer.activation(u_hat)
 
