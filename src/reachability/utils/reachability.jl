@@ -41,7 +41,7 @@ function forward_partition(act::ReLU, input::HPolytope)
         Ch = [C; I - 2P]
         input_h = HPolytope(Ch, dh)
         if !isempty(input_h)
-            push!(output, affine_map(Matrix(P), input_h))
+            push!(output, linear_map(Matrix(P), input_h))
         end
     end
     return output

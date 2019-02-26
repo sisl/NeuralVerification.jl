@@ -282,59 +282,28 @@ end
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 """
-    affine_map(layer::Layer, input::Hyperrectangle)
+    affine_map(L, input)
 
-Transformation of a set considering linear mappings in a layer.
-
-Inputs:
-- `layer::Layer`: a layer in a network
-- `input::Hyperrectangle`: input set
-Return:
-- `output::Hyperrectangle`: set after transformation.
-"""
-function affine_map(layer::Layer, input::Hyperrectangle)
-    (W, b, act) = (layer.weights, layer.bias, layer.activation)
-    before_act_center = W * input.center + b
-    before_act_radius = abs.(W) * input.radius
-    return Hyperrectangle(before_act_center, before_act_radius)
-end
-
-"""
-    affine_map(layer::Layer, input::HPolytope)
-
-Transformation of a set considering linear mappings in a layer.
+Affine transformation of a set using the weights and bias of a layer.
 
 Inputs:
-- `layer::Layer`: a layer in a network
-- `input::HPolytope`: input set
+- `layer`: Layer
+- `input`: input set (Hyperrectangle, HPolytope)
 Return:
-- `output::HPolytope`: set after transformation.
+- `output`: set after transformation.
 """
-function affine_map(layer::Layer, input::HPolytope)
+function affine_map(layer::Layer, input)
     (W, b) = (layer.weights, layer.bias)
-    input_v = tovrep(input)
-    output_v = [W * v + b for v in vertices_list(input_v)]
-    output = tohrep(VPolytope(output_v))
-    return output
+    return translate(linear_map(W, input), b)
 end
 
-"""
-    affine_map(W::Matrix, input::HPolytope)
-
-Transformation of a set considering a linear mapping.
-
-Inputs:
-- `W::Matrix`: a linear mapping
-- `input::HPolytope`: input set
-Return:
-- `output::HPolytope`: set after transformation.
-"""
-function affine_map(W::Matrix, input::HPolytope)
-    input_v = tovrep(input)
-    output_v = [W * v for v in vertices_list(input_v)]
-    output = tohrep(VPolytope(output_v))
-    return output
+function translate(b::Vector, H::HPolytope)
+    # a⋅(x-v) ≤ b  ⟶  a⋅x ≤ b+a⋅v
+    C, d = tosimplehrep(H)
+    return HPolytope(C, d+C*b)
 end
+translate!(b::Vector, H::Hyperrectangle) = (H.center .+= b; H)
+translate(b::Vector, H::Hyperrectangle)  = Hyperrectangle(H.center .+ b, H.radius)
 
 """
     split_interval(dom::Hyperrectangle, index::Int64)
