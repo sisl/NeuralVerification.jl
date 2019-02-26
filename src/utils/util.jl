@@ -117,7 +117,7 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 end
 
 function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
-    before_act_bound = linear_transformation(L, bounds)
+    before_act_bound = affine_map(L, bounds)
     lower = low(before_act_bound)
     upper = high(before_act_bound)
     act_pattern = zeros(n_nodes(L))
@@ -184,7 +184,7 @@ function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     LΛ = Vector{Matrix}(undef, 0)
     UΛ = Vector{Matrix}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = linear_transformation(layer, bounds[i])
+        before_act_bound = affine_map(layer, bounds[i])
         lower = low(before_act_bound)
         upper = high(before_act_bound)
         l = act_gradient(layer.activation, lower)
@@ -282,7 +282,7 @@ end
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 """
-    linear_transformation(layer::Layer, input::Hyperrectangle)
+    affine_map(layer::Layer, input::Hyperrectangle)
 
 Transformation of a set considering linear mappings in a layer.
 
@@ -292,7 +292,7 @@ Inputs:
 Return:
 - `output::Hyperrectangle`: set after transformation.
 """
-function linear_transformation(layer::Layer, input::Hyperrectangle)
+function affine_map(layer::Layer, input::Hyperrectangle)
     (W, b, act) = (layer.weights, layer.bias, layer.activation)
     before_act_center = W * input.center + b
     before_act_radius = abs.(W) * input.radius
@@ -300,7 +300,7 @@ function linear_transformation(layer::Layer, input::Hyperrectangle)
 end
 
 """
-    linear_transformation(layer::Layer, input::HPolytope)
+    affine_map(layer::Layer, input::HPolytope)
 
 Transformation of a set considering linear mappings in a layer.
 
@@ -310,7 +310,7 @@ Inputs:
 Return:
 - `output::HPolytope`: set after transformation.
 """
-function linear_transformation(layer::Layer, input::HPolytope)
+function affine_map(layer::Layer, input::HPolytope)
     (W, b) = (layer.weights, layer.bias)
     input_v = tovrep(input)
     output_v = [W * v + b for v in vertices_list(input_v)]
@@ -319,7 +319,7 @@ function linear_transformation(layer::Layer, input::HPolytope)
 end
 
 """
-    linear_transformation(W::Matrix, input::HPolytope)
+    affine_map(W::Matrix, input::HPolytope)
 
 Transformation of a set considering a linear mapping.
 
@@ -329,7 +329,7 @@ Inputs:
 Return:
 - `output::HPolytope`: set after transformation.
 """
-function linear_transformation(W::Matrix, input::HPolytope)
+function affine_map(W::Matrix, input::HPolytope)
     input_v = tovrep(input)
     output_v = [W * v for v in vertices_list(input_v)]
     output = tohrep(VPolytope(output_v))

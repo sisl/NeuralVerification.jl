@@ -32,7 +32,7 @@ end
 forward_layer(solver::Ai2, layer::Layer, inputs::Vector{<:AbstractPolytope}) = forward_layer.(solver, layer, inputs)
 
 function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
-    outlinear = linear_transformation(layer, input)
+    outlinear = affine_map(layer, input)
     relued_subsets = forward_partition(layer.activation, outlinear) # defined in ExactReach
     return convex_hull(relued_subsets)
 end
