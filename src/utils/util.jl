@@ -13,8 +13,10 @@ function read_nnet(fname::String; last_layer_activation = Id())
     while occursin("//", line) #skip comments
         line = readline(f)
     end
+    # number of layers
+    nlayers = parse(Int64, split(line, ",")[1])
     # read in layer sizes
-    layer_sizes = parse.(Int64, split(readline(f), ","))
+    layer_sizes = parse.(Int64, split(readline(f), ",")[1:nlayers])
     # read past additonal information
     for i in 1:5
         line = readline(f)
@@ -33,12 +35,14 @@ Read in layer from nnet file and return a `Layer` containing its weights/biases.
 Optional argument `act` sets the activation function for the layer.
 """
 function read_layer(output_dim::Int64, f::IOStream, act = ReLU())
+
+    rowparse(splitrow) = parse.(Float64, splitrow[findall(!isempty, splitrow)])
      # first read in weights
-     W_str_vec = [parse.(Float64, split(readline(f), ",")) for i in 1:output_dim]
+     W_str_vec = [rowparse(split(readline(f), ",")) for i in 1:output_dim]
      weights = vcat(W_str_vec'...)
      # now read in bias
-     bias_string = [readline(f) for j in 1:output_dim]
-     bias = parse.(Float64, bias_string)
+     bias_string = [split(readline(f), ",")[1] for j in 1:output_dim]
+     bias = rowparse(bias_string)
      # activation function is set to ReLU as default
      return Layer(weights, bias, act)
 end
