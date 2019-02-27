@@ -31,7 +31,6 @@ function solve(solver::Reluplex, problem::Problem)
     bs, fs = encode(solver, basic_model, problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
-    #initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
 
     return reluplex_step(solver, problem, basic_model, bs, fs, initial_status)
 end
@@ -59,7 +58,7 @@ function find_relu_to_fix(b_vars, f_vars, network::Network)
             return (i, j)
         end
     end
-    print("\n====NO RELU TO FIX=====\n")
+    #print("\n====NO RELU TO FIX=====\n")
     return (0, 0)
 end
 
@@ -89,27 +88,27 @@ end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    #bs = init_neurons(model, layers)
+    bs = init_neurons(model, layers)
     #fs = init_neurons(model, layers)
-    #fs = init_forward_facing_vars(model, layers)
+    fs = init_forward_facing_vars(model, layers)
 
     ######
-    bs = [[@variable(model, b11)],
-         [@variable(model, b21),@variable(model, b22)],
-         [@variable(model, b31),@variable(model, b32)],  
-         [@variable(model, b41)]]
+    #bs = [[@variable(model, b11)],
+    #     [@variable(model, b21),@variable(model, b22)],
+    #     [@variable(model, b31),@variable(model, b32)],  
+    #     [@variable(model, b41)]]
 
-    fs = [[@variable(model, f21),@variable(model, f22)],
-          [@variable(model, f31),@variable(model, f32)],
-          [@variable(model, f41)]]
+    #fs = [[@variable(model, f21),@variable(model, f22)],
+    #      [@variable(model, f31),@variable(model, f32)],
+    #      [@variable(model, f41)]]
 
     ####
 
-    print("\n B vars: \n")
-    print(bs)
+    #print("\n B vars: \n")
+    #print(bs)
 
-    print("\n F vars: \n")
-    print(fs)
+    #print("\n F vars: \n")
+    #print(fs)
 
     # Positivity contraint for forward-facing variables
     #for i in 1:length(fs)
@@ -156,10 +155,10 @@ function enforce_repairs!(model::Model, bs, fs, relu_status)
         b = bs[i+1][j]
         f = fs[i][j]
         if relu_status[i][j] == 1
-            println("\nenforcing type 1 repair to node ($i, $j)\n")
+            #println("\nenforcing type 1 repair to node ($i, $j)\n")
             type_one_repair!(model, b, f)
         elseif relu_status[i][j] == 2
-            println("\nenforcing type 2 repair to node ($i, $j)\n")
+            #println("\nenforcing type 2 repair to node ($i, $j)\n")
             type_two_repair!(model, b, f)
         end
     end
@@ -171,33 +170,31 @@ function reluplex_step(solver::Reluplex,
                        b_vars::Vector{Vector{Variable}},
                        f_vars::Vector{Vector{Variable}},
                        relu_status::Vector{Vector{Int}})
-    print("relu_status: \n")
-    println(relu_status)
-    print(model)
+    #print("relu_status: \n")
+    #println(relu_status)
+    #print(model)
     status = solve(model, suppress_warnings = true)
-    println("SOLVER STATUS:")
-    println(status)
+    #println("SOLVER STATUS:")
+    #println(status)
     if status == :Infeasible
-        println("HITTING RETURN SAT COUNTER")
         return CounterExampleResult(:holds)
 
     elseif status == :Optimal
         i, j = find_relu_to_fix(b_vars, f_vars, problem.network)
-        println("RELU TO FIX")
-        println([i,j])
-        println("last b:")
-        print(getvalue.(last(b_vars)))
-        println("\nlast f:")
-        print( getvalue.(last(f_vars)))
+        #println("RELU TO FIX: ")
+        #println([i,j])
+        #println("last b:")
+        #print(getvalue.(last(b_vars)))
+        #println("\nlast f:")
+        #print( getvalue.(last(f_vars)))
 
         # in case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
-            println("doing repair of type:")
-            print(repair_type)
+            #println("repair type =$repair_type")
             relu_status[i][j] = repair_type
-
+            #println("modified relu_status = $relu_status")
             new_m  = new_model(solver)
             bs, fs = encode(solver, new_m, problem)
             enforce_repairs!(new_m, bs, fs, relu_status)
@@ -215,8 +212,8 @@ function reluplex_step(solver::Reluplex,
             #return result
         end
 
-        println("================WEIRD LINE HIT=================")
-        return CounterExampleResult(:SAT)
+        #println("================WEIRD LINE HIT=================")
+        return CounterExampleResult(:holds)
     else
         error("unexpected status $status") # are there alternatives to the if and elseif?
     end
