@@ -59,7 +59,7 @@ function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})
     return ψ
 end
 function set_activation_pattern!(ψ::Vector{Vector{Int64}}, L::Layer{ReLU}, bound::Hyperrectangle, index::Int64)
-    before_act_bound = affine_map(L, bound)
+    before_act_bound = approximate_affine_map(L, bound)
     lower = low(before_act_bound)
     upper = high(before_act_bound)
     for j in 1:length(lower)

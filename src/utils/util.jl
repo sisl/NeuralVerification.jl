@@ -16,7 +16,7 @@ function read_nnet(fname::String; last_layer_activation = Id())
     # number of layers
     nlayers = parse(Int64, split(line, ",")[1])
     # read in layer sizes
-    layer_sizes = parse.(Int64, split(readline(f), ",")[1:nlayers])
+    layer_sizes = parse.(Int64, split(readline(f), ",")[1:nlayers+1])
     # read past additonal information
     for i in 1:5
         line = readline(f)
@@ -119,7 +119,7 @@ function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 end
 
 function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
-    before_act_bound = affine_map(L, bounds)
+    before_act_bound = approximate_affine_map(L, bounds)
     lower = low(before_act_bound)
     upper = high(before_act_bound)
     act_pattern = zeros(n_nodes(L))
@@ -186,7 +186,7 @@ function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     LΛ = Vector{Matrix}(undef, 0)
     UΛ = Vector{Matrix}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = affine_map(layer, bounds[i])
+        before_act_bound = approximate_affine_map(layer, bounds[i])
         lower = low(before_act_bound)
         upper = high(before_act_bound)
         l = act_gradient(layer.activation, lower)
@@ -308,7 +308,13 @@ function affine_map(layer::Layer, input::AbstractPolytope)
     W, b = layer.weights, layer.bias
     return translate(b, linear_map(W, input))
 end
-function affine_map(layer::Layer, input::Hyperrectangle)
+
+"""
+   approximate_affine_map(layer, input::Hyperrectangle)
+
+Returns a Hyperrectangle overapproximation of the affine map of the input.
+"""
+function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     c = affine_map(layer, input.center)
     r = abs.(layer.weights) * input.radius
     return Hyperrectangle(c, r)
