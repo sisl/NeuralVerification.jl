@@ -187,7 +187,7 @@ version = "0.18.5"
 
 [[LazySets]]
 deps = ["Compat", "Distributed", "Expokit", "GLPKMathProgInterface", "IntervalArithmetic", "LinearAlgebra", "MathProgBase", "Pkg", "Random", "RecipesBase", "Requires", "SharedArrays", "SparseArrays"]
-git-tree-sha1 = "c00ba943cf40b8d0b201f7ec824ed5143990eb7a"
+git-tree-sha1 = "ad0dfae4f073c6ffd7db129d8c449603184e4207"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaReach/LazySets.jl.git"
 uuid = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
@@ -368,9 +368,9 @@ version = "0.7.2"
 
 [[StaticArrays]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
-git-tree-sha1 = "1eb114d6e23a817cd3e99abc3226190876d7c898"
+git-tree-sha1 = "3841b39ed5f047db1162627bf5f80a9cd3e39ae2"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.10.2"
+version = "0.10.3"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]

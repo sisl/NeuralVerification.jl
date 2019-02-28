@@ -154,7 +154,7 @@ function encode_layer!(::TriangularRelaxedLP,
                        bounds::Hyperrectangle)
 
     ẑ = layer.weights * z_current + layer.bias
-    ẑ_bound = affine_map(layer, bounds)
+    ẑ_bound = approximate_affine_map(layer, bounds)
     l̂, û = low(ẑ_bound), high(ẑ_bound)
     for j in 1:length(layer.bias)
         if l̂[j] > 0.0
@@ -199,7 +199,7 @@ function encode_layer!(::BoundedMixedIntegerLP,
                        bounds::Hyperrectangle)
 
     ẑ = layer.weights * z_current + layer.bias
-    ẑ_bound = affine_map(layer, bounds)
+    ẑ_bound = approximate_affine_map(layer, bounds)
     l̂, û = low(ẑ_bound), high(ẑ_bound)
 
     for j in 1:length(layer.bias) # For evey node
