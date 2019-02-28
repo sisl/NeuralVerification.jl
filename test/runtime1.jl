@@ -65,7 +65,7 @@ println(timed_result[1])
 println("")
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
-println("###### Network: mnist1                                  ######")
+
 
 
 # entry 23 in MNIST datset
@@ -86,6 +86,10 @@ outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_mnist = Problem(mnist1, convert(HPolytope, inputSet), convert(HPolytope, outputSet))
 
+## MNIST1 ##
+print("\n\n\n")
+println("###### Network: mnist1                                  ######")
+print("\n\n\n")
 # TIMES OUT
 #solver = ExactReach()
 #print("ExactReach - mnist1")
@@ -112,10 +116,112 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 
-# ACAS
 
+## MNIST2 ##
+problem_mnist2 = Problem(mnist2, convert(HPolytope, inputSet), convert(HPolytope, outputSet))
+print("\n\n\n")
+println("###### Network: mnist2                                  ######")
+print("\n\n\n")
+# TIMES OUT
+#solver = ExactReach()
+#print("ExactReach - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+# TIMES OUT 
+#solver = Ai2()
+#print("Ai2 - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+solver = MaxSens(resolution = 0.6)
+print("MaxSens - mnist2")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+timed_result =@timed solve(solver, problem_mnist2)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+
+## MNIST3 ##
+problem_mnist3 = Problem(mnist3, convert(HPolytope, inputSet), convert(HPolytope, outputSet))
+print("\n\n\n")
+println("###### Network: mnist3                                  ######")
+print("\n\n\n")
+# TIMES OUT
+#solver = ExactReach()
+#print("ExactReach - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+# TIMES OUT 
+#solver = Ai2()
+#print("Ai2 - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+solver = MaxSens(resolution = 0.6)
+print("MaxSens - mnist3")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+timed_result =@timed solve(solver, problem_mnist3)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+
+## MNIST4 ##
+problem_mnist4 = Problem(mnist4, convert(HPolytope, inputSet), convert(HPolytope, outputSet))
+print("\n\n\n")
+println("###### Network: mnist4                                  ######")
+print("\n\n\n")
+# TIMES OUT
+#solver = ExactReach()
+#print("ExactReach - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+# TIMES OUT 
+#solver = Ai2()
+#print("Ai2 - mnist1")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#print(" - Time: " * string(timed_result[2]) * " s")
+#print(" - Output: ")
+#print(timed_result[1])
+
+solver = MaxSens(resolution = 0.6)
+print("MaxSens - mnist4")
+#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
+timed_result =@timed solve(solver, problem_mnist4)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+
+
+
+
+
+# ACAS
+print("\n\n\n")
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
+print("\n\n\n")
 println("###### Network: acas                                    ######")
+print("\n\n\n")
 
 acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
 acas_nnet = mnist1 = read_nnet(acas_file, last_layer_activation = Id())
