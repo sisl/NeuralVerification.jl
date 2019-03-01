@@ -93,8 +93,7 @@ print("\n\n\n")
 # TIMES OUT
 #solver = ExactReach()
 #print("ExactReach - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
@@ -102,8 +101,7 @@ print("\n\n\n")
 # TIMES OUT 
 #solver = Ai2()
 #print("Ai2 - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
@@ -125,8 +123,7 @@ print("\n\n\n")
 # TIMES OUT
 #solver = ExactReach()
 #print("ExactReach - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist2)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
@@ -134,15 +131,13 @@ print("\n\n\n")
 # TIMES OUT 
 #solver = Ai2()
 #print("Ai2 - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist2)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist2")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
 timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
@@ -157,8 +152,7 @@ print("\n\n\n")
 # TIMES OUT
 #solver = ExactReach()
 #print("ExactReach - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist3)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
@@ -166,15 +160,13 @@ print("\n\n\n")
 # TIMES OUT 
 #solver = Ai2()
 #print("Ai2 - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist3)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist3")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
 timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
@@ -186,27 +178,27 @@ problem_mnist4 = Problem(mnist4, convert(HPolytope, inputSet), convert(HPolytope
 print("\n\n\n")
 println("###### Network: mnist4                                  ######")
 print("\n\n\n")
+
 # TIMES OUT
+
 #solver = ExactReach()
 #print("ExactReach - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist4)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
 
 # TIMES OUT 
+
 #solver = Ai2()
 #print("Ai2 - mnist1")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
-#timed_result =@timed solve(solver, problem_hyperrectangle_hyperrectangle_small)
+#timed_result =@timed solve(solver, problem_mnist4)
 #print(" - Time: " * string(timed_result[2]) * " s")
 #print(" - Output: ")
 #print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist4")
-#@time solve(solver, problem_hyperrectangle_hyperrectangle_small)
 timed_result =@timed solve(solver, problem_mnist4)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
@@ -223,7 +215,10 @@ print("\n\n\n")
 println("###### Network: acas                                    ######")
 print("\n\n\n")
 
-acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
+#acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
+acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000.nnet"
+#ACASXU_run2a_4_5_batch_2000.nnet
+
 acas_nnet = mnist1 = read_nnet(acas_file, last_layer_activation = Id())
 
 # ACAS PROPERTY 10 - modified
@@ -238,7 +233,12 @@ A = vcat(A0, A1)
 b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
 b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
 
-b = vcat(b_upper, b_lower)
+b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.15      ]
+b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.65      ]
+
+b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.50      ]
+b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.65      ]
+
 
 in_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
 inputSet = convert(HPolytope, in_hyper)
