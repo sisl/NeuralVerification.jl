@@ -104,6 +104,7 @@ timed_result =@timed solve(solver, problem_mnist1)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
@@ -112,6 +113,7 @@ timed_result =@timed solve(solver, problem_mnist1)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
@@ -120,6 +122,7 @@ timed_result =@timed solve(solver, problem_mnist1)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 
 problem_mnist2 = Problem(mnist2, inputSet, outputSet)
@@ -135,6 +138,7 @@ timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
@@ -143,6 +147,7 @@ timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
@@ -151,6 +156,7 @@ timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 
 problem_mnist3 = Problem(mnist3, inputSet, outputSet)
@@ -166,6 +172,7 @@ timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
@@ -174,6 +181,7 @@ timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
@@ -182,21 +190,24 @@ timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
 
 problem_mnist4 = Problem(mnist4, inputSet, outputSet)
 ## MNIST1 ##
 print("\n\n\n")
-println("###### Network: mnist3                                  ######")
+println("###### Network: mnist4                                  ######")
 print("\n\n\n")
 
-#optimizer = GLPKSolverMIP()
-#solver = NSVerify(optimizer, 1000.0)
-#println("NSVerify - mnist4")
-#timed_result =@timed solve(solver, problem_mnist4)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+#=
+optimizer = GLPKSolverMIP()
+solver = NSVerify(optimizer, 1000.0)
+println("NSVerify - mnist4")
+timed_result =@timed solve(solver, problem_mnist4)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+println("")
 
 optimizer = GLPKSolverMIP()
 solver = MIPVerify(optimizer)
@@ -205,7 +216,8 @@ timed_result =@timed solve(solver, problem_mnist4)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
-
+println("")
+=#
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 println("ILP - mnist4")
@@ -213,8 +225,8 @@ timed_result =@timed solve(solver, problem_mnist4)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
+println("")
 
-#=
 
 # ACAS
 print("\n\n\n")
@@ -223,8 +235,11 @@ print("\n\n\n")
 println("###### Network: acas                                    ######")
 print("\n\n\n")
 
-acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
-acas_nnet = mnist1 = read_nnet(acas_file, last_layer_activation = Id())
+#acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
+acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000.nnet"
+#ACASXU_run2a_4_5_batch_2000.nnet
+
+acas_nnet = read_nnet(acas_file, last_layer_activation = Id())
 
 # ACAS PROPERTY 10 - modified
 # Original input range: 
@@ -235,10 +250,18 @@ A1 = -Matrix{Float64}(I, 5, 5)
 A = vcat(A0, A1)
 
 
-b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
-b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
+#b_lower = [0.21466922, 0.11140846, -0.4999999, 0.52838384, 0.4]
+#b_upper = [0.58819589, 0.4999999 , -0.4999999, 0.52838384, 0.4]
 
-b = vcat(b_upper, b_lower)
+#b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.15      ]
+#b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.65      ]
+
+#b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.20      ]
+#b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.65      ]
+
+b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.4      ]
+b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.4      ]
+
 
 in_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
 inputSet = convert(HPolytope, in_hyper)
@@ -253,33 +276,38 @@ outputSet = HPolytope(A, b)
 
 problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 
-# TIMES OUT
+print("\n\n\n")
+println("###### Network: acas                                  ######")
+print("\n\n\n")
 
-#solver = ExactReach()
-#print("\nExactReach - ACAS")
-#timed_result = @timed solve(solver, problem_polytope_polytope_acas)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
-#println("")
-
-# TIMES OUT
-
-#solver = Ai2()
-#print("\nAi2 - ACAS")
-#timed_result = @timed solve(solver, problem_polytope_polytope_acas)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
-#println("")
-
-solver = MaxSens(1.0, false)
-println("MaxSens - ACAS")
-timed_result = @timed solve(solver, problem_polytope_polytope_acas)
-println(" - Time: " * string(timed_result[2]) * " s")
-println(" - Output: ")
-println(timed_result[1])
+#=
+optimizer = GLPKSolverMIP()
+solver = NSVerify(optimizer, 1000.0)
+println("NSVerify - acas")
+timed_result =@timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 println("")
 
+
+optimizer = GLPKSolverMIP()
+solver = MIPVerify(optimizer)
+println("MIPVerify - acas")
+timed_result =@timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+println("")
+
+
+optimizer = GLPKSolverMIP()
+solver = ILP(optimizer, 1)
+println("ILP - acas")
+timed_result =@timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+println("")
 =#
 
