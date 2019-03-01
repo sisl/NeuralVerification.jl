@@ -35,15 +35,6 @@ function solve(solver::Reluplex, problem::Problem)
     return reluplex_step(solver, problem, basic_model, bs, fs, initial_status)
 end
 
-function check_layer_constraints(b, f, L::Layer{ReLU})
-    return type_one_broken(b, f) || type_two_broken(b, f)
-end
-
-function check_layer_constraints(b, f, L::Layer{Id})
-    @assert b == f
-    return false
-end
-
 function find_relu_to_fix(b_vars, f_vars, network::Network)
     for i in 1:length(f_vars), j in 1:length(f_vars[i])
         b = getvalue(b_vars[i+1][j])
@@ -64,32 +55,25 @@ type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
 function type_one_repair!(m::Model, b::Variable, f::Variable)
     @constraint(m, b == f)
     @constraint(m, b >= 0.0)
-    return nothing
 end
 function type_two_repair!(m::Model, b::Variable, f::Variable)
     @constraint(m, b <= 0.0)
     @constraint(m, f == 0.0)
-    return nothing
 end
 
-function add_layer_constraints(model, bs, fs, i, L::Layer{ReLU})
-    @constraint(model, fs[i] .>= bs[i+1])
-    @constraint(model, fs[i] .>= 0.0)
+function layer_constraint!(model, fs, bs, act::ReLU)
+    @constraint(model, fs .>= bs)
+    @constraint(model, fs .>= 0.0)
 end
 
-function add_layer_constraints(model, bs, fs, i, L::Layer{Id})
-    @constraint(model, fs[i] .== bs[i+1])
+function layer_constraint!(model, fs, bs, act::Id)
+    @constraint(model, fs .== bs)
 end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    bs = init_neurons(model, layers)
-    fs = init_forward_facing_vars(model, layers)
-
-    # Positivity contraint for forward-facing variables
-    #for i in 1:length(fs)
-    #    @constraint(model, fs[i] .>= 0.0)
-    #end
+    bs = init_variables(model, layers, include_input = true)
+    fs = init_variables(model, layers)
 
     # All layers (input and hidden) get an "input" constraint
     # In addition, each set of back-facing and forward-facing
@@ -109,18 +93,12 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
             @constraint(model, -bs[i+1] .+ W*fs[i-1] .== -bias)
         end
 
-        ## f >= b always, by definition
-        #if i <= length(fs)
-        #    @constraint(model, fs[i] .>= bs[i+1])
-        #end
-        add_layer_constraints(model, bs, fs, i, L)
+        layer_constraint!(model, fs[i], bs[i+1], L.activation)
 
     end
     add_complementary_set_constraint!(model, problem.output, last(fs))
 
-
     zero_objective!(model)
-
 
     return bs, fs
 end
@@ -155,6 +133,7 @@ function reluplex_step(solver::Reluplex,
         i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
+            # Set the relu status to the current fix.
             relu_status[i][j] = repair_type
             new_m  = new_model(solver)
             bs, fs = encode(solver, new_m, problem)
@@ -162,12 +141,10 @@ function reluplex_step(solver::Reluplex,
 
             result = reluplex_step(solver, problem, new_m, bs, fs, relu_status)
 
+            # Reset the relu when we're done with it.
             relu_status[i][j] = 0
 
-            if result.status == :violated
-                return result
-            end
-
+            result.status == :violated && return result
         end
         return CounterExampleResult(:holds)
     else
@@ -175,17 +152,4 @@ function reluplex_step(solver::Reluplex,
     end
 end
 
-# for convenience:
 new_model(solver::Reluplex) = Model(solver = solver.optimizer)
-
-
-# doesn't do what it should! TODO open feature request issue on JuMP
-# function extract_bs_fs(m::Model)
-#     vars = collect(keys(m.varData))
-#     L1, L2 = map(length, vars)
-#     # "b_vars" is the longer of the two, and should be returned first
-#     if L1 < L2
-#         reverse!(vars)
-#     end
-#     return vars
-# end
