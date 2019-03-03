@@ -3,15 +3,14 @@
     PolytopeComplement
 
 The complement to a given set. Note that with the exceptions of `Halfspace` and `EmptySet`,
- a `PolytopeComplement` is not a convex set.
-The.
+ a `PolytopeComplement` is not a convex set. Also note that `PolytopeComplement`s are open by definition.
 
 ### Examples
 ```julia
 julia> H = Hyperrectangle([0,0], [1,1])
 Hyperrectangle{Int64}([0, 0], [1, 1])
 
-julia> PC = PolytopeComplement(H)
+julia> PC = complement(H)
 PolytopeComplement of:
   Hyperrectangle{Int64}([0, 0], [1, 1])
 
