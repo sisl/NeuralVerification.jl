@@ -222,39 +222,45 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_complementary_set_constraint!(model::Model, output::HPolytope, neuron_vars::Vector{Variable})
+function add_complementary_set_constraint!(model::Model, output::HPolytope, z::Vector{Variable})
     out_A, out_b = tosimplehrep(output)
     # Needs to take the complementary of output constraint
-    n = length(out_b)
+    n = length(constraints_list(output))
     if n == 1
         # Here the output constraint is a half space
-        # So the complementary is just out_A * y .> out_b
-        @constraint(model, -out_A * neuron_vars .<= -out_b)
+        halfspace = first(constraints_list(output))
+        add_complementary_set_constraint!(model, halfspace, z)
     else
-        LC = length(constraints_list(output))
-        @assert LC == 1 "Quadratic constraints are not yet supported. Please make sure that the
-        output constraint is a HalfSpace (an HPolytope with a single constraint). Got $LC constraints."
-        # Here the complementary is a union of different constraints
-        # We use binary variable to encode the union of constraints
-        out_deltas = @variable(model, [1:n], Bin)
-        @constraint(model, sum(out_deltas) == 1)
-        for i in 1:n
-            @constraint(model, -out_A[i, :]' * neuron_vars * out_deltas[i] <= -out_b[i] * out_deltas[i])
-        end
+        error("Non-convex constraints are not supported. Please make sure that the
+            output set is a HalfSpace (or an HPolytope with a single constraint) so that the
+            complement of the output is convex. Got $n constraints.")
     end
     return nothing
 end
 
-add_complementary_set_constraint!(model::Model, output::PolytopeComplement, neuron_vars::Vector{Variable}) = add_set_constraint!(model, output.P, neuron_vars)
-
-function add_set_constraint!(model::Model, set::HPolytope, neuron_vars::Vector{Variable})
-    A, b = tosimplehrep(set)
-    @constraint(model,  A * neuron_vars .<= b)
+function add_complementary_set_constraint!(m::Model, H::HalfSpace, z::Vector{Variable})
+    a, b = tosimplehrep(H)
+    @constraint(m, a * z .>= b)
+    return nothing
+end
+function add_complementary_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{Variable})
+    add_set_constraint!(m, PC.P, z)
     return nothing
 end
 
-function add_set_constraint!(model::Model, set::Hyperrectangle, neuron_vars::Vector{Variable})
-    @constraint(model,  neuron_vars .<= high(set))
-    @constraint(model,  neuron_vars .>= low(set))
+function add_set_constraint!(m::Model, set::Union{HPolytope, HalfSpace}, z::Vector{Variable})
+    A, b = tosimplehrep(set)
+    @constraint(m, A * z .<= b)
+    return nothing
+end
+
+function add_set_constraint!(m::Model, set::Hyperrectangle, z::Vector{Variable})
+    @constraint(m, z .<= high(set))
+    @constraint(m, z .>= low(set))
+    return nothing
+end
+
+function add_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{Variable})
+    add_complementary_set_constraint!(m, PC.P, z)
     return nothing
 end
