@@ -35,4 +35,24 @@
         @test @no_error complement(Zonotope(ones(4), ones(4, 2)))
         @test @no_error complement(convert(HPolytope, hr))
     end
+
+    @testset "Solvers with PCs" begin
+
+        small_nnet = read_nnet("$(@__DIR__)/../examples/networks/small_nnet_id.nnet")
+        in_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
+
+        # Output sets that are the PolytopeComplements of the complements of the output sets used in the regular tests.
+        problem_holds    = Problem(small_nnet, in_hyper, PolytopeComplement(HPolytope([HalfSpace([-1.0], 10.0)])))
+        problem_violated = Problem(small_nnet, in_hyper, PolytopeComplement(HPolytope([HalfSpace([1.0], -20.0)])))
+
+        for solver in [NSVerify(), MIPVerify(), ILP(), Reluplex(), Planet()]
+            holds    = solve(solver, problem_holds)
+            violated = solve(solver, problem_violated)
+
+            @testset "$(typeof(solver))" begin
+                @test holds.status    ∈ (:holds, :Unknown)
+                @test violated.status ∈ (:violated, :Unknown)
+            end
+        end
+    end
 end

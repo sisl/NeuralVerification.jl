@@ -187,11 +187,11 @@ version = "0.18.5"
 
 [[LazySets]]
 deps = ["Compat", "Distributed", "Expokit", "GLPKMathProgInterface", "IntervalArithmetic", "LinearAlgebra", "MathProgBase", "Pkg", "Random", "RecipesBase", "Requires", "SharedArrays", "SparseArrays"]
-git-tree-sha1 = "ad0dfae4f073c6ffd7db129d8c449603184e4207"
+git-tree-sha1 = "17607a56c94108b9385fbe320f24e74b0191b761"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaReach/LazySets.jl.git"
 uuid = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
-version = "1.7.0+"
+version = "1.8.0+"
 
 [[LibCURL]]
 deps = ["BinaryProvider", "Compat", "Libdl", "Printf"]
