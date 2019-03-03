@@ -6,7 +6,7 @@ Reluplex uses binary tree search to find an activation pattern that maps a feasi
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle
-3. Output: halfspace and PolytopeComplement
+3. Output: PolytopeComplement
 
 # Return
 `CounterExampleResult`
@@ -143,7 +143,7 @@ function reluplex_step(solver::Reluplex,
             result = reluplex_step(solver, problem, new_m, bs, fs, relu_status)
 
             relu_status[i][j] = 0
-            
+
             return result
         end
     else

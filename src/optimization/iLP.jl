@@ -7,7 +7,7 @@ It iteratively adds the linear constraint to the problem.
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle
-3. Output: halfspace or PolytopeComplement
+3. Output: PolytopeComplement
 
 # Return
 `AdversarialResult`

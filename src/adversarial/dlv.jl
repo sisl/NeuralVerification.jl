@@ -6,7 +6,7 @@ DLV searches layer by layer for counter examples in hidden layers.
 # Problem requirement
 1. Network: any depth, any activation (currently only support ReLU)
 2. Input: Hyperrectangle
-3. Output: AbstractPolytope and PolytopeComplement
+3. Output: AbstractPolytope
 
 # Return
 `CounterExampleResult`

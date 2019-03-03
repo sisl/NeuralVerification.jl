@@ -8,7 +8,7 @@ FastLin combines reachability analysis with binary search to find maximum allowa
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hypercube
-3. Output: AbstractPolytope and PolytopeComplement
+3. Output: AbstractPolytope
 
 # Return
 `AdversarialResult`
