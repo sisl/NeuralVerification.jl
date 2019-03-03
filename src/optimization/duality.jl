@@ -23,8 +23,8 @@ Sound but not complete.
 "A Dual Approach to Scalable Verification of Deep Networks,"
 *ArXiv Preprint ArXiv:1803.06567*, 2018.](https://arxiv.org/abs/1803.06567)
 """
-@with_kw struct Duality{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverMIP()
+@with_kw struct Duality
+    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
 end
 
 # can pass keyword args to optimizer
@@ -72,7 +72,7 @@ function activation_value(layer::Layer,
                           λᵢ::Vector{Variable},
                           bound::Hyperrectangle)
     o = zero(eltype(μᵢ))
-    b_hat = linear_transformation(layer, bound)
+    b_hat = approximate_affine_map(layer, bound)
     l_hat, u_hat = low(b_hat), high(b_hat)
     l, u = layer.activation(l_hat), layer.activation(u_hat)
 

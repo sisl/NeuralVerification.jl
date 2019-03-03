@@ -1,31 +1,39 @@
 """
-    Node(w::Vector{Float64}, b::Float64, activation::ActivationFunction)
+    Node{N, F}
 
-Node consists of `w` and `b` for linear mapping, and `activation` for nonlinear mapping.
+A single node in a layer.
+### Fields
+ - `w::Vector{N}`
+ - `b::N`
+ - `activation::F`
 """
-struct Node
-    w::Vector{Float64}
-    b::Float64
-    act::ActivationFunction
+struct Node{F<:ActivationFunction, N<:Number}
+    w::Vector{N}
+    b::N
+    act::F
 end
 
 """
-    Layer(weights::Matrix{Float64}, bias::Vector{Float64}, activation::ActivationFunction)
+    Layer{F, N}
 
-Layer consists of `weights` and `bias` for linear mapping, and `activation` for nonlinear mapping.
+Consists of `weights` and `bias` for linear mapping, and `activation` for nonlinear mapping.
+### Fields
+ - `weights::Matrix{N}`
+ - `bias::Vector{N}`
+ - `activation::F`
 
 See also: [`Network`](@ref)
 """
-struct Layer
-    weights::Matrix{Float64}
-    bias::Vector{Float64}
-    activation::ActivationFunction
+struct Layer{F<:ActivationFunction, N<:Number}
+    weights::Matrix{N}
+    bias::Vector{N}
+    activation::F
 end
 
 """
-    Network(layers::Vector{Layer})
+A Vector of layers.
 
-Network consists of a Vector of layers.
+    Network([layer1, layer2, layer3, ...])
 
 See also: [`Layer`](@ref)
 """
@@ -34,7 +42,7 @@ struct Network
 end
 
 """
-    n_node(L::Layer)
+    n_nodes(L::Layer)
 
 Returns the number of neurons in a layer.
 """

@@ -32,13 +32,13 @@ end
 function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope})
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
-        input[i] = linear_transformation(layer, input[i])
+        input[i] = affine_map(layer, input[i])
         append!(output, forward_partition(layer.activation, input[i]))
     end
     return output
 end
 
 function forward_layer(solver::ExactReach, layer::Layer, input::HPolytope)
-    input = linear_transformation(layer, input)
+    input = affine_map(layer, input)
     return forward_partition(layer.activation, input)
 end

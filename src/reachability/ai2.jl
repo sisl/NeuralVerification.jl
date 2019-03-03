@@ -32,16 +32,16 @@ end
 forward_layer(solver::Ai2, layer::Layer, inputs::Vector{<:AbstractPolytope}) = forward_layer.(solver, layer, inputs)
 
 function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
-    outlinear = linear_transformation(layer, input)
+    outlinear = affine_map(layer, input)
     relued_subsets = forward_partition(layer.activation, outlinear) # defined in ExactReach
     return convex_hull(relued_subsets)
 end
 
 # extend lazysets convex_hull to a vector of polytopes
-function LazySets.convex_hull(sets::Vector{<:AbstractPolytope})
+function LazySets.convex_hull(sets::Vector{<:AbstractPolytope}; backend = CDDLib.Library())
     hull = first(sets)
     for P in sets
-        hull = convex_hull(hull, P, backend = CDDLib.Library())
+        hull = convex_hull(hull, P, backend = backend)
     end
     return hull
 end

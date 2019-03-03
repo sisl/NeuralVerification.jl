@@ -85,4 +85,7 @@ function partition(input::Hyperrectangle, delta::Float64)
     return hyperrectangles
 end
 
-partition(input::HPolytope, delta::Float64) = partition(overapproximate(input), delta)
+function partition(input::HPolytope, delta::Float64)
+    @info "MaxSens overapproximates HPolytope input sets as Hyperrectangles."
+    partition(overapproximate(input), delta)
+end

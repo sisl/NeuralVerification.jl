@@ -35,7 +35,7 @@ end
 FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
-    c, d = tosimplehrep(HPolytope(problem.output))
+    c, d = tosimplehrep(convert(HPolytope, problem.output))
     y = compute_output(problem.network, problem.input.center)
     o = (c * y - d)[1]
     if o > 0
@@ -58,40 +58,40 @@ function solve(solver::FastLip, problem::Problem)
     v = max.(abs.(a), abs.(b))
     ϵ = min(-o/sum(v), ϵ_fastLin)
 
-    if ϵ > minimum(problem.input.radius)
+    if ϵ > maximum(problem.input.radius)
         return AdversarialResult(:holds, ϵ)
     else
         return AdversarialResult(:violated, ϵ)
     end
 end
 
-function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{Float64})
-    n_input = size(C)
-    rows, cols = size(W)
-    new_C = zeros(rows, n_input)
-    new_L = zeros(rows, n_input)
-    new_U = zeros(rows, n_input)
-    for k in 1:n_input         # NOTE n_input is 2-D
-        for j in 1:rows, i in 1:cols
+# function bound_layer_grad(C::Matrix, L::Matrix, U::Matrix, W::Matrix, D::Vector{Float64})
+#     n_input = size(C)
+#     rows, cols = size(W)
+#     new_C = zeros(rows, n_input)
+#     new_L = zeros(rows, n_input)
+#     new_U = zeros(rows, n_input)
+#     for k in 1:n_input         # NOTE n_input is 2-D
+#         for j in 1:rows, i in 1:cols
 
-            u = U[i, k]
-            l = L[i, k]
-            c = C[i, k]
-            w = W[j, i]
+#             u = U[i, k]
+#             l = L[i, k]
+#             c = C[i, k]
+#             w = W[j, i]
 
-            if D[i] == 1
+#             if D[i] == 1
 
-                new_C[j,k] += w*c
-                new_U[j,k] += (w > 0) ? u : l
-                new_L[j,k] += (w > 0) ? l : u
+#                 new_C[j,k] += w*c
+#                 new_U[j,k] += (w > 0) ? u : l
+#                 new_L[j,k] += (w > 0) ? l : u
 
-            elseif D[i] == 0 && w*(c+u)>0
+#             elseif D[i] == 0 && w*(c+u)>0
 
-                new_U[j,k] += w*(c+u)
-                new_L[j,k] += w*(c+l)
+#                 new_U[j,k] += w*(c+u)
+#                 new_L[j,k] += w*(c+l)
 
-            end
-        end
-    end
-    return (new_C, new_L, new_U)
-end
+#             end
+#         end
+#     end
+#     return (new_C, new_L, new_U)
+# end

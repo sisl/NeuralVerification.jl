@@ -28,6 +28,9 @@ function check_inclusion(reach::P, output::Union{AbstractPolytope, PolytopeCompl
     return ReachabilityResult(:violated, [reach])
 end
 
+# return a vector so that append! is consistent with the relu forward_partition
+forward_partition(act::Id, input::HPolytope) = [input]
+
 function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
     output = Vector{HPolytope}(undef, 0)
@@ -38,7 +41,7 @@ function forward_partition(act::ReLU, input::HPolytope)
         Ch = [C; I - 2P]
         input_h = HPolytope(Ch, dh)
         if !isempty(input_h)
-            push!(output, linear_transformation(Matrix(P), input_h))
+            push!(output, linear_map(Matrix{Float64}(P), input_h))
         end
     end
     return output

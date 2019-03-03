@@ -85,7 +85,7 @@ function symbol_to_concrete(reach::SymbolicInterval)
     lower = zeros(n_output)
     for i in 1:n_output
         lower[i] = lower_bound(reach.Low[i, :], reach.interval)
-        upper[i] = upper_bound(reach.Low[i, :], reach.interval)
+        upper[i] = upper_bound(reach.Up[i, :], reach.interval)
     end
     return Hyperrectangle(low = lower, high = upper)
 end
@@ -104,7 +104,7 @@ function check_inclusion(reach::SymbolicInterval, output::Union{AbstractPolytope
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
-    return forward_act(forward_linear(input, layer))
+    return forward_act(forward_linear(input, layer), layer)
 end
 
 # Symbolic forward_linear for the first layer
@@ -128,7 +128,7 @@ function forward_linear(input::SymbolicIntervalMask, layer::Layer)
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalMask)
+function forward_act(input::SymbolicIntervalMask, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
     mask_lower, mask_upper = zeros(Int, n_node), ones(Int, n_node)
@@ -154,6 +154,15 @@ function forward_act(input::SymbolicIntervalMask)
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     LΛ = push!(input.LΛ, mask_lower)
     UΛ = push!(input.UΛ, mask_upper)
+    return SymbolicIntervalMask(sym, LΛ, UΛ)
+end
+
+# Symbolic forward_act
+function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
+    sym = input.sym
+    n_node = size(input.sym.Up, 1)
+    LΛ = push!(input.LΛ, ones(Int, n_node))
+    UΛ = push!(input.UΛ, ones(Int, n_node))
     return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
