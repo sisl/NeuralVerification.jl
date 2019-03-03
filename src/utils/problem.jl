@@ -2,8 +2,9 @@
 """
     PolytopeComplement
 
-The complementary set to a given `AbstractPolytope`. Note that with the exception
- of Halfspaces, the complement of a polytope is not itself a polytope.
+The complement to a given set. Note that with the exceptions of `Halfspace` and `EmptySet`,
+ a `PolytopeComplement` is not a convex set.
+The.
 
 ### Examples
 ```julia
@@ -21,17 +22,17 @@ julia> high(H).+[1,1] ∈ PC
 true
 ```
 """
-struct PolytopeComplement{Q<:AbstractPolytope}
-    P::Q
+struct PolytopeComplement{S<:LazySet}
+    P::S
 end
 
 Base.show(io::IO, PC::PolytopeComplement) = (println(io, "PolytopeComplement of:"), println(io, "  ", PC.P))
-LazySets.issubset(s, PC::PolytopeComplement)              = LazySets.is_intersection_empty(s, PC.P)
+LazySets.issubset(s, PC::PolytopeComplement) = LazySets.is_intersection_empty(s, PC.P)
 LazySets.is_intersection_empty(s, PC::PolytopeComplement) = LazySets.issubset(s, PC.P)
 LazySets.tohrep(PC::PolytopeComplement) = PolytopeComplement(convert(HPolytope, PC.P))
 Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P
-complement(P::AbstractPolytope)     = PolytopeComplement(P)
 complement(PC::PolytopeComplement)  = PC.P
+complement(P::LazySet) = PolytopeComplement(P)
 # etc.
 
 
