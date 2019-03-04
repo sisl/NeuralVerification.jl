@@ -21,8 +21,8 @@ mnist2_file = "$(@__DIR__)/../examples/networks/mnist2.nnet"
 mnist3_file = "$(@__DIR__)/../examples/networks/mnist3.nnet"
 mnist4_file = "$(@__DIR__)/../examples/networks/mnist4.nnet"
 
-small_nnet = mnist1 = read_nnet(small_nnet_file, last_layer_activation = ReLU())
-small_nnet_id = mnist1 = read_nnet(small_nnet_id_file, last_layer_activation = Id())
+small_nnet  = read_nnet(small_nnet_file, last_layer_activation = ReLU())
+small_nnet_id  = read_nnet(small_nnet_id_file, last_layer_activation = Id())
 
 mnist1 = read_nnet(mnist1_file, last_layer_activation = Id())
 mnist2 = read_nnet(mnist2_file, last_layer_activation = Id())
@@ -203,10 +203,6 @@ timed_result =@timed solve(solver, problem_mnist4)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
-
-
-
-
 
 # ACAS
 print("\n\n\n")

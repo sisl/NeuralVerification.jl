@@ -21,8 +21,8 @@ mnist2_file = "$(@__DIR__)/../examples/networks/mnist2.nnet"
 mnist3_file = "$(@__DIR__)/../examples/networks/mnist3.nnet"
 mnist4_file = "$(@__DIR__)/../examples/networks/mnist4.nnet"
 
-small_nnet = mnist1 = read_nnet(small_nnet_file, last_layer_activation = ReLU())
-small_nnet_id = mnist1 = read_nnet(small_nnet_id_file, last_layer_activation = Id())
+small_nnet  = read_nnet(small_nnet_file, last_layer_activation = ReLU())
+small_nnet_id  = read_nnet(small_nnet_id_file, last_layer_activation = Id())
 
 mnist1 = read_nnet(mnist1_file, last_layer_activation = Id())
 mnist2 = read_nnet(mnist2_file, last_layer_activation = Id())
@@ -68,7 +68,7 @@ println(timed_result[1])
 println("")
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
-
+#=
 
 # entry 23 in MNIST datset
 input_center = [0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,121,254,136,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,230,253,248,99,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,118,253,253,225,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,61,253,253,253,74,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,206,253,253,186,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,211,253,253,239,69,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,254,253,253,133,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,142,255,253,186,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,149,229,254,207,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,54,229,253,254,105,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,152,254,254,213,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,112,251,253,253,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,212,253,250,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,36,214,253,253,137,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,75,253,253,253,59,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,253,253,189,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,224,253,253,84,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43,235,253,126,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,99,248,253,119,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,225,235,49,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -199,7 +199,7 @@ print("\n\n\n")
 println("###### Network: mnist4                                  ######")
 print("\n\n\n")
 
-#=
+
 optimizer = GLPKSolverMIP()
 solver = NSVerify(optimizer, 1000.0)
 println("NSVerify - mnist4")
@@ -217,7 +217,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-=#
+
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 println("ILP - mnist4")
@@ -226,7 +226,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+=#
 
 # ACAS
 print("\n\n\n")
@@ -274,7 +274,7 @@ A = [1.0, 0.0, 0.0, 0.0, -1.0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 
-problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
+problem_polytope_polytope_acas = Problem(acas_nnet, in_hyper, outputSet)
 
 print("\n\n\n")
 println("###### Network: acas                                  ######")
@@ -299,7 +299,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+=#
 
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
@@ -309,5 +309,5 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-=#
+
 
