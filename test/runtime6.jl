@@ -21,8 +21,8 @@ mnist2_file = "$(@__DIR__)/../examples/networks/mnist2.nnet"
 mnist3_file = "$(@__DIR__)/../examples/networks/mnist3.nnet"
 mnist4_file = "$(@__DIR__)/../examples/networks/mnist4.nnet"
 
-small_nnet = mnist1 = read_nnet(small_nnet_file, last_layer_activation = ReLU())
-small_nnet_id = mnist1 = read_nnet(small_nnet_id_file, last_layer_activation = Id())
+small_nnet  = read_nnet(small_nnet_file, last_layer_activation = ReLU())
+small_nnet_id  = read_nnet(small_nnet_id_file, last_layer_activation = Id())
 
 mnist1 = read_nnet(mnist1_file, last_layer_activation = Id())
 mnist2 = read_nnet(mnist2_file, last_layer_activation = Id())
@@ -48,7 +48,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+#=
 solver=Reluplex()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
@@ -65,7 +65,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-
+=#
 
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -115,7 +115,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 solver = ReluVal(max_iter = 2)
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
@@ -124,6 +124,7 @@ print(" - Output: ")
 print(timed_result[1])
 println("")
 
+=#
 problem_mnist2 = Problem(mnist2, inputSet, outputSet)
 ## MNIST1 ##
 print("\n\n\n")
@@ -140,6 +141,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
+
 #=
 solver = Reluplex()
 println("$(typeof(solver)) - mnist2")
@@ -148,7 +150,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 solver = ReluVal(max_iter = 2)
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
@@ -156,7 +158,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+=#
 problem_mnist3 = Problem(mnist3, inputSet, outputSet)
 ## MNIST3 ##
 print("\n\n\n")
@@ -181,7 +183,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 solver = ReluVal(max_iter = 2)
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
@@ -189,14 +191,14 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+=#
 problem_mnist4 = Problem(mnist4, inputSet, outputSet)
 ## MNIST4 ##
 print("\n\n\n")
 println("###### Network: mnist4                                  ######")
 print("\n\n\n")
 
-#=
+
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
 println("$(typeof(solver)) - mnist4")
@@ -205,7 +207,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+#=
 solver=Reluplex()
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
@@ -213,7 +215,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 solver = ReluVal(max_iter = 2)
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
@@ -221,7 +223,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+=#
 # ACAS
 print("\n\n\n")
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -276,7 +278,7 @@ print("\n\n\n")
 println("###### Network: acas                                  ######")
 print("\n\n\n")
 
-#=
+
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
 println("$(typeof(solver)) - acas")
@@ -285,8 +287,8 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
 
+#=
 
 solver = ReluVal(max_iter = 20)
 println("$(typeof(solver)) - acas")
@@ -304,3 +306,4 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+=#

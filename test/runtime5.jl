@@ -16,13 +16,13 @@ end
 small_nnet_file = "$(@__DIR__)/../examples/networks/small_nnet.nnet"
 small_nnet_id_file = "$(@__DIR__)/../examples/networks/small_nnet_id.nnet"
 
-mnist1_file = "$(@__DIR__)/../examples/networks/mnist1.nnet"
-mnist2_file = "$(@__DIR__)/../examples/networks/mnist2.nnet"
-mnist3_file = "$(@__DIR__)/../examples/networks/mnist3.nnet"
-mnist4_file = "$(@__DIR__)/../examples/networks/mnist4.nnet"
+mnist1_file = "$(@__DIR__)/../examples/networks/mnist1_out1.nnet"
+mnist2_file = "$(@__DIR__)/../examples/networks/mnist2_out1.nnet"
+mnist3_file = "$(@__DIR__)/../examples/networks/mnist3_out1.nnet"
+mnist4_file = "$(@__DIR__)/../examples/networks/mnist4_out1.nnet"
 
-small_nnet = mnist1 = read_nnet(small_nnet_file, last_layer_activation = ReLU())
-small_nnet_id = mnist1 = read_nnet(small_nnet_id_file, last_layer_activation = Id())
+small_nnet  = read_nnet(small_nnet_file, last_layer_activation = ReLU())
+small_nnet_id  = read_nnet(small_nnet_id_file, last_layer_activation = Id())
 
 mnist1 = read_nnet(mnist1_file, last_layer_activation = Id())
 mnist2 = read_nnet(mnist2_file, last_layer_activation = Id())
@@ -36,19 +36,11 @@ println("###### Network: small_nnet, problem: holds              ######")
 
 in_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 in_hpoly  = convert(HPolytope, in_hyper)
-#out_superset    = Hyperrectangle(low = [30.0], high = [80.0])
+out_hyper    = Hyperrectangle(low = [30.0], high = [80.0])
 
-problem_holds    = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 100.)]))  
+problem_holds    = Problem(small_nnet, in_hyper, out_hyper) 
 
-solver = FastLin(10, 10.0, 1.0)
-println("$(typeof(solver)) - small_nnet")
-timed_result =@timed solve(solver, problem_holds)
-println(" - Time: " * string(timed_result[2]) * " s")
-println(" - Output: ")
-println(timed_result[1])
-println("")
-
-solver = FastLip(10, 10.0, 1.0)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -57,7 +49,7 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = DLV(1.0)
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -66,7 +58,16 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = Sherlock(optimizer, 1.0)
+println("$(typeof(solver)) - small_nnet")
+timed_result =@timed solve(solver, problem_holds)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -97,30 +98,15 @@ A = [1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ,0.0]'
 b = [0.0]
 outputSet = HPolytope(A, b)
 
-problem_mnist1 = Problem(mnist1, inputSet, outputSet)
+out_hyper = Hyperrectangle(low=[-5000.0], high=[-200.0])
+
+problem_mnist1 = Problem(mnist1, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist1                                  ######")
 print("\n\n\n")
 
-solver = FastLin(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist1")
-timed_result =@timed solve(solver, problem_mnist1)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-solver = FastLip(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist1")
-timed_result =@timed solve(solver, problem_mnist1)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -129,7 +115,16 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = DLV(1.0)
+println("$(typeof(solver)) - mnist1")
+timed_result =@timed solve(solver, problem_mnist1)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+#=
+optimizer = GLPKSolverMIP()
+solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -137,32 +132,24 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
+println("$(typeof(solver)) - mnist1")
+timed_result =@timed solve(solver, problem_mnist1)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+=#
 
 
-problem_mnist2 = Problem(mnist2, inputSet, outputSet)
+problem_mnist2 = Problem(mnist2, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist2                                  ######")
 print("\n\n\n")
 
-solver = FastLin(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist2")
-timed_result =@timed solve(solver, problem_mnist2)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-solver = FastLip(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist2")
-timed_result =@timed solve(solver, problem_mnist2)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -171,7 +158,16 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = DLV(1.0)
+println("$(typeof(solver)) - mnist2")
+timed_result =@timed solve(solver, problem_mnist2)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+#=
+optimizer = GLPKSolverMIP()
+solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -179,31 +175,23 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
+println("$(typeof(solver)) - mnist2")
+timed_result =@timed solve(solver, problem_mnist2)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+=#
 
-problem_mnist3 = Problem(mnist3, inputSet, outputSet)
+problem_mnist3 = Problem(mnist3, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist3                                  ######")
 print("\n\n\n")
 
-solver = FastLin(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist3")
-timed_result =@timed solve(solver, problem_mnist3)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-solver = FastLip(10, 10.0, 1.0)
-println("$(typeof(solver)) - mnist3")
-timed_result =@timed solve(solver, problem_mnist3)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -212,40 +200,67 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = DLV(1.0)
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+#=
+optimizer = GLPKSolverMIP()
+solver = Sherlock(optimizer, 1.0)
+println("$(typeof(solver)) - mnist3")
+timed_result =@timed solve(solver, problem_mnist3)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
 
-problem_mnist4 = Problem(mnist4, inputSet, outputSet)
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
+println("$(typeof(solver)) - mnist3")
+timed_result =@timed solve(solver, problem_mnist3)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+println("")
+=#
+problem_mnist4 = Problem(mnist4, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist4                                  ######")
 print("\n\n\n")
 
 
-solver = FastLin(10, 10.0, 1.0)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
 println("")
 
-solver = FastLip(10, 10.0, 1.0)
+optimizer = GLPKSolverMIP()
+solver = DLV(1.0)
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
 println("")
-
 #=
 optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = Sherlock(optimizer, 1.0)
+println("$(typeof(solver)) - mnist4")
+timed_result =@timed solve(solver, problem_mnist4)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -253,16 +268,6 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 =#
-optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
-println("$(typeof(solver)) - mnist4")
-timed_result =@timed solve(solver, problem_mnist4)
-println(" - Time: " * string(timed_result[2]) * " s")
-println(" - Output: ")
-println(timed_result[1])
-println("")
-
-
 # ACAS
 print("\n\n\n")
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -271,7 +276,7 @@ println("###### Network: acas                                    ######")
 print("\n\n\n")
 
 #acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
-acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000.nnet"
+acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000_out1.nnet"
 #ACASXU_run2a_4_5_batch_2000.nnet
 
 acas_nnet = read_nnet(acas_file, last_layer_activation = Id())
@@ -297,10 +302,12 @@ A = vcat(A0, A1)
 b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.4      ]
 b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.4      ]
 
+# -0.0206515
 
-in_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
 inputSet = convert(HPolytope, in_hyper)
 
+in_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
+out_hyper  = Hyperrectangle(low = [-0.1], high = [3.0])
 #inputSet = HPolytope(A, b)
 
 
@@ -311,44 +318,43 @@ inputSet = convert(HPolytope, in_hyper)
 
 outputSet = HPolytope([HalfSpace([1.0, 0.0, 0.0, 0.0, -1.0], 0.0)])
 
-problem_polytope_polytope_acas = Problem(acas_nnet, in_hyper, outputSet)
+problem_acas = Problem(acas_nnet, in_hyper, out_hyper)
 
 print("\n\n\n")
 println("###### Network: acas                                  ######")
 print("\n\n\n")
 
 
-solver = FastLin(10, 10.0, 1.0)
+solver = ReluVal(max_iter = 1)
 println("$(typeof(solver)) - acas")
-timed_result =@timed solve(solver, problem_polytope_polytope_acas)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-solver = FastLip(10, 10.0, 1.0)
-println("$(typeof(solver)) - acas")
-timed_result =@timed solve(solver, problem_polytope_polytope_acas)
-print(" - Time: " * string(timed_result[2]) * " s")
-print(" - Output: ")
-print(timed_result[1])
-println("")
-
-
-#=
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
-println("$(typeof(solver)) - acas")
-timed_result =@timed solve(solver, problem_polytope_polytope_acas)
+timed_result =@timed solve(solver, problem_acas)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = DLV(1.0)
 println("$(typeof(solver)) - acas")
-timed_result =@timed solve(solver, problem_polytope_polytope_acas)
+timed_result =@timed solve(solver, problem_acas)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+
+optimizer = GLPKSolverMIP()
+solver = Sherlock(optimizer, 1.0)
+println("$(typeof(solver)) - acas")
+timed_result =@timed solve(solver, problem_acas)
+println(" - Time: " * string(timed_result[2]) * " s")
+println(" - Output: ")
+println(timed_result[1])
+println("")
+
+optimizer = GLPKSolverMIP()
+solver = BaB(optimizer, 0.1)
+println("$(typeof(solver)) - acas")
+timed_result =@timed solve(solver, problem_acas)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
