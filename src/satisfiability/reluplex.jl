@@ -27,18 +27,19 @@ Sound and complete.
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    basic_model = new_model(solver)
-    bs, fs = encode(solver, basic_model, problem)
+    initial_model = new_model(solver)
+    bs, fs = encode(solver, initial_model, problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
+    insert!(initial_status, 1, zeros(Int, dim(problem.input)))
 
-    return reluplex_step(solver, problem, basic_model, bs, fs, initial_status)
+    return reluplex_step(solver, problem, initial_model, bs, fs, initial_status)
 end
 
-function find_relu_to_fix(b_vars, f_vars, network::Network)
-    for i in 1:length(f_vars), j in 1:length(f_vars[i])
-        b = getvalue(b_vars[i+1][j])
-        f = getvalue(f_vars[i][j])
+function find_relu_to_fix(bs, fs)
+    for i in 1:length(fs), j in 1:length(fs[i])
+        b = getvalue(bs[i][j])
+        f = getvalue(fs[i][j])
 
         if type_one_broken(b, f) ||
            type_two_broken(b, f)
@@ -48,65 +49,58 @@ function find_relu_to_fix(b_vars, f_vars, network::Network)
     return (0, 0)
 end
 
-type_one_broken(b::Real, f::Real) = (f > 0.0) && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
-type_two_broken(b::Real, f::Real) = (f == 0.0) && (b > 0.0)
+type_one_broken(b, f) = (f > 0.0)  && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
+type_two_broken(b, f) = (f == 0.0) && (b > 0.0)
 
-# NOTE that the b that is passed in should be: bs[i+1] relative to fs[i]
-function type_one_repair!(m::Model, b::Variable, f::Variable)
-    @constraint(m, b == f)
-    @constraint(m, b >= 0.0)
+# Corresponds to a ReLU that shouldn't be active but is
+function type_one_repair!(model, b, f)
+    @constraint(model, b == f)
+    @constraint(model, b >= 0.0)
 end
-function type_two_repair!(m::Model, b::Variable, f::Variable)
-    @constraint(m, b <= 0.0)
-    @constraint(m, f == 0.0)
+# Corresponds to a ReLU that should be active but isn't
+function type_two_repair!(model, b, f)
+    @constraint(model, b <= 0.0)
+    @constraint(model, f == 0.0)
 end
 
-function layer_constraint!(model, fs, bs, act::ReLU)
+function activation_constraint!(model, bs, fs, act::ReLU)
+    # ReLU ensures that the variable after activation is always
+    # greater than before activation and also ≥0
     @constraint(model, fs .>= bs)
     @constraint(model, fs .>= 0.0)
 end
 
-function layer_constraint!(model, fs, bs, act::Id)
+function activation_constraint!(model, bs, fs, act::Id)
     @constraint(model, fs .== bs)
 end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    bs = init_variables(model, layers, include_input = true)
-    fs = init_variables(model, layers)
+    bs = init_neurons(model, layers) # before activation
+    fs = init_neurons(model, layers) # after activation
 
-    # All layers (input and hidden) get an "input" constraint
-    # In addition, each set of back-facing and forward-facing
-    # variables are related to each other by a constraint.
+    # Each layer has an input set constraint associated with it based on the bounds.
+    # Additionally, consective variables fsᵢ, bsᵢ₊₁ are related by a constraint given
+    # by the affine map encoded in the layer Lᵢ.
+    # Finally, the before-activation-variables and after-activation-variables are
+    # related by the activation function. Since the input layer has no activation,
+    # its variables are related implicitly by identity.
+    activation_constraint!(model, bs[1], fs[1], Id())
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
-        ## layerwise input constraint
+        @constraint(model, affine_map(L, fs[i]) .== bs[i+1])
         add_set_constraint!(model, bounds[i], bs[i])
-
-        ## b<——>f[next] constraint
-        # first layer technically has only vars which are forward facing,
-        # but they behave like b-vars, so they are treated as such.
-        W, bias = L.weights, L.bias
-        if (i == 1)
-            @constraint(model, -bs[i+1] .+ W*bs[i] .== -bias)
-        else
-            @constraint(model, -bs[i+1] .+ W*fs[i-1] .== -bias)
-        end
-
-        layer_constraint!(model, fs[i], bs[i+1], L.activation)
-
+        activation_constraint!(model, bs[i+1], fs[i+1], L.activation)
     end
     add_complementary_set_constraint!(model, problem.output, last(fs))
-
     zero_objective!(model)
-
     return bs, fs
 end
 
 function enforce_repairs!(model::Model, bs, fs, relu_status)
     # Need to decide what to do with last layer, this assumes there is no ReLU.
     for i in 1:length(relu_status), j in 1:length(relu_status[i])
-        b = bs[i+1][j]
+        b = bs[i][j]
         f = fs[i][j]
         if relu_status[i][j] == 1
             type_one_repair!(model, b, f)
@@ -127,9 +121,9 @@ function reluplex_step(solver::Reluplex,
         return CounterExampleResult(:holds)
 
     elseif status == :Optimal
-        i, j = find_relu_to_fix(b_vars, f_vars, problem.network)
+        i, j = find_relu_to_fix(b_vars, f_vars)
 
-        # in case no broken relus could be found, return the "input" as a counterexample
+        # In case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
 
         for repair_type in 1:2
