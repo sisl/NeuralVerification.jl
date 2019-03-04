@@ -122,7 +122,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+#=
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist1")
@@ -140,10 +140,10 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+=#
 
 
-
-problem_mnist2 = Problem(mnist2, inputSet, outputSet)
+problem_mnist2 = Problem(mnist2, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist2                                  ######")
@@ -165,7 +165,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+#=
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist2")
@@ -183,9 +183,9 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+=#
 
-
-problem_mnist3 = Problem(mnist3, inputSet, outputSet)
+problem_mnist3 = Problem(mnist3, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist3                                  ######")
@@ -207,7 +207,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+#=
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist3")
@@ -215,7 +215,6 @@ timed_result =@timed solve(solver, problem_mnist3)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
-println("")
 
 optimizer = GLPKSolverMIP()
 solver = BaB(optimizer, 0.1)
@@ -225,8 +224,9 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
-problem_mnist4 = Problem(mnist4, inputSet, outputSet)
+println("")
+=#
+problem_mnist4 = Problem(mnist4, inputSet, out_hyper)
 ## MNIST1 ##
 print("\n\n\n")
 println("###### Network: mnist4                                  ######")
@@ -249,7 +249,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+#=
 optimizer = GLPKSolverMIP()
 solver = Sherlock(optimizer, 1.0)
 println("$(typeof(solver)) - mnist4")
@@ -267,7 +267,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 # ACAS
 print("\n\n\n")
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -276,7 +276,7 @@ println("###### Network: acas                                    ######")
 print("\n\n\n")
 
 #acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
-acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000.nnet"
+acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000_out1.nnet"
 #ACASXU_run2a_4_5_batch_2000.nnet
 
 acas_nnet = read_nnet(acas_file, last_layer_activation = Id())
@@ -303,10 +303,11 @@ b_lower = [ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.4      ]
 b_upper = [ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.4      ]
 
 # -0.0206515
-in_hyper  = Hyperrectangle(low = [-0.1], high = [3.0])
+
 inputSet = convert(HPolytope, in_hyper)
 
-out_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
+in_hyper  = Hyperrectangle(low = b_lower, high = b_upper)
+out_hyper  = Hyperrectangle(low = [-0.1], high = [3.0])
 #inputSet = HPolytope(A, b)
 
 
