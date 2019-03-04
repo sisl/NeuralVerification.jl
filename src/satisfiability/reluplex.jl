@@ -36,76 +36,76 @@ function solve(solver::Reluplex, problem::Problem)
     return reluplex_step(solver, problem, initial_model, bs, fs, initial_status)
 end
 
-function find_relu_to_fix(bs, fs)
-    for i in 1:length(fs), j in 1:length(fs[i])
-        b = getvalue(bs[i][j])
-        f = getvalue(fs[i][j])
+function find_relu_to_fix(ẑ, z)
+    for i in 1:length(z), j in 1:length(z[i])
+        ẑᵢⱼ = getvalue(ẑ[i][j])
+        zᵢⱼ = getvalue(z[i][j])
 
-        if type_one_broken(b, f) ||
-           type_two_broken(b, f)
+        if type_one_broken(ẑᵢⱼ, zᵢⱼ) ||
+           type_two_broken(ẑᵢⱼ, zᵢⱼ)
             return (i, j)
         end
     end
     return (0, 0)
 end
 
-type_one_broken(b, f) = (f > 0.0)  && (f != b)  # TODO consider renaming to `inactive_broken` and `active_broken`
-type_two_broken(b, f) = (f == 0.0) && (b > 0.0)
+type_one_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ > 0.0)  && (zᵢⱼ != ẑᵢⱼ)  # TODO consider renaming to `inactive_broken` and `active_broken`
+type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
 
 # Corresponds to a ReLU that shouldn't be active but is
-function type_one_repair!(model, b, f)
-    @constraint(model, b == f)
-    @constraint(model, b >= 0.0)
+function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
+    @constraint(model, ẑᵢⱼ == zᵢⱼ)
+    @constraint(model, ẑᵢⱼ >= 0.0)
 end
 # Corresponds to a ReLU that should be active but isn't
-function type_two_repair!(model, b, f)
-    @constraint(model, b <= 0.0)
-    @constraint(model, f == 0.0)
+function type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
+    @constraint(model, ẑᵢⱼ <= 0.0)
+    @constraint(model, zᵢⱼ == 0.0)
 end
 
-function activation_constraint!(model, bs, fs, act::ReLU)
+function activation_constraint!(model, ẑᵢ, zᵢ, act::ReLU)
     # ReLU ensures that the variable after activation is always
     # greater than before activation and also ≥0
-    @constraint(model, fs .>= bs)
-    @constraint(model, fs .>= 0.0)
+    @constraint(model, zᵢ .>= ẑᵢ)
+    @constraint(model, zᵢ .>= 0.0)
 end
 
-function activation_constraint!(model, bs, fs, act::Id)
-    @constraint(model, fs .== bs)
+function activation_constraint!(model, ẑᵢ, zᵢ, act::Id)
+    @constraint(model, zᵢ .== ẑᵢ)
 end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    bs = init_neurons(model, layers) # before activation
-    fs = init_neurons(model, layers) # after activation
+    ẑ = init_neurons(model, layers) # before activation
+    z = init_neurons(model, layers) # after activation
 
     # Each layer has an input set constraint associated with it based on the bounds.
-    # Additionally, consective variables fsᵢ, bsᵢ₊₁ are related by a constraint given
+    # Additionally, consective variables zᵢ, ẑᵢ₊₁ are related by a constraint given
     # by the affine map encoded in the layer Lᵢ.
     # Finally, the before-activation-variables and after-activation-variables are
     # related by the activation function. Since the input layer has no activation,
     # its variables are related implicitly by identity.
-    activation_constraint!(model, bs[1], fs[1], Id())
+    activation_constraint!(model, ẑ[1], z[1], Id())
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
-        @constraint(model, affine_map(L, fs[i]) .== bs[i+1])
-        add_set_constraint!(model, bounds[i], bs[i])
-        activation_constraint!(model, bs[i+1], fs[i+1], L.activation)
+        @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
+        add_set_constraint!(model, bounds[i], ẑ[i])
+        activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
-    add_complementary_set_constraint!(model, problem.output, last(fs))
+    add_complementary_set_constraint!(model, problem.output, last(z))
     zero_objective!(model)
-    return bs, fs
+    return ẑ, z
 end
 
-function enforce_repairs!(model::Model, bs, fs, relu_status)
+function enforce_repairs!(model::Model, ẑ, z, relu_status)
     # Need to decide what to do with last layer, this assumes there is no ReLU.
     for i in 1:length(relu_status), j in 1:length(relu_status[i])
-        b = bs[i][j]
-        f = fs[i][j]
+        ẑᵢⱼ = ẑ[i][j]
+        zᵢⱼ = z[i][j]
         if relu_status[i][j] == 1
-            type_one_repair!(model, b, f)
+            type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
         elseif relu_status[i][j] == 2
-            type_two_repair!(model, b, f)
+            type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
         end
     end
 end
@@ -113,18 +113,19 @@ end
 function reluplex_step(solver::Reluplex,
                        problem::Problem,
                        model::Model,
-                       b_vars::Vector{Vector{Variable}},
-                       f_vars::Vector{Vector{Variable}},
+                       ẑ::Vector{Vector{Variable}},
+                       z::Vector{Vector{Variable}},
                        relu_status::Vector{Vector{Int}})
+
     status = solve(model, suppress_warnings = true)
     if status == :Infeasible
         return CounterExampleResult(:holds)
 
     elseif status == :Optimal
-        i, j = find_relu_to_fix(b_vars, f_vars)
+        i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
-        i == 0 && return CounterExampleResult(:violated, getvalue.(first(b_vars)))
+        i == 0 && return CounterExampleResult(:violated, getvalue.(first(ẑ)))
 
         for repair_type in 1:2
             # Set the relu status to the current fix.
