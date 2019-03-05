@@ -169,7 +169,7 @@ get_assignment(L::Layer{Id},   list::Vector{Int64}) = trues(length(list))
 
 function get_node_id(nnet::Network, x::Tuple{Int64, Int64})
     # All the nodes in the previous layers
-    n = sum(n_nodes(nnet.layers[1:x[1]-1]))
+    n = sum(n_nodes.(nnet.layers[1:x[1]-1]))
 
     # Plus the previous nodes in the current layer
     return n + x[2]

@@ -3,14 +3,12 @@ import JuMP: GenericAffExpr
 init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, :Cont, include_input = true)
 init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin)
 init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
-# for reluplex:
-init_forward_facing_vars(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)[1:end-1] #discard the last one
 # Allow ::Network input also (NOTE for legacy purposes mostly...)
 init_neurons(m,     network::Network) = init_neurons(m, network.layers)
 init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
 init_multipliers(m, network::Network) = init_multipliers(m, network.layers)
 
-function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol; include_input::Bool = false)
+function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol = :Cont; include_input::Bool = false)
     # TODO: only neurons get offset array
     vars = Vector{Vector{Variable}}(undef, length(layers))
     all_layers_n = n_nodes.(layers)
