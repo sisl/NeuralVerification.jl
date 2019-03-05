@@ -197,7 +197,7 @@ problem_mnist4 = Problem(mnist4, inputSet, outputSet)
 print("\n\n\n")
 println("###### Network: mnist4                                  ######")
 print("\n\n\n")
-
+#=
 
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
@@ -207,7 +207,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-#=
+
 solver=Reluplex()
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
