@@ -27,7 +27,7 @@ The table below lists all of the solvers with their required input/output sets.
 |----------------------|:-----------:|:----------------:|
 | [`ExactReach`](@ref) | HP          | HP (bounded[^1]) |
 | [`AI2`](@ref)        | HP          | HP (bounded[^1]) |
-| [`MaxSens`](@ref)    | HP          | HP (bounded[^1]) |
+| [`MaxSens`](@ref)    | HR          | HP (bounded[^1]) |
 | [`NSVerify`](@ref)   | HR          | PC[^2]           |
 | [`MIPVerify`](@ref)  | HR          | PC[^2]           |
 | [`ILP`](@ref)        | HR          | PC[^2]           |
@@ -49,7 +49,7 @@ The table below lists all of the solvers with their required input/output sets.
 
  [^3]: The set can only have one output node. I.e. it must be a set of dimension 1.
 
-Note that solvers which require `Hyperrectangle`s also work on `HPolytope`s by overapproximating the input set. This is true for any set which can be converted to another set, such as a `HalfSpace` output being representable as an `HPolytope` with a single constraint.
+Note that solvers which require `Hyperrectangle`s also work on `HPolytope`s by overapproximating the input set. This is likewise true for solvers that require `HPolytope`s converting a `Hyperrectangle` input to H-representation. Any set which can be made into the required set is converted, wrapped, or approximated appropriately.
 
 ### PolytopeComplements
 

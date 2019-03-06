@@ -2,8 +2,8 @@
 """
     PolytopeComplement
 
-The complement to a given set. Note that with the exceptions of `Halfspace` and `EmptySet`,
- a `PolytopeComplement` is not a convex set. Also note that `PolytopeComplement`s are open by definition.
+The complement to a given set. Note that in general, a `PolytopeComplement` is not necessarily a convex set.
+Also note that `PolytopeComplement`s are open by definition.
 
 ### Examples
 ```julia
@@ -27,7 +27,9 @@ end
 
 Base.show(io::IO, PC::PolytopeComplement) = (println(io, "PolytopeComplement of:"), println(io, "  ", PC.P))
 LazySets.issubset(s, PC::PolytopeComplement) = LazySets.is_intersection_empty(s, PC.P)
+LazySets.issubset(PC::PolytopeComplement, s) = LazySets.is_intersection_empty(s, PC.P)
 LazySets.is_intersection_empty(s, PC::PolytopeComplement) = LazySets.issubset(s, PC.P)
+LazySets.is_intersection_empty(PC::PolytopeComplement, s) = LazySets.issubset(s, PC.P)
 LazySets.tohrep(PC::PolytopeComplement) = PolytopeComplement(convert(HPolytope, PC.P))
 Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P
 complement(PC::PolytopeComplement)  = PC.P
