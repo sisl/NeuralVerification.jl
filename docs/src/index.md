@@ -26,7 +26,7 @@ using NeuralVerification
 solver = MaxSens(resolution = 0.3)
 ```
 
-### Creating up a Problem
+### Creating a Problem
 A `Problem` consists of a `Network` to be tested, a set representing the domain of the *input test region*, and another set representing the range of the *output region*.
 In this example, we use a small neural network with only one hidden layer consisting of 2 neurons.
 

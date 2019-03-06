@@ -14,14 +14,14 @@ end
 # Checks whether the reachable set belongs to the output constraint
 # It is called by all solvers under reachability
 # Note vertices_list is not defined for HPolytope: to be defined
-function check_inclusion(reach::Vector{<:AbstractPolytope}, output::AbstractPolytope)
+function check_inclusion(reach::Vector{<:AbstractPolytope}, output)
     for poly in reach
         issubset(poly, output) || return ReachabilityResult(:violated, reach)
     end
     return ReachabilityResult(:holds, similar(reach, 0))
 end
 
-function check_inclusion(reach::P, output::AbstractPolytope) where P<:AbstractPolytope
+function check_inclusion(reach::P, output) where P<:AbstractPolytope
     if issubset(reach, output)
         return ReachabilityResult(:holds, P[])
     end

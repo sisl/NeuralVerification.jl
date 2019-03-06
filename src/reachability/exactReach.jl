@@ -6,7 +6,7 @@ ExactReach performs exact reachability analysis to compute the output reachable 
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: HPolytope
-3. Output: HPolytope
+3. Output: AbstractPolytope
 
 # Return
 `ReachabilityResult`

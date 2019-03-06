@@ -6,7 +6,7 @@ ReluVal combines symbolic reachability analysis with iterative interval refineme
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle
-3. Output: hpolytope
+3. Output: AbstractPolytope
 
 # Return
 `CounterExampleResult` or `ReachabilityResult`
@@ -93,7 +93,7 @@ end
 function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
     reachable = symbol_to_concrete(reach)
     issubset(reachable, output) && return BasicResult(:holds)
-    is_intersection_empty(reachable, output) && return BasicResult(:violated)
+    # is_intersection_empty(reachable, output) && return BasicResult(:violated)
 
     # Sample the middle point
     middle_point = (high(reach.interval) + low(reach.interval))./2

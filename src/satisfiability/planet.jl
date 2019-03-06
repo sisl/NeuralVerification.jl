@@ -6,7 +6,7 @@ Planet integrates a SAT solver (`PicoSAT.jl`) to find an activation pattern that
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle or hpolytope
-3. Output: halfspace
+3. Output: PolytopeComplement
 
 # Return
 `BasicResult`

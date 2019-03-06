@@ -6,7 +6,7 @@ MIPVerify computes maximum allowable disturbance using mixed integer linear prog
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: hyperrectangle
-3. Output: halfspace
+3. Output: PolytopeComplement
 
 # Return
 `AdversarialResult`

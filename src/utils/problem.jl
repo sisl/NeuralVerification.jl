@@ -1,15 +1,49 @@
+
 """
-    Problem(network, input, output)
+    PolytopeComplement
+
+The complement to a given set. Note that in general, a `PolytopeComplement` is not necessarily a convex set.
+Also note that `PolytopeComplement`s are open by definition.
+
+### Examples
+```julia
+julia> H = Hyperrectangle([0,0], [1,1])
+Hyperrectangle{Int64}([0, 0], [1, 1])
+
+julia> PC = complement(H)
+PolytopeComplement of:
+  Hyperrectangle{Int64}([0, 0], [1, 1])
+
+julia> center(H) ∈ PC
+false
+
+julia> high(H).+[1,1] ∈ PC
+true
+```
+"""
+struct PolytopeComplement{S<:LazySet}
+    P::S
+end
+
+Base.show(io::IO, PC::PolytopeComplement) = (println(io, "PolytopeComplement of:"), println(io, "  ", PC.P))
+LazySets.issubset(s, PC::PolytopeComplement) = LazySets.is_intersection_empty(s, PC.P)
+LazySets.is_intersection_empty(s, PC::PolytopeComplement) = LazySets.issubset(s, PC.P)
+LazySets.tohrep(PC::PolytopeComplement) = PolytopeComplement(convert(HPolytope, PC.P))
+Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P
+complement(PC::PolytopeComplement)  = PC.P
+complement(P::LazySet) = PolytopeComplement(P)
+# etc.
+
+
+"""
+    Problem{P, Q}(network::Network, input::P, output::Q)
 
 Problem definition for neural verification.
-- `network` is of type `Network`
-- `input` belongs to `AbstractPolytope` in `LazySets.jl`
-- `output` belongs to `AbstractPolytope` in `LazySets.jl`
 
 The verification problem consists of: for all  points in the input set,
 the corresponding output of the network must belong to the output set.
 """
-struct Problem{P<:AbstractPolytope, Q<:AbstractPolytope}
+struct Problem{P, Q}
     network::Network
     input::P
     output::Q

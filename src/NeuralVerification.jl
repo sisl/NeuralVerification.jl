@@ -32,6 +32,8 @@ export
     Solver,
     Network,
     AbstractActivation,
+    PolytopeComplement,
+    complement,
     # NOTE: not sure if exporting these is a good idea as far as namespace conflicts go:
     # ReLU,
     # Max,
