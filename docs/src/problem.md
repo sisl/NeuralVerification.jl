@@ -54,7 +54,7 @@ Note that solvers which require `Hyperrectangle`s also work on `HPolytope`s by o
 ### PolytopeComplements
 
 Some optimization-based solvers work on the principle of a complementary output constraint.
-In essense, they test whether a point *is not* in a set, by checking whether it is in the complement of the set (or vice versa).
+Essentially, they test whether a point *is not* in a set, by checking whether it is in the complement of the set (or vice versa).
 To represent the kinds of sets we are interested in for these solvers, we define the `PolytopeComplement`, which represents the complement of a convex set.
 Note that in general, the complement of a convex set is neither convex nor closed. [](would be good to include an image like the one in the paper that goes with AdversarialResult)
 
