@@ -41,9 +41,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#Creating-up-a-Problem-1",
+    "location": "#Creating-a-Problem-1",
     "page": "NeuralVerification.jl",
-    "title": "Creating up a Problem",
+    "title": "Creating a Problem",
     "category": "section",
     "text": "A Problem consists of a Network to be tested, a set representing the domain of the input test region, and another set representing the range of the output region. In this example, we use a small neural network with only one hidden layer consisting of 2 neurons.Note that the input and output sets may be of different types for different solvers. MaxSens requires a Hyperrectangle or HPolytope as its input and output constraints, so that is what we will use here:nnet = read_nnet(\"../../examples/networks/small_nnet.nnet\")\n\nA = reshape([-1.0, 1.0], 2, 1)\ninput  = HPolytope(A, [1.0, 1.0])\noutput = HPolytope(A, [1.0, 100.0])\n\nproblem = Problem(nnet, input, output)Note that in this example, input and output are each 1-dimensional sets (line segments) corresponding to the input and output dimensions of nnet.  The input region is bounded by [-1.0, 1.0], and the output region is bounded by [-1.0, 100.0]. This can be seen by carrying out A .* [1.0, 1.0], etc. to create the constraints associated with the sets input and output. For more information about HPolytopes and Hyperrectangles, which are commonly used to represent the input/output sets in this package, please refer to the LazySets documentation."
 },
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "Problem Definitions",
     "category": "section",
-    "text": "	Pages = [\"problem.md\"]\n	Depth = 3"
+    "text": "	Pages = [\"problem.md\"]\n	Depth = 4"
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.Problem",
     "category": "type",
-    "text": "Problem(network, input, output)\n\nProblem definition for neural verification.\n\nnetwork is of type Network\ninput belongs to AbstractPolytope in LazySets.jl\noutput belongs to AbstractPolytope in LazySets.jl\n\nThe verification problem consists of: for all  points in the input set, the corresponding output of the network must belong to the output set.\n\n\n\n\n\n"
+    "text": "Problem{P, Q}(network::Network, input::P, output::Q)\n\nProblem definition for neural verification.\n\nThe verification problem consists of: for all  points in the input set, the corresponding output of the network must belong to the output set.\n\n\n\n\n\n"
 },
 
 {
@@ -86,6 +86,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Problem",
     "category": "section",
     "text": "Problem"
+},
+
+{
+    "location": "problem/#Input/Output-Sets-1",
+    "page": "Problem Definitions",
+    "title": "Input/Output Sets",
+    "category": "section",
+    "text": "Different solvers require problems formulated with particular input and output sets. The table below lists all of the solvers with their required input/output sets.HR = Hyperrectangle\nHS = HalfSpace\nHP = HPolytope\nPC = PolytopeComplementSolver Input set Output set\nExactReach HP HP (bounded[1])\nAI2 HP HP (bounded[1])\nMaxSens HR HP (bounded[1])\nNSVerify HR PC[2]\nMIPVerify HR PC[2]\nILP HR PC[2]\nDuality HR(uniform) HS\nConvDual HR(uniform) HS\nCertify HR HS\nFastLin HR HS\nFastLip HR HS\nReluVal HR HR\nDLV HR HR[3]\nSherlock HR HR[3]\nBaB HR HR[3]\nPlanet HR PC[2]\nReluplex HP PC[2][1]: This restriction is not due to a theoretic limitation, but rather to our implementation, and will eventually be relaxed.[2]: See PolytopeComplement for a justification of this output set restriction.[3]: The set can only have one output node. I.e. it must be a set of dimension 1.Note that solvers which require Hyperrectangles also work on HPolytopes by overapproximating the input set. This is likewise true for solvers that require HPolytopes converting a Hyperrectangle input to H-representation. Any set which can be made into the required set is converted, wrapped, or approximated appropriately."
+},
+
+{
+    "location": "problem/#NeuralVerification.PolytopeComplement",
+    "page": "Problem Definitions",
+    "title": "NeuralVerification.PolytopeComplement",
+    "category": "type",
+    "text": "PolytopeComplement\n\nThe complement to a given set. Note that in general, a PolytopeComplement is not necessarily a convex set. Also note that PolytopeComplements are open by definition.\n\nExamples\n\njulia> H = Hyperrectangle([0,0], [1,1])\nHyperrectangle{Int64}([0, 0], [1, 1])\n\njulia> PC = complement(H)\nPolytopeComplement of:\n  Hyperrectangle{Int64}([0, 0], [1, 1])\n\njulia> center(H) ∈ PC\nfalse\n\njulia> high(H).+[1,1] ∈ PC\ntrue\n\n\n\n\n\n"
+},
+
+{
+    "location": "problem/#PolytopeComplements-1",
+    "page": "Problem Definitions",
+    "title": "PolytopeComplements",
+    "category": "section",
+    "text": "Some optimization-based solvers work on the principle of a complementary output constraint. Essentially, they test whether a point is not in a set, by checking whether it is in the complement of the set (or vice versa). To represent the kinds of sets we are interested in for these solvers, we define the PolytopeComplement, which represents the complement of a convex set. Note that in general, the complement of a convex set is neither convex nor closed. Although it is possible to represent the complement of a HalfSpace as another HalfSpace, we require that it be specified as a PolytopeComplement to disambiguate the boundary.PolytopeComplement"
 },
 
 {
@@ -253,7 +277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.ExactReach",
     "category": "type",
-    "text": "ExactReach\n\nExactReach performs exact reachability analysis to compute the output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: HPolytope\nOutput: HPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nExact reachability analysis.\n\nProperty\n\nSound and complete.\n\nReference\n\nW. Xiang, H.-D. Tran, and T. T. Johnson, \"Reachable Set Computation and Safety Verification for Neural Networks with ReLU Activations,\" ArXiv Preprint ArXiv:1712.08163, 2017.\n\n\n\n\n\n"
+    "text": "ExactReach\n\nExactReach performs exact reachability analysis to compute the output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: HPolytope\nOutput: AbstractPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nExact reachability analysis.\n\nProperty\n\nSound and complete.\n\nReference\n\nW. Xiang, H.-D. Tran, and T. T. Johnson, \"Reachable Set Computation and Safety Verification for Neural Networks with ReLU Activations,\" ArXiv Preprint ArXiv:1712.08163, 2017.\n\n\n\n\n\n"
 },
 
 {
@@ -269,7 +293,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.Ai2",
     "category": "type",
-    "text": "Ai2\n\nAi2 performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation (more activations to be supported in the future)\nInput: HPolytope\nOutput: HPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nReachability analysis using split and join.\n\nProperty\n\nSound but not complete.\n\nReference\n\nT. Gehr, M. Mirman, D. Drashsler-Cohen, P. Tsankov, S. Chaudhuri, and M. Vechev, \"Ai2: Safety and Robustness Certification of Neural Networks with Abstract Interpretation,\" in 2018 IEEE Symposium on Security and Privacy (SP), 2018.\n\n\n\n\n\n"
+    "text": "Ai2\n\nAi2 performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation (more activations to be supported in the future)\nInput: HPolytope\nOutput: AbstractPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nReachability analysis using split and join.\n\nProperty\n\nSound but not complete.\n\nReference\n\nT. Gehr, M. Mirman, D. Drashsler-Cohen, P. Tsankov, S. Chaudhuri, and M. Vechev, \"Ai2: Safety and Robustness Certification of Neural Networks with Abstract Interpretation,\" in 2018 IEEE Symposium on Security and Privacy (SP), 2018.\n\n\n\n\n\n"
 },
 
 {
@@ -285,7 +309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.MaxSens",
     "category": "type",
-    "text": "MaxSens(resolution::Float64, tight::Bool)\n\nMaxSens performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, any activation that is monotone\nInput: Hyperrectangle or HPolytope\nOutput: HPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nFirst partition the input space into small grid cells according to resolution. Then use interval arithmetic to compute the reachable set for each cell. Two versions of interval arithmetic is implemented with indicator tight. Default resolution is 1.0. Default tight = false.\n\nProperty\n\nSound but not complete.\n\nReference\n\nW. Xiang, H.-D. Tran, and T. T. Johnson, \"Output Reachable Set Estimation and Verification for Multi-Layer Neural Networks,\" ArXiv Preprint ArXiv:1708.03322, 2017.\n\n\n\n\n\n"
+    "text": "MaxSens(resolution::Float64, tight::Bool)\n\nMaxSens performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.\n\nProblem requirement\n\nNetwork: any depth, any activation that is monotone\nInput: Hyperrectangle or HPolytope\nOutput: AbstractPolytope\n\nReturn\n\nReachabilityResult\n\nMethod\n\nFirst partition the input space into small grid cells according to resolution. Then use interval arithmetic to compute the reachable set for each cell. Two versions of interval arithmetic is implemented with indicator tight. Default resolution is 1.0. Default tight = false.\n\nProperty\n\nSound but not complete.\n\nReference\n\nW. Xiang, H.-D. Tran, and T. T. Johnson, \"Output Reachable Set Estimation and Verification for Multi-Layer Neural Networks,\" ArXiv Preprint ArXiv:1708.03322, 2017.\n\n\n\n\n\n"
 },
 
 {
@@ -317,7 +341,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.NSVerify",
     "category": "type",
-    "text": "NSVerify(optimizer, m::Float64)\n\nNSVerify finds counter examples using mixed integer linear programming.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle or hpolytope\nOutput: halfspace\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nMILP encoding (using m). No presolve. Default optimizer is GLPKSolverMIP(). Default m is 1000.0 (should be large enough to avoid approximation error).\n\nProperty\n\nSound and complete.\n\nReference\n\nA. Lomuscio and L. Maganti, \"An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,\" ArXiv Preprint ArXiv:1706.07351, 2017.\n\n\n\n\n\n"
+    "text": "NSVerify(optimizer, m::Float64)\n\nNSVerify finds counter examples using mixed integer linear programming.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle or hpolytope\nOutput: PolytopeComplement\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nMILP encoding (using m). No presolve. Default optimizer is GLPKSolverMIP(). Default m is 1000.0 (should be large enough to avoid approximation error).\n\nProperty\n\nSound and complete.\n\nReference\n\nA. Lomuscio and L. Maganti, \"An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,\" ArXiv Preprint ArXiv:1706.07351, 2017.\n\n\n\n\n\n"
 },
 
 {
@@ -333,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.MIPVerify",
     "category": "type",
-    "text": "MIPVerify(optimizer)\n\nMIPVerify computes maximum allowable disturbance using mixed integer linear programming.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nMILP encoding. Use presolve to compute a tight node-wise bounds first. Default optimizer is GLPKSolverMIP().\n\nProperty\n\nSound and complete.\n\nReference\n\nV. Tjeng, K. Xiao, and R. Tedrake, \"Evaluating Robustness of Neural Networks with Mixed Integer Programming,\" ArXiv Preprint ArXiv:1711.07356, 2017.\n\nhttps://github.com/vtjeng/MIPVerify.jl\n\n\n\n\n\n"
+    "text": "MIPVerify(optimizer)\n\nMIPVerify computes maximum allowable disturbance using mixed integer linear programming.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: PolytopeComplement\n\nReturn\n\nAdversarialResult\n\nMethod\n\nMILP encoding. Use presolve to compute a tight node-wise bounds first. Default optimizer is GLPKSolverMIP().\n\nProperty\n\nSound and complete.\n\nReference\n\nV. Tjeng, K. Xiao, and R. Tedrake, \"Evaluating Robustness of Neural Networks with Mixed Integer Programming,\" ArXiv Preprint ArXiv:1711.07356, 2017.\n\nhttps://github.com/vtjeng/MIPVerify.jl\n\n\n\n\n\n"
 },
 
 {
@@ -349,7 +373,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.ILP",
     "category": "type",
-    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance. It iteratively adds the linear constraint to the problem.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. It only considers the linear piece of the network that has the same activation pattern as the reference input. Default optimizer is GLPKSolverMIP(). We provide both iterative method and non-iterative method to solve the LP problem. Default iterative is true.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
+    "text": "ILP(optimizer, max_iter)\n\nILP iteratively solves a linearized primal optimization to compute maximum allowable disturbance. It iteratively adds the linear constraint to the problem.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: PolytopeComplement\n\nReturn\n\nAdversarialResult\n\nMethod\n\nIteratively solve a linear encoding of the problem. It only considers the linear piece of the network that has the same activation pattern as the reference input. Default optimizer is GLPKSolverMIP(). We provide both iterative method and non-iterative method to solve the LP problem. Default iterative is true.\n\nProperty\n\nSound but not complete.\n\nReference\n\nO. Bastani, Y. Ioannou, L. Lampropoulos, D. Vytiniotis, A. Nori, and A. Criminisi, \"Measuring Neural Net Robustness with Constraints,\" in Advances in Neural Information Processing Systems, 2016.\n\n\n\n\n\n"
 },
 
 {
@@ -429,7 +453,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.ReluVal",
     "category": "type",
-    "text": "ReluVal(max_iter::Int64, tree_search::Symbol)\n\nReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: hpolytope\n\nReturn\n\nCounterExampleResult or ReachabilityResult\n\nMethod\n\nSymbolic reachability analysis and iterative interval refinement (search).\n\nmax_iter default 10.\ntree_search default :DFS - depth first search.\n\nProperty\n\nSound but not complete.\n\nReference\n\nS. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, \"Formal Security Analysis of Neural Networks Using Symbolic Intervals,\" CoRR, vol. abs/1804.10829, 2018. arXiv: 1804.10829.\n\nhttps://github.com/tcwangshiqi-columbia/ReluVal\n\n\n\n\n\n"
+    "text": "ReluVal(max_iter::Int64, tree_search::Symbol)\n\nReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: AbstractPolytope\n\nReturn\n\nCounterExampleResult or ReachabilityResult\n\nMethod\n\nSymbolic reachability analysis and iterative interval refinement (search).\n\nmax_iter default 10.\ntree_search default :DFS - depth first search.\n\nProperty\n\nSound but not complete.\n\nReference\n\nS. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana, \"Formal Security Analysis of Neural Networks Using Symbolic Intervals,\" CoRR, vol. abs/1804.10829, 2018. arXiv: 1804.10829.\n\nhttps://github.com/tcwangshiqi-columbia/ReluVal\n\n\n\n\n\n"
 },
 
 {
@@ -445,7 +469,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.FastLin",
     "category": "type",
-    "text": "FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)\n\nFastLin combines reachability analysis with binary search to find maximum allowable disturbance.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hypercube\nOutput: halfspace\n\nReturn\n\nAdversarialResult\n\nMethod\n\nReachability analysis by network approximation and binary search.\n\nmax_iter is the maximum iteration in search, default 10;\nϵ0 is the initial search radius, default 100.0;\naccuracy is the stopping criteria, default 0.1;\n\nProperty\n\nSound but not complete.\n\nReference\n\nT.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel, \"Towards Fast Computation of Certified Robustness for ReLU Networks,\" ArXiv Preprint ArXiv:1804.09699, 2018.\n\n\n\n\n\n"
+    "text": "FastLin(maxIter::Int64, ϵ0::Float64, accuracy::Float64)\n\nFastLin combines reachability analysis with binary search to find maximum allowable disturbance.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hypercube\nOutput: AbstractPolytope\n\nReturn\n\nAdversarialResult\n\nMethod\n\nReachability analysis by network approximation and binary search.\n\nmax_iter is the maximum iteration in search, default 10;\nϵ0 is the initial search radius, default 100.0;\naccuracy is the stopping criteria, default 0.1;\n\nProperty\n\nSound but not complete.\n\nReference\n\nT.-W. Weng, H. Zhang, H. Chen, Z. Song, C.-J. Hsieh, D. Boning, I. S. Dhillon, and L. Daniel, \"Towards Fast Computation of Certified Robustness for ReLU Networks,\" ArXiv Preprint ArXiv:1804.09699, 2018.\n\n\n\n\n\n"
 },
 
 {
@@ -477,7 +501,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.DLV",
     "category": "type",
-    "text": "DLV(ϵ::Float64)\n\nDLV searches layer by layer for counter examples in hidden layers.\n\nProblem requirement\n\nNetwork: any depth, any activation (currently only support ReLU)\nInput: hyperrectangle\nOutput: abstractpolytope\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nThe following operations are performed layer by layer. for layer i\n\ndetermine a reachable set from the reachable set in layer i-1\ndetermine a search tree in the reachable set by refining the search tree in layer i-1\nVerify\nTrue -> continue to layer i+1\nFalse -> counter example\n\nThe argument ϵ is the resolution of the initial search tree. Default 1.0.\n\nProperty\n\nSound but not complete.\n\nReference\n\nX. Huang, M. Kwiatkowska, S. Wang, and M. Wu, \"Safety Verification of Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\nhttps://github.com/VeriDeep/DLV\n\n\n\n\n\n"
+    "text": "DLV(ϵ::Float64)\n\nDLV searches layer by layer for counter examples in hidden layers.\n\nProblem requirement\n\nNetwork: any depth, any activation (currently only support ReLU)\nInput: Hyperrectangle\nOutput: AbstractPolytope\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nThe following operations are performed layer by layer. for layer i\n\ndetermine a reachable set from the reachable set in layer i-1\ndetermine a search tree in the reachable set by refining the search tree in layer i-1\nVerify\nTrue -> continue to layer i+1\nFalse -> counter example\n\nThe argument ϵ is the resolution of the initial search tree. Default 1.0.\n\nProperty\n\nSound but not complete.\n\nReference\n\nX. Huang, M. Kwiatkowska, S. Wang, and M. Wu, \"Safety Verification of Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\nhttps://github.com/VeriDeep/DLV\n\n\n\n\n\n"
 },
 
 {
@@ -533,7 +557,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.Planet",
     "category": "type",
-    "text": "Planet(optimizer, eager::Bool)\n\nPlanet integrates a SAT solver (PicoSAT.jl) to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle or hpolytope\nOutput: halfspace\n\nReturn\n\nBasicResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization. Our implementation is non eager.\n\noptimizer default GLPKSolverMIP();\neager default false;\n\nProperty\n\nSound and complete.\n\nReference\n\nR. Ehlers, \"Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,\" in International Symposium on Automated Technology for Verification and Analysis, 2017.\n\nhttps://github.com/progirep/planet\n\n\n\n\n\n"
+    "text": "Planet(optimizer, eager::Bool)\n\nPlanet integrates a SAT solver (PicoSAT.jl) to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle or hpolytope\nOutput: PolytopeComplement\n\nReturn\n\nBasicResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization. Our implementation is non eager.\n\noptimizer default GLPKSolverMIP();\neager default false;\n\nProperty\n\nSound and complete.\n\nReference\n\nR. Ehlers, \"Formal Verification of Piece-Wise Linear Feed-Forward Neural Networks,\" in International Symposium on Automated Technology for Verification and Analysis, 2017.\n\nhttps://github.com/progirep/planet\n\n\n\n\n\n"
 },
 
 {
@@ -549,7 +573,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "NeuralVerification.Reluplex",
     "category": "type",
-    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: halfspace\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
+    "text": "Reluplex(optimizer, eager::Bool)\n\nReluplex uses binary tree search to find an activation pattern that maps a feasible input to an infeasible output.\n\nProblem requirement\n\nNetwork: any depth, ReLU activation\nInput: hyperrectangle\nOutput: PolytopeComplement\n\nReturn\n\nCounterExampleResult\n\nMethod\n\nBinary search of activations (0/1) and pruning by optimization.\n\nProperty\n\nSound and complete.\n\nReference\n\nG. Katz, C. Barrett, D. L. Dill, K. Julian, and M. J. Kochenderfer, \"Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks,\" in International Conference on Computer Aided Verification, 2017.\n\n\n\n\n\n"
 },
 
 {
