@@ -32,7 +32,7 @@ end
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     c, d = tosimplehrep(problem.output)
     v = c * problem.network.layers[2].weights
     W = problem.network.layers[1].weights

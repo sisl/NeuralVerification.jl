@@ -31,7 +31,7 @@ V. Tjeng, K. Xiao, and R. Tedrake,
 end
 
 function solve(solver::MIPVerify, problem::Problem)
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_complementary_set_constraint!(model, problem.output, last(neurons))

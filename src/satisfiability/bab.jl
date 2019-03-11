@@ -109,7 +109,7 @@ end
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
     bounds = get_bounds(nnet, dom)
-    model = Model(solver = optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, dom, first(neurons))
     encode_network!(model, nnet, neurons, bounds, TriangularRelaxedLP())

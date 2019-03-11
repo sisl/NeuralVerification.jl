@@ -31,7 +31,7 @@ end
 # Duality(optimizer::DataType = GLPKSolverMIP; kwargs...) =  Duality(optimizer(kwargs...))
 
 function solve(solver::Duality, problem::Problem)
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
     o = dual_value(solver, problem, model, λ, μ)

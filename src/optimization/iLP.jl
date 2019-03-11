@@ -35,7 +35,7 @@ end
 function solve(solver::ILP, problem::Problem)
     nnet = problem.network
     x = problem.input.center
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     δ = get_activation(nnet, x)
     neurons = init_neurons(model, nnet)
     add_complementary_set_constraint!(model, problem.output, last(neurons))

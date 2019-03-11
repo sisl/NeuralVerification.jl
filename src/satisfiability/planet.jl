@@ -79,7 +79,7 @@ end
 
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
-    model = Model(solver = optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
@@ -128,7 +128,7 @@ end
 
 function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
-    model = Model(solver = optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
