@@ -20,6 +20,7 @@ using Requires
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
 JuMP.Model(solver) = Model(with_optimizer(solver.optimizer))
+JuMP.value(vars::Vector{VariableRef}) = value.(vars)
 
 include("utils/activation.jl")
 include("utils/network.jl")
