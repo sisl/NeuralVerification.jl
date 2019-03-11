@@ -23,8 +23,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -47,8 +47,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end
@@ -63,8 +63,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end

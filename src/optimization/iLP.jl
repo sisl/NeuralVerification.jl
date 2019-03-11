@@ -44,14 +44,14 @@ function solve(solver::ILP, problem::Problem)
     if !solver.iterative
         encode_network!(model, nnet, neurons, δ, StandardLP())
         status = solve(model, suppress_warnings = true)
-        status != :Optimal && return AdversarialResult(:Unknown)
+        status != :Optimal && return AdversarialResult(:unknown)
         return interpret_result(solver, getvalue(o), problem.input)
     end
 
     encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
     while true
         status = solve(model, suppress_warnings = true)
-        status != :Optimal && return AdversarialResult(:Unknown)
+        status != :Optimal && return AdversarialResult(:unknown)
         x = getvalue(first(neurons))
         matched, index = match_activation(nnet, x, δ)
         if matched

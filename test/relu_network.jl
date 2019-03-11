@@ -23,8 +23,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -47,8 +47,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -56,8 +56,8 @@
         # We should ignore the result even if this particular network is trivial
         holds    = solve(ConvDual(), problem_holds)
         violated = solve(ConvDual(), problem_violated)
-        @test_skip holds.status    ∈ (:holds, :Unknown)
-        @test_skip violated.status ∈ (:violated, :Unknown)
+        @test_skip holds.status    ∈ (:holds, :unknown)
+        @test_skip violated.status ∈ (:violated, :unknown)
     end
 
     @testset "Group 5" begin
@@ -70,8 +70,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end

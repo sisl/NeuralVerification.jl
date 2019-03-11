@@ -45,7 +45,7 @@ function interpret_result(reach, bound, output, x_l, x_u)
     end
     high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
     low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
-    return ReachabilityResult(:Unknown, reach)
+    return ReachabilityResult(:unknown, reach)
 end
 
 function output_bound(solver::BaB, problem::Problem, type::Symbol)

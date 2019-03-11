@@ -43,5 +43,5 @@ function solve(solver::NSVerify, problem::Problem)
     if status == :Infeasible
         return CounterExampleResult(:holds)
     end
-    return CounterExampleResult(:Unknown)
+    return CounterExampleResult(:unknown)
 end

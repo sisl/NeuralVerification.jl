@@ -57,7 +57,7 @@ function interpret_result(solver::Certify, status, o)
     if getvalue(o) <= 0
         return BasicResult(:holds)
     else
-        return BasicResult(:Unknown)
+        return BasicResult(:unknown)
     end
 end
 

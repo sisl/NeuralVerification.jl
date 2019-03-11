@@ -49,7 +49,7 @@ end
 function solve(solver::ReluVal, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network)
-    result.status == :Unknown || return result
+    result.status == :unknown || return result
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
@@ -64,7 +64,7 @@ function solve(solver::ReluVal, problem::Problem)
             result.status == :holds || (push!(reach_list, reach))
         end
     end
-    return BasicResult(:Unknown)
+    return BasicResult(:unknown)
 end
 
 function pick_out!(reach_list, tree_search)
@@ -100,7 +100,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     y = compute_output(nnet, middle_point)
     ∈(y, output) || return CounterExampleResult(:violated, middle_point)
 
-    return BasicResult(:Unknown)
+    return BasicResult(:unknown)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
