@@ -32,13 +32,12 @@ end
 
 function solve(solver::Duality, problem::Problem)
     model = Model(solver = solver.optimizer)
-    c, d = tosimplehrep(problem.output)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
     o = dual_value(solver, problem, model, λ, μ)
-    @constraint(model, last(λ) .== -c)
+    @constraint(model, last(λ) .== -problem.output.a)
     status = solve(model, suppress_warnings = true)
-    return interpret_result(solver, status, o - d[1])
+    return interpret_result(solver, status, o - problem.output.b)
 end
 
 # False if o > 0, True if o <= 0
@@ -76,8 +75,8 @@ function activation_value(layer::Layer,
     l_hat, u_hat = low(b_hat), high(b_hat)
     l, u = layer.activation(l_hat), layer.activation(u_hat)
 
-    o += sum(symbolic_max.(μᵢ.*l_hat, μᵢ.*u_hat))
-    o += sum(symbolic_max.(λᵢ.*l, λᵢ.*u))
+    o += sum(symbolic_max.(μᵢ .* l_hat, μᵢ .* u_hat))
+    o += sum(symbolic_max.(λᵢ .* l,     λᵢ .* u))
     return o
 end
 
@@ -85,18 +84,24 @@ function layer_value(layer::Layer,
                      μᵢ::Vector{VariableRef},
                      λᵢ::Vector{VariableRef},
                      bound::Hyperrectangle)
-    (W, b) = (layer.weights, layer.bias)
-    o = λᵢ' * bound.center - μᵢ' * (W * bound.center + b)
+    W = layer.weights
+    c = bound.center
+    r = bound.radius
+
+    o = λᵢ'*c - μᵢ'*affine_map(layer, c)
     # instead of for-loop:
-    o += sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* bound.radius) # TODO check that this is equivalent to before
+    o += sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* r) # TODO check that this is equivalent to before
     return o
 end
 
 function input_layer_value(layer::Layer,
                            μᵢ::Vector{VariableRef},
                            input::Hyperrectangle)
-    W, b = layer.weights, layer.bias
-    o = -μᵢ' * (W*input.center .+ b)
-    o += sum(symbolic_abs.(μᵢ'*W) .* input.radius)   # TODO check that this is equivalent to before
+    W = layer.weights
+    c = bound.center
+    r = bound.radius
+
+    o = -μᵢ' * affine_map(layer, c)
+    o += sum(symbolic_abs.(μᵢ'*W) .* r)   # TODO check that this is equivalent to before
     return o
 end
