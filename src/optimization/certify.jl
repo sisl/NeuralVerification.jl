@@ -42,7 +42,7 @@ function solve(solver::Certify, problem::Problem)
     # Compute value
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
-    o = output + epsilon/4 * tr(M*P)
+    o = output .+ epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, first(o))

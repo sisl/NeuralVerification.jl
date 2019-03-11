@@ -99,8 +99,8 @@ function input_layer_value(layer::Layer,
                            μᵢ::Vector{VariableRef},
                            input::Hyperrectangle)
     W = layer.weights
-    c = bound.center
-    r = bound.radius
+    c = input.center
+    r = input.radius
 
     o = -μᵢ' * affine_map(layer, c)
     o += sum(symbolic_abs.(μᵢ'*W) .* r)   # TODO check that this is equivalent to before

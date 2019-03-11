@@ -38,7 +38,7 @@ function solve(solver::NSVerify, problem::Problem)
     feasibility_problem!(model)
     optimize!(model)
     if termination_status(model) == OPTIMAL
-        return CounterExampleResult(:violated, value(first(neurons)))
+        return CounterExampleResult(:violated, value.(first(neurons)))
     end
     if termination_status(model) == INFEASIBLE
         return CounterExampleResult(:holds)

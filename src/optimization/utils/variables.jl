@@ -45,7 +45,7 @@ function symbolic_abs(m::Model, v)
     return aux
 end
 symbolic_abs(v::VariableRef)             = symbolic_abs(v.m, v)
-symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
+symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(first(v.terms)).model, v)
 symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
 
 function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
@@ -58,4 +58,4 @@ end
 # # in general, default to symbolic_abs behavior:
 # symbolic_infty_norm(v) = symbolic_abs(v)
 # only Array{<:GenericAffExpr} is needed
-symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(first(first(v).vars).m, v)
+symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(first(first(first(v).terms)).model, v)

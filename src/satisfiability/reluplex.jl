@@ -27,7 +27,7 @@ Sound and complete.
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    initial_model = new_model(solver)
+    initial_model = Model(solver)
     bs, fs = encode(solver, initial_model, problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
@@ -118,11 +118,11 @@ function reluplex_step(solver::Reluplex,
                        relu_status::Vector{Vector{Int}})
 
     optimize!(model)
-    status = termination_status(model)
-    if status == INFEASIBLE
-        return CounterExampleResult(:holds)
 
-    elseif status == OPTIMAL
+    # If the problem is optimally solved, this could potentially be a counterexample.
+    # Branch by repair type (inactive or active) and redetermine if this is a valid
+    # counterexample. If the problem is infeasible or unbounded. The property holds.
+    if termination_status(model) == OPTIMAL
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
@@ -142,8 +142,6 @@ function reluplex_step(solver::Reluplex,
 
             result.status == :violated && return result
         end
-        return CounterExampleResult(:holds)
-    else
-        error("unexpected status $status") # are there alternatives to the if and elseif?
     end
+    return CounterExampleResult(:holds)
 end

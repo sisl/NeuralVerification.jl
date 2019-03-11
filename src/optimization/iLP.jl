@@ -52,7 +52,7 @@ function solve(solver::ILP, problem::Problem)
     while true
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value(first(neurons))
+        x = value.(first(neurons))
         matched, index = match_activation(nnet, x, δ)
         if matched
             return interpret_result(solver, value(o), problem.input)
