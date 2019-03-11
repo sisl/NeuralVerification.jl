@@ -34,14 +34,14 @@ function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return CounterExampleResult(:holds)
+    status == OPTIMAL || return CounterExampleResult(:holds)
     ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # Main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
-        status == :Infeasible || return CounterExampleResult(:violated, conflict)
+        status == INFEASIBLE || return CounterExampleResult(:violated, conflict)
         push!(ψ, conflict)
         δ = PicoSAT.solve(ψ)
     end
@@ -91,7 +91,7 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     act = get_activation(problem.network, bounds)
     while true
         optimize!(model)
-        termination_status(model) == :Optimal || return (:Infeasible, conflict)
+        termination_status(model) == OPTIMAL || return (INFEASIBLE, conflict)
         (m, index) = max_slack(getvalue(slack), act)
         m > 0.0 || return (:Feasible, getvalue(neurons[1]))
         # activated neurons get a factor of (-1)
@@ -136,19 +136,19 @@ function tighten_bounds(problem::Problem, optimizer)
 
     min_sum!(model, neurons)
     optimize!(model)
-    termination_status(model) == :Optimal || return (:Infeasible, bounds)
+    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
     lower = getvalue(neurons)
 
     max_sum!(model, neurons)
     optimize!(model)
-    termination_status(model) == :Optimal || return (:Infeasible, bounds)
+    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
     upper = getvalue(neurons)
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
-    return (:Optimal, new_bounds)
+    return (OPTIMAL, new_bounds)
 end
 
 

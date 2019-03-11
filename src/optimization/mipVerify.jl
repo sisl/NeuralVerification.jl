@@ -39,7 +39,7 @@ function solve(solver::MIPVerify, problem::Problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - problem.input.center)
     optimize!(model)
-    if termination_status(model) == :Infeasible
+    if termination_status(model) == INFEASIBLE
         return AdversarialResult(:holds)
     end
     if getvalue(o) >= maximum(problem.input.radius)

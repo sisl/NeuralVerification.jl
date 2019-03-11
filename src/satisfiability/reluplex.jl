@@ -119,10 +119,10 @@ function reluplex_step(solver::Reluplex,
 
     optimize!(model)
     status = termination_status(model)
-    if status == :Infeasible
+    if status == INFEASIBLE
         return CounterExampleResult(:holds)
 
-    elseif status == :Optimal
+    elseif status == OPTIMAL
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
