@@ -22,7 +22,8 @@ function max_sum!(model::Model, var)
     return o
 end
 
-function zero_objective!(model::Model)
+# Actually, this is the default objective when creating a model. Only used for explicit-ness.
+function feasibility_problem!(model::Model)
     @objective(model, Max, 0.0)
 end
 

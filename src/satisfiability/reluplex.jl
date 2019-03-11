@@ -93,7 +93,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     add_complementary_set_constraint!(model, problem.output, last(z))
-    zero_objective!(model)
+    feasibility_problem!(model)
     return ẑ, z
 end
 
