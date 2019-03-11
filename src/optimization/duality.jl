@@ -36,7 +36,7 @@ function solve(solver::Duality, problem::Problem)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
     o = dual_value(solver, problem, model, λ, μ)
-    @constraint(model, last(λ) .== -c[1])
+    @constraint(model, last(λ) .== -c)
     optimize!(model)
     return interpret_result(solver, termination_status(model), o - d[1])
 end
