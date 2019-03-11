@@ -36,11 +36,11 @@ function solve(solver::NSVerify, problem::Problem)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(solver.m))
     feasibility_problem!(model)
-    status = solve(model, suppress_warnings = true)
-    if status == :Optimal
+    optimize!(model)
+    if termination_status(model) == :Optimal
         return CounterExampleResult(:violated, getvalue(first(neurons)))
     end
-    if status == :Infeasible
+    if termination_status(model) == :Infeasible
         return CounterExampleResult(:holds)
     end
     return CounterExampleResult(:unknown)

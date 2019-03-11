@@ -45,9 +45,9 @@ function solve(solver::Certify, problem::Problem)
     o = output + epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
-    @objective(model, Max, o[1])
-    status = solve(model, suppress_warnings = true)
-    return interpret_result(solver, status, o[1])
+    @objective(model, Max, first(o))
+    optimize!(model)
+    return interpret_result(solver, termination_status(model), first(o))
 end
 
 # True if o < 0

@@ -117,7 +117,8 @@ function reluplex_step(solver::Reluplex,
                        z::Vector{Vector{VariableRef}},
                        relu_status::Vector{Vector{Int}})
 
-    status = solve(model, suppress_warnings = true)
+    optimize!(model)
+    status = termination_status(model)
     if status == :Infeasible
         return CounterExampleResult(:holds)
 

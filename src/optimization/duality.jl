@@ -32,12 +32,13 @@ end
 
 function solve(solver::Duality, problem::Problem)
     model = Model(solver)
+    c, d = tosimplehrep(problem.output)
     λ = init_multipliers(model, problem.network)
     μ = init_multipliers(model, problem.network)
     o = dual_value(solver, problem, model, λ, μ)
-    @constraint(model, last(λ) .== -problem.output.a)
-    status = solve(model, suppress_warnings = true)
-    return interpret_result(solver, status, o - problem.output.b)
+    @constraint(model, last(λ) .== -c[1])
+    optimize!(model)
+    return interpret_result(solver, termination_status(model), o - d[1])
 end
 
 # False if o > 0, True if o <= 0

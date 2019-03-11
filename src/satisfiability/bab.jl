@@ -116,7 +116,7 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbo
     index = ifelse(type == :max, 1, -1)
     o = sum(last(neurons))
     @objective(model, Max, index * o)
-    status = solve(model, suppress_warnings = true)
-    status == :Optimal && return getvalue(o)
+    optimize!(model)
+    termination_status(model) == :Optimal && return getvalue(o)
     error("Could not find bound for dom: ", dom)
 end

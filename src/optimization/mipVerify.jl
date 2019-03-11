@@ -38,8 +38,8 @@ function solve(solver::MIPVerify, problem::Problem)
     bounds = get_bounds(problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - problem.input.center)
-    status = solve(model, suppress_warnings = true)
-    if status == :Infeasible
+    optimize!(model)
+    if termination_status(model) == :Infeasible
         return AdversarialResult(:holds)
     end
     if getvalue(o) >= maximum(problem.input.radius)
