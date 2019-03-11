@@ -11,7 +11,6 @@ using LinearAlgebra
 using Parameters
 using Interpolations # only for PiecewiseLinear
 
-import MathOptInterface: OPTIMAL, INFEASIBLE
 import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 using Requires
@@ -19,6 +18,7 @@ using Requires
 # abstract type Solver end # no longer needed
 
 # For optimization methods:
+import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
 JuMP.Model(solver) = Model(with_optimizer(solver.optimizer))
 
 include("utils/activation.jl")
