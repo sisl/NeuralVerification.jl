@@ -71,7 +71,7 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * o[1])
     optimize!(model)
-    x_new = getvalue(neurons[1])
+    x_new = value(neurons[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
 end

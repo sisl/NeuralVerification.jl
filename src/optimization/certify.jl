@@ -53,8 +53,8 @@ end
 # True if o < 0
 # Undertermined if otherwise
 function interpret_result(solver::Certify, status, o)
-    # println("Upper bound: ", getvalue(o[1]))
-    if getvalue(o) <= 0
+    # println("Upper bound: ", value(o[1]))
+    if value(o) <= 0
         return BasicResult(:holds)
     else
         return BasicResult(:unknown)

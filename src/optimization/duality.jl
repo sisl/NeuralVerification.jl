@@ -44,7 +44,7 @@ end
 # False if o > 0, True if o <= 0
 function interpret_result(solver::Duality, status, o)
     status != OPTIMAL && return BasicResult(:unknown)
-    getvalue(o) <= 0.0 && return BasicResult(:holds)
+    value(o) <= 0.0 && return BasicResult(:holds)
     return BasicResult(:violated)
 end
 

@@ -38,8 +38,8 @@ end
 
 function find_relu_to_fix(ẑ, z)
     for i in 1:length(z), j in 1:length(z[i])
-        ẑᵢⱼ = getvalue(ẑ[i][j])
-        zᵢⱼ = getvalue(z[i][j])
+        ẑᵢⱼ = value(ẑ[i][j])
+        zᵢⱼ = value(z[i][j])
 
         if type_one_broken(ẑᵢⱼ, zᵢⱼ) ||
            type_two_broken(ẑᵢⱼ, zᵢⱼ)
@@ -126,7 +126,7 @@ function reluplex_step(solver::Reluplex,
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
-        i == 0 && return CounterExampleResult(:violated, getvalue.(first(ẑ)))
+        i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
         for repair_type in 1:2
             # Set the relu status to the current fix.
