@@ -71,7 +71,7 @@ end
 
 function add_constraint!(model::Model,
                          nnet::Network,
-                         z::Vector{Vector{Variable}},
+                         z::Vector{Vector{VariableRef}},
                          δ::Vector{Vector{Bool}},
                          (i, j)::Tuple{Int64, Int64})
     layer = nnet.layers[i]

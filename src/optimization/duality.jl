@@ -51,8 +51,8 @@ end
 function dual_value(solver::Duality,
                     problem::Problem,
                     model::Model,
-                    λ::Vector{Vector{Variable}},
-                    μ::Vector{Vector{Variable}})
+                    λ::Vector{Vector{VariableRef}},
+                    μ::Vector{Vector{VariableRef}})
     bounds = get_bounds(problem)
     layers = problem.network.layers
     # input layer
@@ -68,8 +68,8 @@ function dual_value(solver::Duality,
 end
 
 function activation_value(layer::Layer,
-                          μᵢ::Vector{Variable},
-                          λᵢ::Vector{Variable},
+                          μᵢ::Vector{VariableRef},
+                          λᵢ::Vector{VariableRef},
                           bound::Hyperrectangle)
     o = zero(eltype(μᵢ))
     b_hat = approximate_affine_map(layer, bound)
@@ -82,8 +82,8 @@ function activation_value(layer::Layer,
 end
 
 function layer_value(layer::Layer,
-                     μᵢ::Vector{Variable},
-                     λᵢ::Vector{Variable},
+                     μᵢ::Vector{VariableRef},
+                     λᵢ::Vector{VariableRef},
                      bound::Hyperrectangle)
     (W, b) = (layer.weights, layer.bias)
     o = λᵢ' * bound.center - μᵢ' * (W * bound.center + b)
@@ -93,7 +93,7 @@ function layer_value(layer::Layer,
 end
 
 function input_layer_value(layer::Layer,
-                           μᵢ::Vector{Variable},
+                           μᵢ::Vector{VariableRef},
                            input::Hyperrectangle)
     W, b = layer.weights, layer.bias
     o = -μᵢ' * (W*input.center .+ b)

@@ -113,8 +113,8 @@ end
 function reluplex_step(solver::Reluplex,
                        problem::Problem,
                        model::Model,
-                       ẑ::Vector{Vector{Variable}},
-                       z::Vector{Vector{Variable}},
+                       ẑ::Vector{Vector{VariableRef}},
+                       z::Vector{Vector{VariableRef}},
                        relu_status::Vector{Vector{Int}})
 
     status = solve(model, suppress_warnings = true)

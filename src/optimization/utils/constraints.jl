@@ -6,7 +6,7 @@ struct LinearRelaxedLP       <: AbstractLinearProgram end
 struct TriangularRelaxedLP   <: AbstractLinearProgram end
 struct BoundedMixedIntegerLP <: AbstractLinearProgram end
 struct SlackLP <: AbstractLinearProgram
-    slack::Vector{Vector{Variable}}
+    slack::Vector{Vector{VariableRef}}
 end
 SlackLP() = SlackLP([])
 struct MixedIntegerLP <: AbstractLinearProgram
@@ -16,7 +16,7 @@ end
 # Any encoding passes through here first:
 function encode_network!(model::Model,
                          network::Network,
-                         zs::Vector{Vector{Variable}},
+                         zs::Vector{Vector{VariableRef}},
                          δs::Vector,
                          encoding::AbstractLinearProgram)
 
@@ -30,7 +30,7 @@ end
 # i.e. make BoundedMixedIntegerLP(bounds) and TriangularRelaxedLP(bounds) or something
 function encode_network!(model::Model,
                          network::Network,
-                         zs::Vector{Vector{Variable}},
+                         zs::Vector{Vector{VariableRef}},
                          δs::Vector,
                          bounds::Vector{Hyperrectangle},
                          encoding::AbstractLinearProgram)
@@ -43,7 +43,7 @@ end
 
 function encode_network!(model::Model,
                          network::Network,
-                         zs::Vector{Vector{Variable}},
+                         zs::Vector{Vector{VariableRef}},
                          bounds::Vector{Hyperrectangle},
                          encoding::AbstractLinearProgram)
 
@@ -58,8 +58,8 @@ end
 function encode_layer!(::AbstractLinearProgram,
                        model::Model,
                        layer::Layer{Id},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        args...)
     @constraint(model, z_next .== layer.weights*z_current + layer.bias)
 end
@@ -68,8 +68,8 @@ end
 function encode_layer!(SLP::SlackLP,
                        model::Model,
                        layer::Layer{Id},
-                       z1::Array{Variable,1},
-                       z2::Array{Variable,1},
+                       z1::Array{VariableRef,1},
+                       z2::Array{VariableRef,1},
                        δ...)
 
     encode_layer!(StandardLP(), model, layer, z1, z2)
@@ -86,8 +86,8 @@ end
 function encode_layer!(::StandardLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        δ::Vector{Bool})
 
     # The jth ReLU is forced to be active or inactive,
@@ -109,8 +109,8 @@ end
 function encode_layer!(SLP::SlackLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        δ::Vector{Bool})
 
     ẑ = layer.weights * z_current + layer.bias
@@ -131,8 +131,8 @@ end
 function encode_layer!(::LinearRelaxedLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        δ::Vector{Bool})
 
     ẑ = layer.weights * z_current + layer.bias
@@ -149,8 +149,8 @@ end
 function encode_layer!(::TriangularRelaxedLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        bounds::Hyperrectangle)
 
     ẑ = layer.weights * z_current + layer.bias
@@ -174,9 +174,9 @@ end
 function encode_layer!(MIP::MixedIntegerLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
-                       δ::Vector{Variable})
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
+                       δ::Vector{VariableRef})
     m = MIP.m
 
     ẑ = layer.weights * z_current + layer.bias
@@ -193,8 +193,8 @@ end
 function encode_layer!(::BoundedMixedIntegerLP,
                        model::Model,
                        layer::Layer{ReLU},
-                       z_current::Vector{Variable},
-                       z_next::Vector{Variable},
+                       z_current::Vector{VariableRef},
+                       z_next::Vector{VariableRef},
                        δ::Vector,
                        bounds::Hyperrectangle)
 
@@ -222,7 +222,7 @@ end
 #=
 Add input/output constraints to model
 =#
-function add_complementary_set_constraint!(model::Model, output::HPolytope, z::Vector{Variable})
+function add_complementary_set_constraint!(model::Model, output::HPolytope, z::Vector{VariableRef})
     out_A, out_b = tosimplehrep(output)
     # Needs to take the complementary of output constraint
     n = length(constraints_list(output))
@@ -238,29 +238,29 @@ function add_complementary_set_constraint!(model::Model, output::HPolytope, z::V
     return nothing
 end
 
-function add_complementary_set_constraint!(m::Model, H::HalfSpace, z::Vector{Variable})
+function add_complementary_set_constraint!(m::Model, H::HalfSpace, z::Vector{VariableRef})
     a, b = tosimplehrep(H)
     @constraint(m, a * z .>= b)
     return nothing
 end
-function add_complementary_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{Variable})
+function add_complementary_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{VariableRef})
     add_set_constraint!(m, PC.P, z)
     return nothing
 end
 
-function add_set_constraint!(m::Model, set::Union{HPolytope, HalfSpace}, z::Vector{Variable})
+function add_set_constraint!(m::Model, set::Union{HPolytope, HalfSpace}, z::Vector{VariableRef})
     A, b = tosimplehrep(set)
     @constraint(m, A * z .<= b)
     return nothing
 end
 
-function add_set_constraint!(m::Model, set::Hyperrectangle, z::Vector{Variable})
+function add_set_constraint!(m::Model, set::Hyperrectangle, z::Vector{VariableRef})
     @constraint(m, z .<= high(set))
     @constraint(m, z .>= low(set))
     return nothing
 end
 
-function add_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{Variable})
+function add_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{VariableRef})
     add_complementary_set_constraint!(m, PC.P, z)
     return nothing
 end

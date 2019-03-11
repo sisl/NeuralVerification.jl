@@ -1,16 +1,16 @@
 import JuMP: GenericAffExpr
 
-init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, :Cont, include_input = true)
-init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, :Bin)
-init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers, :Cont)
+init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, include_input = true)
+init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, binary = true)
+init_multipliers(model::Model, layers::Vector{Layer}) = init_variables(model, layers)
 # Allow ::Network input also (NOTE for legacy purposes mostly...)
 init_neurons(m,     network::Network) = init_neurons(m, network.layers)
 init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
 init_multipliers(m, network::Network) = init_multipliers(m, network.layers)
 
-function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol = :Cont; include_input::Bool = false)
+function init_variables(model::Model, layers::Vector{Layer}; binary = false, include_input = false)
     # TODO: only neurons get offset array
-    vars = Vector{Vector{Variable}}(undef, length(layers))
+    vars = Vector{Vector{VariableRef}}(undef, length(layers))
     all_layers_n = n_nodes.(layers)
 
     if include_input
@@ -18,11 +18,11 @@ function init_variables(model::Model, layers::Vector{Layer}, vartype::Symbol = :
         # essentially an input constraint
         input_layer_n = size(first(layers).weights, 2)
         prepend!(all_layers_n, input_layer_n)
-        push!(vars, Vector{Variable}())        # expand vars by one to account
+        push!(vars, Vector{VariableRef}())        # expand vars by one to account
     end
 
     for (i, n) in enumerate(all_layers_n)
-        vars[i] = @variable(model, [1:n], category = vartype)
+        vars[i] = @variable(model, [1:n], binary = binary, base_name = "z$i")
     end
     return vars
 end
@@ -33,8 +33,8 @@ function symbolic_max(m::Model, a, b)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::Variable, b::Variable)                               = symbolic_max(a.m, a, b)
-symbolic_max(a::GenericAffExpr, b::GenericAffExpr)                   = symbolic_max(first(a.vars).m, a, b)
+symbolic_max(a::VariableRef, b::VariableRef)                         = symbolic_max(a.model, a, b)
+symbolic_max(a::GenericAffExpr, b::GenericAffExpr)                   = symbolic_max(first(first(a.terms)).model, a, b)
 symbolic_max(a::Array{<:GenericAffExpr}, b::Array{<:GenericAffExpr}) = symbolic_max.(a, b)
 
 function symbolic_abs(m::Model, v)
@@ -44,7 +44,7 @@ function symbolic_abs(m::Model, v)
     @constraint(m, aux >= -v)
     return aux
 end
-symbolic_abs(v::Variable)                = symbolic_abs(v.m, v)
+symbolic_abs(v::VariableRef)             = symbolic_abs(v.m, v)
 symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(v.vars).m, v)
 symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
 
