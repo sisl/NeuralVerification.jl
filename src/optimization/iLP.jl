@@ -28,8 +28,8 @@ Sound but not complete.
 in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
 @with_kw struct ILP
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    iterative::Bool                   = true
+    optimizer = GLPK.Optimizer
+    iterative::Bool = true
 end
 
 function solve(solver::ILP, problem::Problem)

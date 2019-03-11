@@ -24,8 +24,8 @@ Sound and complete.
 *ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
 @with_kw struct NSVerify
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    m::Float64                        = 1000.0  # The big M in the linearization
+    optimizer = GLPK.Optimizer
+    m::Float64 = 1000.0  # The big M in the linearization
 end
 
 function solve(solver::NSVerify, problem::Problem)

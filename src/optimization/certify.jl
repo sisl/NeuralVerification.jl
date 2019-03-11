@@ -24,7 +24,7 @@ Sound but not complete.
 *ArXiv Preprint ArXiv:1801.09344*, 2018.](https://arxiv.org/abs/1801.09344)
 """
 @with_kw struct Certify
-    optimizer::AbstractMathProgSolver  = SCSSolver()
+    optimizer = SCS.Optimizer
 end
 
 # can pass keyword args to optimizer
@@ -38,7 +38,7 @@ function solve(solver::Certify, problem::Problem)
     W = problem.network.layers[1].weights
     M = get_M(v[1, :], W)
     n = size(M, 1)
-    P = @variable(model, [1:n, 1:n], SDP)
+    P = @variable(model, [1:n, 1:n], PSD)
     # Compute value
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]

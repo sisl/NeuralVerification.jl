@@ -28,8 +28,8 @@ Sound but not complete.
 [https://github.com/souradeep-111/sherlock](https://github.com/souradeep-111/sherlock)
 """
 @with_kw struct Sherlock
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    ϵ::Float64                        = 0.1
+    optimizer = GLPK.Optimizer
+    ϵ::Float64 = 0.1
 end
 
 function solve(solver::Sherlock, problem::Problem)
@@ -59,7 +59,7 @@ function sample(set::AbstractPolytope)
     return x[1]
 end
 
-function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractMathProgSolver, type::Symbol)
+function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Symbol)
     nnet = problem.network
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
@@ -76,7 +76,7 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractM
     return (x_new, bound_new[1])
 end
 
-function global_search(problem::Problem, bound::Float64, optimizer::AbstractMathProgSolver, type::Symbol)
+function global_search(problem::Problem, bound::Float64, optimizer, type::Symbol)
     index = ifelse(type == :max, 1.0, -1.0)
     h = HalfSpace([index], index * bound)
     output_set = HPolytope([h])

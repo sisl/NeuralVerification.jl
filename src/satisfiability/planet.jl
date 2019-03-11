@@ -26,11 +26,9 @@ in *International Symposium on Automated Technology for Verification and Analysi
 [https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
 @with_kw struct Planet
-    optimizer::AbstractMathProgSolver  = GLPKSolverMIP()
-    eager::Bool                        = false
+    optimizer = GLPK.Optimizer
+    eager::Bool = false
 end
-
-Planet(x::AbstractMathProgSolver) = Planet(optimizer = x)
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
@@ -80,7 +78,7 @@ function set_activation_pattern!(ψ::Vector{Vector{Int64}}, L::Layer{Id}, bound:
 end
 
 
-function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
+function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
@@ -107,7 +105,7 @@ end
 function elastic_filtering(problem::Problem,
                            list::Vector{Int64},
                            bounds::Vector{Hyperrectangle},
-                           optimizer::AbstractMathProgSolver)
+                           optimizer)
     return elastic_filtering(problem,
                              get_assignment(problem.network, list),
                              bounds,
@@ -128,7 +126,7 @@ function max_slack(x::Vector{Vector{Float64}}, act)
     return (m, index)
 end
 
-function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
+function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, problem.network)

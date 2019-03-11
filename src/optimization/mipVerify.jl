@@ -27,7 +27,7 @@ V. Tjeng, K. Xiao, and R. Tedrake,
 [https://github.com/vtjeng/MIPVerify.jl](https://github.com/vtjeng/MIPVerify.jl)
 """
 @with_kw struct MIPVerify
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    optimizer = GLPK.Optimizer
 end
 
 function solve(solver::MIPVerify, problem::Problem)

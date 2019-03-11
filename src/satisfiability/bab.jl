@@ -27,8 +27,8 @@ Sound and complete.
 *ArXiv Preprint ArXiv:1711.00455*, 2017.](https://arxiv.org/abs/1711.00455)
 """
 @with_kw struct BaB
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    ϵ::Float64                        = 0.1
+    optimizer = GLPK.Optimizer
+    ϵ::Float64 = 0.1
 end
 
 function solve(solver::BaB, problem::Problem)
@@ -89,7 +89,7 @@ function add_domain!(doms::Vector{Tuple{Float64, Hyperrectangle}}, new::Tuple{Fl
     insert!(doms, rank, new)
 end
 
-# Always split the longest input dimention
+# Always split the longest input dimension
 function split_dom(dom::Hyperrectangle)
     max_value, index_to_split = findmax(dom.radius)
     return split_interval(dom, index_to_split)
@@ -107,7 +107,7 @@ function concrete_bound(nnet::Network, subdom::Hyperrectangle, type::Symbol)
 end
 
 
-function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer::AbstractMathProgSolver, type::Symbol)
+function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
     bounds = get_bounds(nnet, dom)
     model = Model(solver = optimizer)
     neurons = init_neurons(model, nnet)

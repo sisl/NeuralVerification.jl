@@ -22,8 +22,8 @@ Sound and complete.
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
 *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
-@with_kw struct Reluplex{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverLP(method = :Exact)
+@with_kw struct Reluplex
+    optimizer = GLPK.Optimizer
 end
 
 function solve(solver::Reluplex, problem::Problem)
@@ -130,7 +130,7 @@ function reluplex_step(solver::Reluplex,
         for repair_type in 1:2
             # Set the relu status to the current fix.
             relu_status[i][j] = repair_type
-            new_m  = new_model(solver)
+            new_m  = Model(solver)
             bs, fs = encode(solver, new_m, problem)
             enforce_repairs!(new_m, bs, fs, relu_status)
 
@@ -146,5 +146,3 @@ function reluplex_step(solver::Reluplex,
         error("unexpected status $status") # are there alternatives to the if and elseif?
     end
 end
-
-new_model(solver::Reluplex) = Model(solver = solver.optimizer)

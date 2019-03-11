@@ -1,23 +1,25 @@
 module NeuralVerification
 
 using JuMP
-using MathProgBase.SolverInterface
-using GLPKMathProgInterface
 using PicoSAT # needed for Planet
-using SCS     # needed for Certify and Duality
-# for Reachability
-using LazySets
-using LazySets.Approximations
-using Polyhedra
-using CDDLib
+using GLPK, SCS # SCS only needed for Certify
+
+using LazySets, LazySets.Approximations
+using Polyhedra, CDDLib
+
 using LinearAlgebra
 using Parameters
 using Interpolations # only for PiecewiseLinear
-using Requires
 
+import MathOptInterface: OPTIMAL, INFEASIBLE
 import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
+using Requires
+
 # abstract type Solver end # no longer needed
+
+# For optimization methods:
+JuMP.Model(solver) = Model(with_optimizer(solver.optimizer))
 
 include("utils/activation.jl")
 include("utils/network.jl")

@@ -24,7 +24,7 @@ Sound but not complete.
 *ArXiv Preprint ArXiv:1803.06567*, 2018.](https://arxiv.org/abs/1803.06567)
 """
 @with_kw struct Duality
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    optimizer = GLPK.Optimizer
 end
 
 # can pass keyword args to optimizer
