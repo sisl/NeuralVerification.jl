@@ -22,10 +22,8 @@ function max_sum!(model::Model, var)
     return o
 end
 
-# Actually, this is the default objective when creating a model. Only used for explicit-ness.
-function feasibility_problem!(model::Model)
-    @objective(model, Max, 0.0)
-end
+# This is the default when creating a model. Only used for explicit-ness.
+feasibility_problem!(model::Model) = nothing
 
 function linear_objective!(mode::Model, map::HPolytope, var)
     c, d = tosimplehrep(map)
