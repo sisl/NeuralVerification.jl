@@ -35,10 +35,8 @@
         problem_holds    = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
         problem_violated = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
 
-        glpk = GLPKSolverMIP()
-
-        group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
-        group3 = [Duality(optimizer = glpk)] # hypothetically also ConvDual
+        group2 = [NSVerify(), MIPVerify(), ILP()]
+        group3 = [Duality()] # hypothetically also ConvDual
         group4 = [FastLin(), FastLip()]
         group6 = [Reluplex(), Planet()]
 
@@ -64,8 +62,7 @@
         problem_holds    = Problem(small_nnet, in_hyper, out_superset)
         problem_violated = Problem(small_nnet, in_hyper, out_overlapping)
 
-        glpk = GLPKSolverMIP()
-        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
+        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(ϵ = 0.5), BaB()]
             holds    = solve(solver, problem_holds)
             violated = solve(solver, problem_violated)
 
