@@ -213,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Problem Definitions",
     "title": "NeuralVerification.BasicResult",
     "category": "type",
-    "text": "BasicResult(status::Symbol)\n\nResult type that captures whether the input-output constraint is satisfied. Possible status values:\n\n:holds (io constraint is satisfied always)\n\n:violated (io constraint is violated)\n\n:Unknown (could not be determined)\n\n\n\n\n\n"
+    "text": "BasicResult(status::Symbol)\n\nResult type that captures whether the input-output constraint is satisfied. Possible status values:\n\n:holds (io constraint is satisfied always)\n\n:violated (io constraint is violated)\n\n:unknown (could not be determined)\n\n\n\n\n\n"
 },
 
 {
