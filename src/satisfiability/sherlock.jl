@@ -28,8 +28,8 @@ Sound but not complete.
 [https://github.com/souradeep-111/sherlock](https://github.com/souradeep-111/sherlock)
 """
 @with_kw struct Sherlock
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    ϵ::Float64                        = 0.1
+    optimizer = GLPK.Optimizer
+    ϵ::Float64 = 0.1
 end
 
 function solve(solver::Sherlock, problem::Problem)
@@ -47,8 +47,8 @@ function output_bound(solver::Sherlock, problem::Problem, type::Symbol)
     while true
         (x, bound) = local_search(problem, x, opt, type)
         bound_ϵ = bound + ifelse(type == :max, solver.ϵ, -solver.ϵ)
-        (x_new, bound_new, feasibile) = global_search(problem, bound_ϵ, opt, type)
-        feasibile || return (x, bound)
+        (x_new, bound_new, feasible) = global_search(problem, bound_ϵ, opt, type)
+        feasible || return (x, bound)
         (x, bound) = (x_new, bound_new)
     end
 end
@@ -59,24 +59,24 @@ function sample(set::AbstractPolytope)
     return x[1]
 end
 
-function local_search(problem::Problem, x::Vector{Float64}, optimizer::AbstractMathProgSolver, type::Symbol)
+function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Symbol)
     nnet = problem.network
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
-    model = Model(solver = optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, problem.input, first(neurons))
     encode_network!(model, nnet, neurons, act_pattern, StandardLP())
     o = gradient * neurons[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * o[1])
-    solve(model, suppress_warnings = true)
-    x_new = getvalue(neurons[1])
+    optimize!(model)
+    x_new = value(neurons[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
 end
 
-function global_search(problem::Problem, bound::Float64, optimizer::AbstractMathProgSolver, type::Symbol)
+function global_search(problem::Problem, bound::Float64, optimizer, type::Symbol)
     index = ifelse(type == :max, 1.0, -1.0)
     h = HalfSpace([index], index * bound)
     output_set = HPolytope([h])

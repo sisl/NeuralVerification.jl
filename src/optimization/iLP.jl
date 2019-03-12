@@ -28,14 +28,14 @@ Sound but not complete.
 in *Advances in Neural Information Processing Systems*, 2016.](https://arxiv.org/abs/1605.07262)
 """
 @with_kw struct ILP
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    iterative::Bool                   = true
+    optimizer = GLPK.Optimizer
+    iterative::Bool = true
 end
 
 function solve(solver::ILP, problem::Problem)
     nnet = problem.network
     x = problem.input.center
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     δ = get_activation(nnet, x)
     neurons = init_neurons(model, nnet)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
@@ -43,19 +43,19 @@ function solve(solver::ILP, problem::Problem)
 
     if !solver.iterative
         encode_network!(model, nnet, neurons, δ, StandardLP())
-        status = solve(model, suppress_warnings = true)
-        status != :Optimal && return AdversarialResult(:Unknown)
-        return interpret_result(solver, getvalue(o), problem.input)
+        optimize!(model)
+        termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
+        return interpret_result(solver, value(o), problem.input)
     end
 
     encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
     while true
-        status = solve(model, suppress_warnings = true)
-        status != :Optimal && return AdversarialResult(:Unknown)
-        x = getvalue(first(neurons))
+        optimize!(model)
+        termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
+        x = value.(first(neurons))
         matched, index = match_activation(nnet, x, δ)
         if matched
-            return interpret_result(solver, getvalue(o), problem.input)
+            return interpret_result(solver, value(o), problem.input)
         end
         add_constraint!(model, nnet, neurons, δ, index)
     end
@@ -71,7 +71,7 @@ end
 
 function add_constraint!(model::Model,
                          nnet::Network,
-                         z::Vector{Vector{Variable}},
+                         z::Vector{Vector{VariableRef}},
                          δ::Vector{Vector{Bool}},
                          (i, j)::Tuple{Int64, Int64})
     layer = nnet.layers[i]

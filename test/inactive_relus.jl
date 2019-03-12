@@ -23,8 +23,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -35,10 +35,8 @@
         problem_holds    = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 10.)]))     # y < 10.0
         problem_violated = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([-1.], -20.)]))     # y > 20.0
 
-        glpk = GLPKSolverMIP()
-
-        group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
-        group3 = [ConvDual(), Duality(optimizer = glpk)]
+        group2 = [NSVerify(), MIPVerify(), ILP()]
+        group3 = [ConvDual(), Duality()]
         group4 = [FastLin(), FastLip()]
         group6 = [Reluplex(), Planet()]
 
@@ -47,8 +45,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end
@@ -57,14 +55,13 @@
         problem_holds    = Problem(small_nnet, in_hyper, out_superset)
         problem_violated = Problem(small_nnet, in_hyper, out_overlapping)
 
-        glpk = GLPKSolverMIP()
-        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
+        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(ϵ = 0.5), BaB()]
             holds    = solve(solver, problem_holds)
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end

@@ -24,7 +24,7 @@ Sound but not complete.
 *ArXiv Preprint ArXiv:1801.09344*, 2018.](https://arxiv.org/abs/1801.09344)
 """
 @with_kw struct Certify
-    optimizer::AbstractMathProgSolver  = SCSSolver()
+    optimizer = SCS.Optimizer
 end
 
 # can pass keyword args to optimizer
@@ -32,32 +32,32 @@ end
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     c, d = tosimplehrep(problem.output)
     v = c * problem.network.layers[2].weights
     W = problem.network.layers[1].weights
     M = get_M(v[1, :], W)
     n = size(M, 1)
-    P = @variable(model, [1:n, 1:n], SDP)
+    P = @variable(model, [1:n, 1:n], PSD)
     # Compute value
     output = c * compute_output(problem.network, problem.input.center) .- d[1]
     epsilon = problem.input.radius[1]
-    o = output + epsilon/4 * tr(M*P)
+    o = output .+ epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
-    @objective(model, Max, o[1])
-    status = solve(model, suppress_warnings = true)
-    return interpret_result(solver, status, o[1])
+    @objective(model, Max, first(o))
+    optimize!(model)
+    return interpret_result(solver, termination_status(model), first(o))
 end
 
 # True if o < 0
 # Undertermined if otherwise
 function interpret_result(solver::Certify, status, o)
-    # println("Upper bound: ", getvalue(o[1]))
-    if getvalue(o) <= 0
+    # println("Upper bound: ", value(o[1]))
+    if value(o) <= 0
         return BasicResult(:holds)
     else
-        return BasicResult(:Unknown)
+        return BasicResult(:unknown)
     end
 end
 

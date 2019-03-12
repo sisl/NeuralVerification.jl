@@ -22,12 +22,12 @@ Sound and complete.
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
 *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
-@with_kw struct Reluplex{O<:AbstractMathProgSolver}
-    optimizer::O = GLPKSolverLP(method = :Exact)
+@with_kw struct Reluplex
+    optimizer = GLPK.Optimizer
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    initial_model = new_model(solver)
+    initial_model = Model(solver)
     bs, fs = encode(solver, initial_model, problem)
     layers = problem.network.layers
     initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
@@ -38,8 +38,8 @@ end
 
 function find_relu_to_fix(ẑ, z)
     for i in 1:length(z), j in 1:length(z[i])
-        ẑᵢⱼ = getvalue(ẑ[i][j])
-        zᵢⱼ = getvalue(z[i][j])
+        ẑᵢⱼ = value(ẑ[i][j])
+        zᵢⱼ = value(z[i][j])
 
         if type_one_broken(ẑᵢⱼ, zᵢⱼ) ||
            type_two_broken(ẑᵢⱼ, zᵢⱼ)
@@ -93,7 +93,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     add_complementary_set_constraint!(model, problem.output, last(z))
-    zero_objective!(model)
+    feasibility_problem!(model)
     return ẑ, z
 end
 
@@ -113,24 +113,25 @@ end
 function reluplex_step(solver::Reluplex,
                        problem::Problem,
                        model::Model,
-                       ẑ::Vector{Vector{Variable}},
-                       z::Vector{Vector{Variable}},
+                       ẑ::Vector{Vector{VariableRef}},
+                       z::Vector{Vector{VariableRef}},
                        relu_status::Vector{Vector{Int}})
 
-    status = solve(model, suppress_warnings = true)
-    if status == :Infeasible
-        return CounterExampleResult(:holds)
+    optimize!(model)
 
-    elseif status == :Optimal
+    # If the problem is optimally solved, this could potentially be a counterexample.
+    # Branch by repair type (inactive or active) and redetermine if this is a valid
+    # counterexample. If the problem is infeasible or unbounded. The property holds.
+    if termination_status(model) == OPTIMAL
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
-        i == 0 && return CounterExampleResult(:violated, getvalue.(first(ẑ)))
+        i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
         for repair_type in 1:2
             # Set the relu status to the current fix.
             relu_status[i][j] = repair_type
-            new_m  = new_model(solver)
+            new_m  = Model(solver)
             bs, fs = encode(solver, new_m, problem)
             enforce_repairs!(new_m, bs, fs, relu_status)
 
@@ -141,10 +142,6 @@ function reluplex_step(solver::Reluplex,
 
             result.status == :violated && return result
         end
-        return CounterExampleResult(:holds)
-    else
-        error("unexpected status $status") # are there alternatives to the if and elseif?
     end
+    return CounterExampleResult(:holds)
 end
-
-new_model(solver::Reluplex) = Model(solver = solver.optimizer)

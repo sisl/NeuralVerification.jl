@@ -7,7 +7,8 @@ macro no_error(ex)
     quote
         try $(esc(ex))
             true
-        catch
+        catch e
+            @error(e)
             false
         end
     end

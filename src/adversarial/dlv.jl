@@ -32,6 +32,7 @@ in *International Conference on Computer Aided Verification*, 2017.](https://arx
 [https://github.com/VeriDeep/DLV](https://github.com/VeriDeep/DLV)
 """
 @with_kw struct DLV
+    optimizer = GLPK.Optimizer
     ϵ::Float64 = 1.0
 end
 # TODO: create types for the two mapping cases, since they are now both unstable and boxed
@@ -61,7 +62,7 @@ function solve(solver::DLV, problem::Problem)
 
         if var
             backward_nnet = Network(problem.network.layers[1:i])
-            status, x = backward_map(y, backward_nnet, η[1:i+1])
+            status, x = backward_map(solver, y, backward_nnet, η[1:i+1])
             if status
                 return CounterExampleResult(:violated, x)
             end
@@ -77,19 +78,19 @@ function get_manipulation(layer::Layer, δ::Vector{Float64}, bound::Hyperrectang
 end
 
 # Try to find an input x that arrives at output y
-function backward_map(y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrectangle})
+function backward_map(solver::DLV, y::Vector{Float64}, nnet::Network, bounds::Vector{Hyperrectangle})
     output = Hyperrectangle(y, zeros(size(y)))
     input = first(bounds)
-    model = Model(solver = GLPKSolverMIP())
+    model = Model(solver)
     neurons = init_neurons(model, nnet)
     deltas  = init_deltas(model, nnet)
     add_set_constraint!(model, input, first(neurons))
     add_set_constraint!(model, output, last(neurons))
     encode_network!(model, nnet, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - input.center)
-    status = solve(model, suppress_warnings = true)
-    if status == :Optimal
-        return (true, getvalue(first(neurons)))
+    optimize!(model)
+    if termination_status(model) == OPTIMAL
+        return (true, value(first(neurons)))
     else
         return (false, [])
     end

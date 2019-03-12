@@ -24,24 +24,24 @@ Sound and complete.
 *ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
 @with_kw struct NSVerify
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
-    m::Float64                        = 1000.0  # The big M in the linearization
+    optimizer = GLPK.Optimizer
+    m::Float64 = 1000.0  # The big M in the linearization
 end
 
 function solve(solver::NSVerify, problem::Problem)
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(solver.m))
-    zero_objective!(model)
-    status = solve(model, suppress_warnings = true)
-    if status == :Optimal
-        return CounterExampleResult(:violated, getvalue(first(neurons)))
+    feasibility_problem!(model)
+    optimize!(model)
+    if termination_status(model) == OPTIMAL
+        return CounterExampleResult(:violated, value.(first(neurons)))
     end
-    if status == :Infeasible
+    if termination_status(model) == INFEASIBLE
         return CounterExampleResult(:holds)
     end
-    return CounterExampleResult(:Unknown)
+    return CounterExampleResult(:unknown)
 end

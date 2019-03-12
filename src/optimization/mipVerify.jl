@@ -27,24 +27,24 @@ V. Tjeng, K. Xiao, and R. Tedrake,
 [https://github.com/vtjeng/MIPVerify.jl](https://github.com/vtjeng/MIPVerify.jl)
 """
 @with_kw struct MIPVerify
-    optimizer::AbstractMathProgSolver = GLPKSolverMIP()
+    optimizer = GLPK.Optimizer
 end
 
 function solve(solver::MIPVerify, problem::Problem)
-    model = Model(solver = solver.optimizer)
+    model = Model(solver)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - problem.input.center)
-    status = solve(model, suppress_warnings = true)
-    if status == :Infeasible
+    optimize!(model)
+    if termination_status(model) == INFEASIBLE
         return AdversarialResult(:holds)
     end
-    if getvalue(o) >= maximum(problem.input.radius)
+    if value(o) >= maximum(problem.input.radius)
         return AdversarialResult(:holds)
     else
-        return AdversarialResult(:violated, getvalue(o))
+        return AdversarialResult(:violated, value(o))
     end
 end

@@ -26,24 +26,22 @@ in *International Symposium on Automated Technology for Verification and Analysi
 [https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
 @with_kw struct Planet
-    optimizer::AbstractMathProgSolver  = GLPKSolverMIP()
-    eager::Bool                        = false
+    optimizer = GLPK.Optimizer
+    eager::Bool = false
 end
-
-Planet(x::AbstractMathProgSolver) = Planet(optimizer = x)
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
-    status == :Optimal || return CounterExampleResult(:holds)
+    status == OPTIMAL || return CounterExampleResult(:holds)
     ψ = init_ψ(problem.network, bounds)
     δ = PicoSAT.solve(ψ)
     opt = solver.optimizer
     # Main loop to compute the SAT problem
     while δ != :unsatisfiable
         status, conflict = elastic_filtering(problem, δ, bounds, opt)
-        status == :Infeasible || return CounterExampleResult(:violated, conflict)
+        status == INFEASIBLE || return CounterExampleResult(:violated, conflict)
         push!(ψ, conflict)
         δ = PicoSAT.solve(ψ)
     end
@@ -80,8 +78,8 @@ function set_activation_pattern!(ψ::Vector{Vector{Int64}}, L::Layer{Id}, bound:
 end
 
 
-function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer::AbstractMathProgSolver)
-    model = Model(solver = optimizer)
+function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
@@ -92,10 +90,10 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     conflict = Vector{Int64}()
     act = get_activation(problem.network, bounds)
     while true
-        status = solve(model, suppress_warnings = true)
-        status == :Optimal || return (:Infeasible, conflict)
-        (m, index) = max_slack(getvalue(slack), act)
-        m > 0.0 || return (:Feasible, getvalue(neurons[1]))
+        optimize!(model)
+        termination_status(model) == OPTIMAL || return (INFEASIBLE, conflict)
+        (m, index) = max_slack(value.(slack), act)
+        m > 0.0 || return (:Feasible, value.(neurons[1]))
         # activated neurons get a factor of (-1)
         coeff = δ[index[1]][index[2]] ? -1 : 1
         node = coeff * get_node_id(problem.network, index)
@@ -107,7 +105,7 @@ end
 function elastic_filtering(problem::Problem,
                            list::Vector{Int64},
                            bounds::Vector{Hyperrectangle},
-                           optimizer::AbstractMathProgSolver)
+                           optimizer)
     return elastic_filtering(problem,
                              get_assignment(problem.network, list),
                              bounds,
@@ -128,29 +126,29 @@ function max_slack(x::Vector{Vector{Float64}}, act)
     return (m, index)
 end
 
-function tighten_bounds(problem::Problem, optimizer::AbstractMathProgSolver)
+function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
-    model = Model(solver = optimizer)
+    model = Model(with_optimizer(optimizer))
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
 
-    o = min_sum!(model, neurons)
-    status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, bounds)
-    lower = getvalue(neurons)
+    min_sum!(model, neurons)
+    optimize!(model)
+    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
+    lower = value.(neurons)
 
-    o = max_sum!(model, neurons)
-    status = solve(model, suppress_warnings = true)
-    status == :Optimal || return (:Infeasible, bounds)
-    upper = getvalue(neurons)
+    max_sum!(model, neurons)
+    optimize!(model)
+    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
+    upper = value.(neurons)
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
-    return (:Optimal, new_bounds)
+    return (OPTIMAL, new_bounds)
 end
 
 

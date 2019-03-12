@@ -57,9 +57,9 @@ version = "0.2.0"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "49269e311ffe11ac5b334681d212329002a9832a"
+git-tree-sha1 = "195a3ffcb8b0762684b6821de18f83a16455c6ea"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.5.1"
+version = "2.0.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections", "Random", "Serialization", "Test"]
@@ -93,9 +93,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[ErrorfreeArithmetic]]
 deps = ["Test"]
-git-tree-sha1 = "1d6e9d759a3cefca9b96ab91cba43a8578048923"
+git-tree-sha1 = "e38834f24946eb8c7dcf2bb00580e087faa60c44"
 uuid = "90fa49ef-747e-5e6f-a989-263ba693cf1a"
-version = "0.3.1"
+version = "0.3.2"
 
 [[Expokit]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -123,9 +123,9 @@ version = "0.10.3"
 
 [[GLPK]]
 deps = ["BinaryProvider", "Compat", "Libdl", "LinQuadOptInterface"]
-git-tree-sha1 = "fd8611745ac49689673fce6714893b3cd2301ab5"
+git-tree-sha1 = "82f64bfd090a95b7670ed0d7c734220f32983386"
 uuid = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
-version = "0.8.3"
+version = "0.9.1"
 
 [[GLPKMathProgInterface]]
 deps = ["Compat", "GLPK", "MathProgBase"]
@@ -135,9 +135,9 @@ version = "0.4.4"
 
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
-git-tree-sha1 = "28b193e14466beecf928449e0f8505ff6de3709d"
+git-tree-sha1 = "a9bc71d5a7eb971b61db353eb66c4a1de0551d8c"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
-version = "0.7.2"
+version = "0.7.3"
 
 [[HTTPClient]]
 deps = ["Compat", "LibCURL"]
@@ -163,9 +163,9 @@ version = "0.11.0"
 
 [[IntervalArithmetic]]
 deps = ["CRlibm", "FastRounding", "LinearAlgebra", "Markdown", "RecipesBase", "SetRounding", "StaticArrays", "Test"]
-git-tree-sha1 = "88fbfcc040299c99f9093f13539e26b165b6803a"
+git-tree-sha1 = "e2379c6b0b48ce6e414e8eeabec95cd6982aad22"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
-version = "0.15.1"
+version = "0.15.2"
 
 [[IterTools]]
 deps = ["SparseArrays", "Test"]
@@ -180,18 +180,18 @@ uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.20.0"
 
 [[JuMP]]
-deps = ["Calculus", "Compat", "ForwardDiff", "Libdl", "MathProgBase", "Pkg", "ReverseDiffSparse", "Serialization"]
-git-tree-sha1 = "3bd8e52f7aeb2736a8e1b0d8ae8d01c2c85fea24"
+deps = ["Calculus", "DataStructures", "ForwardDiff", "LinearAlgebra", "MathOptInterface", "NaNMath", "Random", "SparseArrays", "Statistics", "Test"]
+git-tree-sha1 = "db9f08540c1a23269acbae5d520c79f4722899f4"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
-version = "0.18.5"
+version = "0.19.0"
 
 [[LazySets]]
-deps = ["Compat", "Distributed", "Expokit", "GLPKMathProgInterface", "IntervalArithmetic", "LinearAlgebra", "MathProgBase", "Pkg", "Random", "RecipesBase", "Requires", "SharedArrays", "SparseArrays"]
-git-tree-sha1 = "17607a56c94108b9385fbe320f24e74b0191b761"
+deps = ["Compat", "Distributed", "Expokit", "GLPKMathProgInterface", "InteractiveUtils", "IntervalArithmetic", "LinearAlgebra", "MathProgBase", "Pkg", "Random", "RecipesBase", "Requires", "SharedArrays", "SparseArrays"]
+git-tree-sha1 = "6958221ff2efb2a0240d4016ba469a2ca03c29e1"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaReach/LazySets.jl.git"
 uuid = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
-version = "1.8.0+"
+version = "1.9.0+"
 
 [[LibCURL]]
 deps = ["BinaryProvider", "Compat", "Libdl", "Printf"]
@@ -219,9 +219,9 @@ version = "1.0.0"
 
 [[LinQuadOptInterface]]
 deps = ["Compat", "MathOptInterface"]
-git-tree-sha1 = "bb631aa81ec5fec6a380d9d505a17a5c185e4d2b"
+git-tree-sha1 = "d6692a09d0424e34c884cd819b8ed47943eefc20"
 uuid = "f8899e07-120b-5979-ab1d-7b97bb9e1a48"
-version = "0.4.3"
+version = "0.6.0"
 
 [[LinearAlgebra]]
 deps = ["Libdl"]
@@ -236,9 +236,9 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[MathOptInterface]]
 deps = ["Compat", "Unicode"]
-git-tree-sha1 = "bc8dffc05c4697addeb3c536b303be3f8b16b1ed"
+git-tree-sha1 = "ed9457bdd246a3302d791c5e8f0aad3c3de2e121"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "0.6.4"
+version = "0.8.3"
 
 [[MathProgBase]]
 deps = ["Compat"]
@@ -325,17 +325,11 @@ git-tree-sha1 = "f6fbf4ba64d295e146e49e021207993b6b48c7d1"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "0.5.2"
 
-[[ReverseDiffSparse]]
-deps = ["Calculus", "Compat", "DataStructures", "ForwardDiff", "MathProgBase", "NaNMath"]
-git-tree-sha1 = "cbbc2c710abea5cfe71459ce4711d80a212aac5a"
-uuid = "89212889-6d3f-5f97-b412-7825138f6c9c"
-version = "0.8.6"
-
 [[SCS]]
 deps = ["BinaryProvider", "Compat", "Libdl", "MathOptInterface", "MathProgBase"]
-git-tree-sha1 = "abfa18ef36e1e34bd782de596d32becae027de8f"
+git-tree-sha1 = "f3372fde752302d3cd38d00e2adaf3a7731f7061"
 uuid = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
-version = "0.4.1"
+version = "0.5.1"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"

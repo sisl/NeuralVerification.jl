@@ -60,7 +60,7 @@ abstract type Result end
 status(result::Result) = result.status
 
 function validate_status(st::Symbol)
-    @assert st ∈ (:holds, :violated, :Unknown) "unexpected status code: `:$st`.\nOnly (:holds, :violated, :Unknown) are accepted"
+    @assert st ∈ (:holds, :violated, :unknown) "unexpected status code: `:$st`.\nOnly (:holds, :violated, :unknown) are accepted"
     return st
 end
 
@@ -71,7 +71,7 @@ Result type that captures whether the input-output constraint is satisfied.
 Possible status values:\n
     :holds (io constraint is satisfied always)\n
     :violated (io constraint is violated)\n
-    :Unknown (could not be determined)
+    :unknown (could not be determined)
 """
 struct BasicResult <: Result
     status::Symbol

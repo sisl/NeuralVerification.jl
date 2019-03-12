@@ -23,8 +23,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -35,10 +35,8 @@
         problem_holds    = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 100.)]))     # y < 100.0
         problem_violated = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 10.)]))      # y < 10.0
 
-        glpk = GLPKSolverMIP()
-
-        group2 = [S(optimizer = glpk) for S in (NSVerify, MIPVerify, ILP)]
-        group3 = [Duality(optimizer = glpk)] # hypothetically also ConvDual
+        group2 = [NSVerify(), MIPVerify(), ILP()]
+        group3 = [Duality()] # hypothetically also ConvDual
         group4 = [FastLin(), FastLip()]
         group6 = [Reluplex(), Planet()]
 
@@ -47,8 +45,8 @@
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
 
@@ -56,22 +54,21 @@
         # We should ignore the result even if this particular network is trivial
         holds    = solve(ConvDual(), problem_holds)
         violated = solve(ConvDual(), problem_violated)
-        @test_skip holds.status    ∈ (:holds, :Unknown)
-        @test_skip violated.status ∈ (:violated, :Unknown)
+        @test_skip holds.status    ∈ (:holds, :unknown)
+        @test_skip violated.status ∈ (:violated, :unknown)
     end
 
     @testset "Group 5" begin
         problem_holds    = Problem(small_nnet, in_hyper, out_superset)
         problem_violated = Problem(small_nnet, in_hyper, out_overlapping)
 
-        glpk = GLPKSolverMIP()
-        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(glpk, 0.5), BaB(optimizer = glpk)]
+        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(ϵ = 0.5), BaB()]
             holds    = solve(solver, problem_holds)
             violated = solve(solver, problem_violated)
 
             @testset "$(typeof(solver))" begin
-                @test holds.status    ∈ (:holds, :Unknown)
-                @test violated.status ∈ (:violated, :Unknown)
+                @test holds.status    ∈ (:holds, :unknown)
+                @test violated.status ∈ (:violated, :unknown)
             end
         end
     end
