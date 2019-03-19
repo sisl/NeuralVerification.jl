@@ -34,6 +34,7 @@ The verification methods are divided into five categories:
 [Planet](https://arxiv.org/abs/1705.01320),
 [Reluplex](https://arxiv.org/abs/1702.01135)
 
+Reference: C. Liu, T. Arnon, C. Lazarus, C. Barrett, and M. Kochenderfer, "Algorithms for Verifying Neural Networks," [arXiv:1903.06758](https://arxiv.org/abs/1903.06758).
 
 ## Installation
 To download this library, clone it from the julia package manager like so:
