@@ -43,7 +43,7 @@ To download this library, clone it from the julia package manager like so:
 ```
 
 Please note that the implementations of the algorithms are pedagogical in nature, and so may not perform optimally.
-Derivation and discussion of these algorithms is presented in _link to paper_.
+Derivation and discussion of these algorithms is presented in the survey paper linked above.
 
 *Note:* At present, `Ai2`, `ExactReach`, and `Duality` do not work in higher dimensions (e.g. image classification).
 This is being addressed in [#9](https://github.com/sisl/NeuralVerification.jl/issues/9)
