@@ -51,7 +51,9 @@ scipy==1.0.0
 Send2Trash==1.4.2
 simplegeneric==0.8.1
 six==1.11.0
-tensorflow==1.4.1
+tensorboard==1.13.1
+tensorflow==1.13.1
+tensorflow-estimator==1.13.0
 tensorflow-tensorboard==0.4.0
 terminado==0.8.1
 testpath==0.3.1
