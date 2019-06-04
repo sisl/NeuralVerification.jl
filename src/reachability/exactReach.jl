@@ -29,6 +29,8 @@ function solve(solver::ExactReach, problem::Problem)
     return check_inclusion(reach, problem.output)
 end
 
+forward_layer(solver::ExactReach, layer::Layer, input) = forward_layer(solver, layer, convert(HPolytope, input))
+
 function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope})
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
