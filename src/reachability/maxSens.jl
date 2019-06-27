@@ -69,7 +69,7 @@ function partition(input::Hyperrectangle, delta::Float64)
     radius = fill(delta/2, n_dim)
 
     hyperrectangle_list = [1; ceil.(Int, (upper - lower)/delta)]
-    n_hyperrectangle = prod(hyperrectangle_list)
+    n_hyperrectangle = prod(max.(hyperrectangle_list, 1))
 
     hyperrectangles = Vector{Hyperrectangle}(undef, n_hyperrectangle)
     for k in 1:n_hyperrectangle
@@ -78,9 +78,11 @@ function partition(input::Hyperrectangle, delta::Float64)
         for i in n_dim:-1:1
             id = div(n-1, hyperrectangle_list[i])
             n = mod(n-1, hyperrectangle_list[i])+1
-            center[i] = lower[i] + delta * (id + 0.5);
+            lower_cell = lower[i] + min(delta, input.radius[i]*2) * id
+            radius[i] = min(delta, upper[i] - lower_cell) * 0.5
+            center[i] = lower_cell + radius[i];
         end
-        hyperrectangles[k] = Hyperrectangle(center, radius)
+        hyperrectangles[k] = Hyperrectangle(center[:], radius[:])
     end
     return hyperrectangles
 end
