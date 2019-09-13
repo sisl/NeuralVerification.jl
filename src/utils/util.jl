@@ -351,3 +351,41 @@ function split_interval(dom::Hyperrectangle, i::Int64)
     input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
     return (input_split_left, input_split_right)
 end
+
+
+"""
+    isfeasible(model::Model)
+Test if the termination status of `model` can be considered feasible.
+"""
+function isfeasible(model::Model)
+    if termination_status(model) == MOI.OPTIMIZE_NOT_CALLED
+        optimize!(model)
+    end
+
+    if termination_status(model) == MOI.INFEASIBLE
+        return false
+    elseif termination_status(model) == MOI.INFEASIBLE_OR_UNBOUNDED
+        if objective_sense(model) == MOI.FEASIBILITY_SENSE
+            return false
+        else
+            J = objective_function(model)
+            S = objective_sense(model)
+
+            # NOTE ONLY ON JuMP 0.20.0
+            @objective(model, Min, 0)
+            optimize!(model)
+            # Reset objective
+            @objective(model, S, J)
+            if termination_status(model) ∈ (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)
+                return false
+            end
+        end
+    end
+
+    if termination_status(model) != MOI.OPTIMAL
+        error("Unexpected termination status $(termination_status(model)).
+              Please file an issue on NeuralVerification.jl")
+    end
+
+    return true
+end
