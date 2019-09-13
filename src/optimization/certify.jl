@@ -47,19 +47,24 @@ function solve(solver::Certify, problem::Problem)
     @constraint(model, diag(P) .<= ones(n))
     @objective(model, Max, first(o))
     optimize!(model)
-    return interpret_result(solver, termination_status(model), first(o))
-end
-
-# True if o < 0
-# Undertermined if otherwise
-function interpret_result(solver::Certify, status, o)
-    # println("Upper bound: ", value(o[1]))
     if value(o) <= 0
         return BasicResult(:holds)
     else
         return BasicResult(:unknown)
     end
+    # return interpret_result(solver, termination_status(model), first(o))
 end
+
+# True if o < 0
+# Undertermined if otherwise
+# function interpret_result(solver::Certify, status, o)
+#     # println("Upper bound: ", value(o[1]))
+#     if value(o) <= 0
+#         return BasicResult(:holds)
+#     else
+#         return BasicResult(:unknown)
+#     end
+# end
 
 # M is used in the semidefinite program
 function get_M(v::Vector{Float64}, W::Matrix{Float64})

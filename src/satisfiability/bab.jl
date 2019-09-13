@@ -40,11 +40,11 @@ function solve(solver::BaB, problem::Problem)
 end
 
 function interpret_result(reach, bound, output, x_l, x_u)
-    if high(reach) < high(output) && low(reach) > low(output)
+    if reach ⊆ output
         return ReachabilityResult(:holds, [reach])
     end
-    high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
-    low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
+    high(bound) > high(output) && return CounterExampleResult(:violated, x_u)
+    low(bound)  < low(output)  && return CounterExampleResult(:violated, x_l)
     return ReachabilityResult(:unknown, reach)
 end
 
@@ -98,11 +98,8 @@ end
 # For simplicity
 function concrete_bound(nnet::Network, subdom::Hyperrectangle, type::Symbol)
     points = [subdom.center, low(subdom), high(subdom)]
-    values = Vector{Float64}(undef, 0)
-    for p in points
-        push!(values, sum(compute_output(nnet, p)))
-    end
-    value, index = ifelse(type == :min, findmin(values), findmax(values))
+    vals = [sum(compute_output(nnet, p)) for p in points]
+    value, index = ifelse(type == :min, findmin(vals), findmax(vals))
     return (value, points[index])
 end
 
@@ -117,6 +114,7 @@ function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbo
     o = sum(last(neurons))
     @objective(model, Max, index * o)
     optimize!(model)
-    termination_status(model) == OPTIMAL && return value(o)
-    error("Could not find bound for dom: ", dom)
+    J = value(o)
+    isfeasible(model) && return J
+    error("Could not find bound for dom: $dom")
 end

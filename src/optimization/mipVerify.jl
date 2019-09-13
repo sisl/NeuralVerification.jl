@@ -37,14 +37,13 @@ function solve(solver::MIPVerify, problem::Problem)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
-    o = max_disturbance!(model, first(neurons) - problem.input.center)
+    # o = max_disturbance!(model, first(neurons) - problem.input.center)
     optimize!(model)
-    if termination_status(model) == INFEASIBLE
-        return AdversarialResult(:holds)
-    end
-    if value(o) >= maximum(problem.input.radius)
-        return AdversarialResult(:holds)
+    J = objective_value(model)
+
+    if isfeasible(model) && J < maximum(problem.input.radius)
+        return AdversarialResult(:violated, J)
     else
-        return AdversarialResult(:violated, value(o))
+        return AdversarialResult(:holds, J)
     end
 end

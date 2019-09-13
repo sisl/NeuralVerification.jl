@@ -44,30 +44,39 @@ function solve(solver::ILP, problem::Problem)
     if !solver.iterative
         encode_network!(model, nnet, neurons, δ, StandardLP())
         optimize!(model)
-        termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        return interpret_result(solver, value(o), problem.input)
+        J = value(o)
+        if isfeasible(model)
+            return AdversarialResult(J >= radius(problem.input), J)
+        else
+            return AdversarialResult(:unknown, J)
+        end
     end
 
     encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
     while true
         optimize!(model)
-        termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value.(first(neurons))
-        matched, index = match_activation(nnet, x, δ)
-        if matched
-            return interpret_result(solver, value(o), problem.input)
+        J = value(o)
+        if isfeasible(model)
+            x = value.(first(neurons))
+            matched, index = match_activation(nnet, x, δ)
+            if matched
+                return AdversarialResult(J >= radius(problem.input), J)
+            end
+        else
+            return AdversarialResult(:unknown, J)
         end
+
         add_constraint!(model, nnet, neurons, δ, index)
     end
 end
 
-function interpret_result(solver::ILP, o, input)
-    if o >= maximum(input.radius)
-        return AdversarialResult(:holds, o)
-    else
-        return AdversarialResult(:violated, o)
-    end
-end
+# function interpret_result(solver::ILP, o, input)
+#     if o >= maximum(input.radius)
+#         return AdversarialResult(:holds, o)
+#     else
+#         return AdversarialResult(:violated, o)
+#     end
+# end
 
 function add_constraint!(model::Model,
                          nnet::Network,

@@ -38,15 +38,20 @@ function solve(solver::Duality, problem::Problem)
     o = dual_value(solver, problem, model, λ, μ)
     @constraint(model, last(λ) .== -c)
     optimize!(model)
-    return interpret_result(solver, termination_status(model), o - d[1])
+
+    if isfeasible(model)
+        return BasicResult(o <= d[1])
+    else
+        return BasicResult(:unknown)
+    end
 end
 
 # False if o > 0, True if o <= 0
-function interpret_result(solver::Duality, status, o)
-    status != OPTIMAL && return BasicResult(:unknown)
-    value(o) <= 0.0 && return BasicResult(:holds)
-    return BasicResult(:violated)
-end
+# function interpret_result(solver::Duality, status, o)
+#     status != OPTIMAL && return BasicResult(:unknown)
+#     value(o) <= 0.0 && return BasicResult(:holds)
+#     return BasicResult(:violated)
+# end
 
 function dual_value(solver::Duality,
                     problem::Problem,

@@ -121,8 +121,8 @@ function reluplex_step(solver::Reluplex,
 
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid
-    # counterexample. If the problem is infeasible or unbounded. The property holds.
-    if termination_status(model) == OPTIMAL
+    # counterexample. If the problem is infeasible, the property holds.
+    if isfeasible(model)
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
@@ -142,6 +142,7 @@ function reluplex_step(solver::Reluplex,
 
             result.status == :violated && return result
         end
+    else
+        return CounterExampleResult(:holds)
     end
-    return CounterExampleResult(:holds)
 end
