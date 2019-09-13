@@ -46,7 +46,8 @@ function solve(solver::ILP, problem::Problem)
         optimize!(model)
         J = value(o)
         if isfeasible(model)
-            return AdversarialResult(J >= radius(problem.input), J)
+            prop_holds = J >= radius(problem.input) ? :holds : :violated
+            return AdversarialResult(prop_holds, J)
         else
             return AdversarialResult(:unknown, J)
         end
@@ -60,7 +61,8 @@ function solve(solver::ILP, problem::Problem)
             x = value.(first(neurons))
             matched, index = match_activation(nnet, x, δ)
             if matched
-                return AdversarialResult(J >= radius(problem.input), J)
+                prop_holds = J >= radius(problem.input) ? :holds : :violated
+                return AdversarialResult(prop_holds, J)
             end
         else
             return AdversarialResult(:unknown, J)
