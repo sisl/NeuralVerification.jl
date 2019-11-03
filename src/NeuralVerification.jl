@@ -81,10 +81,11 @@ include("satisfiability/sherlock.jl")
 include("satisfiability/reluplex.jl")
 export BaB, Planet, Sherlock, Reluplex
 
+include("adversarial/neurify.jl")
 include("adversarial/reluVal.jl")
 include("adversarial/fastLin.jl")
 include("adversarial/fastLip.jl")
 include("adversarial/dlv.jl")
-export ReluVal, FastLin, FastLip, DLV
+export ReluVal, Neurify, FastLin, FastLip, DLV
 
 end

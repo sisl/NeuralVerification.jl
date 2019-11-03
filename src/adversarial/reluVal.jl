@@ -31,14 +31,6 @@ Sound but not complete.
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
-struct SymbolicInterval
-    Low::Matrix{Float64}
-    Up::Matrix{Float64}
-    interval::Hyperrectangle
-end
-
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
-
 # Data to be passed during forward_layer
 struct SymbolicIntervalMask
     sym::SymbolicInterval
@@ -54,9 +46,7 @@ function solve(solver::ReluVal, problem::Problem)
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
-        LG, UG = get_gradient(problem.network, reach.LΛ, reach.UΛ)
-        feature = get_smear_index(problem.network, reach.sym.interval, LG, UG)
-        intervals = split_interval(reach.sym.interval, feature)
+        intervals = interval_refinement(problem.network, reach)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
@@ -65,6 +55,12 @@ function solve(solver::ReluVal, problem::Problem)
         end
     end
     return BasicResult(:unknown)
+end
+
+function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
+    LG, UG = get_gradient(nnet, reach.LΛ, reach.UΛ)
+    feature = get_smear_index(nnet, reach.sym.interval, LG, UG)
+    return split_interval(reach.sym.interval, feature)
 end
 
 function pick_out!(reach_list, tree_search)
@@ -103,7 +99,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     return BasicResult(:unknown)
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
+function forward_layer(solver::Union{ReluVal, Neurify}, layer::Layer, input)
     return forward_act(forward_linear(input, layer), layer)
 end
 
@@ -158,7 +154,7 @@ function forward_act(input::SymbolicIntervalMask, layer::Layer{ReLU})
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
+function forward_act(input::Union{SymbolicIntervalMask, SymbolicIntervalGradient}, layer::Layer{Id})
     sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, ones(Int, n_node))
