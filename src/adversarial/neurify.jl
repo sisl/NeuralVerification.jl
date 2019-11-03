@@ -47,7 +47,6 @@ function solve(solver::Neurify, problem::Problem)
     result.status == :unknown || return result
     reach_list = SymbolicIntervalMask[reach]
     for i in 2:solver.max_iter
-        println(i)
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(problem.network, reach)
@@ -61,16 +60,18 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{Hyperrectangle})
+function symbol_to_concrete(reach::SymbolicInterval{HPolytope{N}}) where N
     n_output = size(reach.Low, 1)
-    vertices = tovrep(reach.interval)
-    new_v_up = vertices[:]
-    new_v_low = vectices[:]
+    vertices = tovrep(reach.interval).vertices
+    new_v_up = vertices
+    new_v_low = vertices
     for (i, v) in enumerate(vertices)
-        new_v_1[i] = reach.Low[:, 1:end-1] * vertices + reach.Low[:, end]
-        new_v_2[i] = reach.Up[:, 1:end-1] * vertices + reach.Up[:, end]
+        new_v_up[i] = reach.Low[:, 1:end-1] * v + reach.Low[:, end]
+        new_v_low[i] = reach.Up[:, 1:end-1] * v + reach.Up[:, end]
     end
-    return convex_hull(new_v_1, new_v_2)
+    V_up = VPolytope(new_v_up)
+    V_low = VPolytope(new_v_low)
+    return convex_hull([V_up, V_low])
 end
 
 function constraint_refinement(nnet::Network, reach::SymbolicIntervalGradient)
