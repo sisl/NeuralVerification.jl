@@ -5,7 +5,7 @@ Neurify combines symbolic reachability analysis with iterative interval refineme
 
 # Problem requirement
 1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
+2. Input: AbstractPolytope
 3. Output: AbstractPolytope
 
 # Return
@@ -45,11 +45,11 @@ function solve(solver::Neurify, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network)
     result.status == :unknown || return result
-    reach_list = SymbolicIntervalMask[reach]
+    reach_list = SymbolicIntervalGradient[reach]
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
-        intervals = constraint_refinement(problem.network, reach)
+        intervals = constraint_refinement(solver, problem.network, reach)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
@@ -74,16 +74,21 @@ function symbol_to_concrete(reach::SymbolicInterval{HPolytope{N}}) where N
     return convex_hull([V_up, V_low])
 end
 
-function constraint_refinement(nnet::Network, reach::SymbolicIntervalGradient)
-    i, j, gradient = get_nodewise_gradient(problem.network, reach.LΛ, reach.UΛ)
+function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
+    i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
     # We can generate four more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-    C, d = tosimplehrep(reach.sym.interaval)
-    l_sym = Low[i][j, 1:end-1]
-    l_off = Low[i][j, end]
-    u_sym = Up[i][j, 1:end-1]
-    u_off = Up[i][j, end]
-    intervals = Vector{HPolytope}(4)
+    println("(",i,",",j,")")
+    nnet_new = Network(nnet.layers[1:i])
+    reach_new = forward_network(solver, nnet_new, reach.sym.interval)
+    C, d = tosimplehrep(reach.sym.interval)
+    println("lower bound:", reach_new.sym.Low)
+    println("upper bound:", reach_new.sym.Up)
+    l_sym = reach_new.sym.Low[j, 1:end-1]
+    l_off = reach_new.sym.Low[j, end]
+    u_sym = reach_new.sym.Up[j, 1:end-1]
+    u_off = reach_new.sym.Up[j, end]
+    intervals = Vector{HPolytope{Float64}}(undef, 4)
     intervals[1] = HPolytope([C; l_sym; u_sym], [d; -l_off; -u_off])
     intervals[2] = HPolytope([C; l_sym; -u_sym], [d; -l_off; u_off])
     intervals[3] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off])
@@ -93,14 +98,15 @@ end
 
 function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ::Vector{Vector{Float64}})
     n_output = size(nnet.layers[end].weights, 1)
+    n_length = length(nnet.layers)
+    println("number of layers: ", n_length)
+    println(n_output)
     LG = Matrix(1.0I, n_output, n_output)
     UG = Matrix(1.0I, n_output, n_output)
     max_tuple = (0, 0, 0.0)
-    for (i, layer) in enumerate(reverse(nnet.layers))
-        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
-        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
-        LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
-        for j in length(layer.bias)
+    for (k, layer) in enumerate(reverse(nnet.layers))
+        i = n_length - k + 1
+        for j in size(layer.bias)
             if LΛ[i][j] ∈ (0.0, 1.0) && UΛ[i][j] ∈ (0.0, 1.0)
                 max_gradient = max(abs(LG[j]), abs(UG[j]))
                 if max_gradient > max_tuple[3]
@@ -108,28 +114,39 @@ function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ:
                 end
             end
         end
+        i >= 1 || break
+        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
+        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
+        LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
+        println("layer ", i, ":", layer.weights, ",", layer.bias)
+        println(LG_hat, ",", UG_hat)
+        println(LG, ",", UG)
     end
     return max_tuple
 end
 
+function forward_layer(solver::Neurify, layer::Layer, input)
+    return forward_act(forward_linear(solver, input, layer), layer)
+end
+
 # Symbolic forward_linear for the first layer
-function forward_linear(input::AbstractPolytope, layer::Layer)
+function forward_linear(solver::Neurify, input::AbstractPolytope, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
     sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
     LΛ = Vector{Vector{Int64}}(undef, 0)
     UΛ = Vector{Vector{Int64}}(undef, 0)
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
 # Symbolic forward_linear
-function forward_linear(input::SymbolicIntervalGradient, layer::Layer)
+function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
     output_Up = max.(W, 0) * input.sym.Up + min.(W, 0) * input.sym.Low
     output_Low = max.(W, 0) * input.sym.Low + min.(W, 0) * input.sym.Up
     output_Up[:, end] += b
     output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    return SymbolicIntervalMask(sym, input.LΛ, input.UΛ)
+    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
@@ -164,5 +181,13 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     LΛ = push!(input.LΛ, mask_lower)
     UΛ = push!(input.UΛ, mask_upper)
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
+end
+
+function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
+    sym = input.sym
+    n_node = size(input.sym.Up, 1)
+    LΛ = push!(input.LΛ, ones(Float64, n_node))
+    UΛ = push!(input.UΛ, ones(Float64, n_node))
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end

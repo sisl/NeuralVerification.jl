@@ -99,7 +99,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     return BasicResult(:unknown)
 end
 
-function forward_layer(solver::Union{ReluVal, Neurify}, layer::Layer, input)
+function forward_layer(solver::ReluVal, layer::Layer, input)
     return forward_act(forward_linear(input, layer), layer)
 end
 
@@ -154,7 +154,7 @@ function forward_act(input::SymbolicIntervalMask, layer::Layer{ReLU})
 end
 
 # Symbolic forward_act
-function forward_act(input::Union{SymbolicIntervalMask, SymbolicIntervalGradient}, layer::Layer{Id})
+function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
     sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, ones(Int, n_node))
