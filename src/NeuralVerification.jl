@@ -3,7 +3,7 @@ module NeuralVerification
 using JuMP
 
 using GLPK, SCS # SCS only needed for Certify
-
+using PicoSAT # needed for Planet
 using LazySets, LazySets.Approximations
 using Polyhedra, CDDLib
 
@@ -79,11 +79,9 @@ include("satisfiability/bab.jl")
 include("satisfiability/sherlock.jl")
 include("satisfiability/reluplex.jl")
 export BaB, Sherlock, Reluplex
-if !Sys.iswindows()
-    using PicoSAT # needed for Planet
-    include("satisfiability/planet.jl")
-    export Planet
-end
+
+include("satisfiability/planet.jl")
+export Planet
 
 include("adversarial/reluVal.jl")
 include("adversarial/fastLin.jl")
