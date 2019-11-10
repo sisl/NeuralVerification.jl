@@ -90,13 +90,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     return ifelse(flag, BasicResult(:holds), BasicResult(:unknown))
 end
 
-function issubset(a::VPolytope{N}, b::AbstractPolytope{N}) where N
-    for v in a.vertices
-        v ∈ b || return false
-    end
-    return true
-end
-
 function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
     # We can generate four more constraints
