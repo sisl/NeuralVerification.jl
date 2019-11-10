@@ -86,7 +86,7 @@ function symbol_to_concrete(reach::SymbolicInterval{Hyperrectangle{N}}) where N
     return Hyperrectangle(low = lower, high = upper)
 end
 
-function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
+function check_inclusion(reach::SymbolicInterval{Hyperrectangle{N}}, output::AbstractPolytope, nnet::Network) where N
     reachable = symbol_to_concrete(reach)
     issubset(reachable, output) && return BasicResult(:holds)
     # is_intersection_empty(reachable, output) && return BasicResult(:violated)

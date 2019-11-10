@@ -1,7 +1,7 @@
 """
-    Neurify(max_iter::Int64)
+    Neurify(max_iter::Int64, tree_search::Symbol)
 
-Neurify combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
+Neurify combines symbolic reachability analysis with constraint refinement to minimize over-approximation of the reachable set.
 
 # Problem requirement
 1. Network: any depth, ReLU activation
@@ -19,7 +19,10 @@ Symbolic reachability analysis and iterative interval refinement (search).
 Sound but not complete.
 
 # Reference
-
+[S. Wang, K. Pei, J. Whitehouse, J. Yang, and S. Jana,
+"Efficient Formal Safety Analysis of Neural Networks,"
+*CoRR*, vol. abs/1809.08098, 2018. arXiv: 1809.08098.](https://arxiv.org/pdf/1809.08098.pdf)
+[https://github.com/tcwangshiqi-columbia/Neurify](https://github.com/tcwangshiqi-columbia/Neurify)
 """
 @with_kw struct Neurify
     max_iter::Int64     = 10
@@ -74,16 +77,33 @@ function symbol_to_concrete(reach::SymbolicInterval{HPolytope{N}}) where N
     return convex_hull([V_up, V_low])
 end
 
+function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
+    reachable = symbol_to_concrete(reach)
+    flag = true
+    for v in reachable.vertices
+        if ~∈(v, output)
+            flag = false
+            y = compute_output(nnet, v)
+            ∈(y, output) || return CounterExampleResult(:violated, v)
+        end
+    end
+    return ifelse(flag, BasicResult(:holds), BasicResult(:unknown))
+end
+
+function issubset(a::VPolytope{N}, b::AbstractPolytope{N}) where N
+    for v in a.vertices
+        v ∈ b || return false
+    end
+    return true
+end
+
 function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
     # We can generate four more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-    println("(",i,",",j,")")
     nnet_new = Network(nnet.layers[1:i])
     reach_new = forward_network(solver, nnet_new, reach.sym.interval)
     C, d = tosimplehrep(reach.sym.interval)
-    println("lower bound:", reach_new.sym.Low)
-    println("upper bound:", reach_new.sym.Up)
     l_sym = reach_new.sym.Low[j, 1:end-1]
     l_off = reach_new.sym.Low[j, end]
     u_sym = reach_new.sym.Up[j, 1:end-1]
@@ -99,8 +119,6 @@ end
 function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ::Vector{Vector{Float64}})
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
-    println("number of layers: ", n_length)
-    println(n_output)
     LG = Matrix(1.0I, n_output, n_output)
     UG = Matrix(1.0I, n_output, n_output)
     max_tuple = (0, 0, 0.0)
@@ -118,9 +136,6 @@ function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ:
         LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
         UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
         LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
-        println("layer ", i, ":", layer.weights, ",", layer.bias)
-        println(LG_hat, ",", UG_hat)
-        println(LG, ",", UG)
     end
     return max_tuple
 end
@@ -190,4 +205,22 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
     LΛ = push!(input.LΛ, ones(Float64, n_node))
     UΛ = push!(input.UΛ, ones(Float64, n_node))
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
+end
+
+function upper_bound(map::Vector{Float64}, input::HPolytope)
+    vertices = tovrep(input).vertices
+    up = -Inf
+    for v in vertices
+        up = max(up, map'*[v;1.0])
+    end
+    return up
+end
+
+function lower_bound(map::Vector{Float64}, input::HPolytope)
+    vertices = tovrep(input).vertices
+    low = Inf
+    for v in vertices
+        low = min(low, map'*[v;1.0])
+    end
+    return low
 end
