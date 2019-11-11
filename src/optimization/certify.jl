@@ -33,51 +33,35 @@ end
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
     model = Model(solver)
-    c, d = tosimplehrep(problem.output)
-    v = c * problem.network.layers[2].weights
+    c, d = problem.output.a, problem.output.b
     W = problem.network.layers[1].weights
-    M = get_M(v[1, :], W)
+    v = problem.network.layers[2].weights' * c
+    M = get_M(v, W)
     n = size(M, 1)
     P = @variable(model, [1:n, 1:n], PSD)
     # Compute value
-    output = c * compute_output(problem.network, problem.input.center) .- d[1]
+    output = c' * compute_output(problem.network, problem.input.center) .- d
     epsilon = problem.input.radius[1]
     o = output .+ epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
-    @objective(model, Max, first(o))
+    @objective(model, Max, o)
     optimize!(model)
     if value(o) <= 0
         return BasicResult(:holds)
     else
         return BasicResult(:unknown)
     end
-    # return interpret_result(solver, termination_status(model), first(o))
 end
 
-# True if o < 0
-# Undertermined if otherwise
-# function interpret_result(solver::Certify, status, o)
-#     # println("Upper bound: ", value(o[1]))
-#     if value(o) <= 0
-#         return BasicResult(:holds)
-#     else
-#         return BasicResult(:unknown)
-#     end
-# end
-
 # M is used in the semidefinite program
-function get_M(v::Vector{Float64}, W::Matrix{Float64})
+function get_M(v::Vector, W::Matrix)
     m = W' * Diagonal(v)
     mxs, mys = size(m)
     o = ones(size(W, 2), 1)
-    # TODO Mrow2 and Mrow3 look suspicious (dims don't match in the general case).
-    Mrow1 = [zeros(1, 1+mxs)    o'*m]
-    Mrow2 = [zeros(mxs, 1+mxs)     m]
-    Mrow3 = [m'*o  m' zeros(mys, mys)]
-
-    M = [Mrow1; Mrow2; Mrow3]
-    return M
+    M = [zeros(1, 1+mxs)    o'*m;
+         zeros(mxs, 1+mxs)     m;
+         m'*o  m' zeros(mys, mys)]
 end
 
 

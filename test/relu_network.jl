@@ -78,7 +78,7 @@
         tiny_nnet = read_nnet("$(@__DIR__)/../examples/networks/tiny_nnet.nnet")
         solver_certify = Certify()
         in_set  = Hyperrectangle([2.0], [.5])
-        out_set = HPolytope(ones(1,1), [2.5])
+        out_set = HalfSpace([1.0], 2.5)
         problem_certify = Problem(tiny_nnet, in_set, out_set)
         @test @no_error solve(solver_certify, problem_certify)
     end
