@@ -37,7 +37,7 @@ function solve(solver::NSVerify, problem::Problem)
     encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(solver.m))
     feasibility_problem!(model)
     optimize!(model)
-    if isfeasible(model)
+    if termination_status(model) == OPTIMAL
         return CounterExampleResult(:violated, value.(first(neurons)))
     else
         return CounterExampleResult(:holds)

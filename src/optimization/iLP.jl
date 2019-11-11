@@ -57,7 +57,7 @@ function solve(solver::ILP, problem::Problem)
     while true
         optimize!(model)
         J = value(o)
-        if isfeasible(model)
+        if termination_status(model) == OPTIMAL
             x = value.(first(neurons))
             matched, index = match_activation(nnet, x, δ)
             if matched
