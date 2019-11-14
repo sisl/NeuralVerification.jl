@@ -362,9 +362,11 @@ function isfeasible(model::Model)
         optimize!(model)
     end
 
-    if termination_status(model) == MOI.INFEASIBLE
+    T = termination_status(model)
+
+    if T == MOI.INFEASIBLE
         return false
-    elseif termination_status(model) == MOI.INFEASIBLE_OR_UNBOUNDED
+    elseif T == MOI.INFEASIBLE_OR_UNBOUNDED || T == MOI.DUAL_INFEASIBLE
         if objective_sense(model) == MOI.FEASIBILITY_SENSE
             return false
         else
@@ -376,7 +378,7 @@ function isfeasible(model::Model)
             optimize!(model)
             # Reset objective
             @objective(model, S, J)
-            if termination_status(model) ∈ (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED)
+            if termination_status(model) ∈ (MOI.INFEASIBLE, MOI.INFEASIBLE_OR_UNBOUNDED, MOI.DUAL_INFEASIBLE)
                 return false
             end
         end
