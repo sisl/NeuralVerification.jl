@@ -40,7 +40,7 @@ function solve(solver::Duality, problem::Problem)
     optimize!(model)
 
     if isfeasible(model)
-        prop_holds = o <= d[1] ? :holds : :violated
+        prop_holds = value(o) <= d[1] ? :holds : :violated
         return BasicResult(prop_holds)
     else
         return BasicResult(:unknown)
