@@ -306,8 +306,8 @@ Return:
 affine_map(layer::Layer, input::AbstractVector) = layer.weights*input + layer.bias
 function affine_map(layer::Layer, input::AbstractPolytope)
     W, b = layer.weights, layer.bias
-    P = linear_map(W, input, algorithm="vrep")
-    return convert(HPolytope, translate(P, b))
+    P = affine_map(W, input, b)
+    return convert(HPolytope, P)
 end
 
 """
