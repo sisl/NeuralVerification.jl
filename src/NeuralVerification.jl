@@ -11,7 +11,7 @@ using LinearAlgebra
 using Parameters
 using Interpolations # only for PiecewiseLinear
 
-import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
+import LazySets: dim, HalfSpace, translate # necessary to avoid conflict with Polyhedra
 
 using Requires
 

@@ -303,10 +303,11 @@ Inputs:
 Return:
 - `output`: Vector after mapping
 """
-affine_map(layer::Layer, input) = layer.weights*input + layer.bias
+affine_map(layer::Layer, input::AbstractVector) = layer.weights*input + layer.bias
 function affine_map(layer::Layer, input::AbstractPolytope)
     W, b = layer.weights, layer.bias
-    return translate(b, linear_map(W, input))
+    P = linear_map(W, input, algorithm="vrep")
+    return convert(HPolytope, translate(P, b))
 end
 
 """
@@ -319,15 +320,6 @@ function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     r = abs.(layer.weights) * input.radius
     return Hyperrectangle(c, r)
 end
-
-function translate(v::Vector, H::HPolytope)
-    # translate each halfpsace according to:
-    # a⋅(x-v) ≤ b  ⟶  a⋅x ≤ b+a⋅v
-    C, d = tosimplehrep(H)
-    return HPolytope(C, d+C*v)
-end
-# translate(v::Vector, H::Hyperrectangle)   = Hyperrectangle(H.center .+ v, H.radius)
-translate(v::Vector, V::AbstractPolytope) = tohrep(VPolytope([x+v for x in vertices_list(V)]))
 
 """
     split_interval(dom, i)
