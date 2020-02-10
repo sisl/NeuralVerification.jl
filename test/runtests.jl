@@ -1,6 +1,10 @@
 using NeuralVerification, LazySets, GLPKMathProgInterface
 using Test
 
+# comment to re-enable assertion checks
+LazySets.deactivate_assertions()
+LazySets.Assertions.deactivate_assertions(NeuralVerification)
+
 import NeuralVerification: ReLU, Id
 
 macro no_error(ex)
