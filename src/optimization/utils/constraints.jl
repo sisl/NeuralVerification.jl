@@ -240,7 +240,9 @@ end
 
 function add_complementary_set_constraint!(m::Model, H::HalfSpace, z::Vector{VariableRef})
     a, b = tosimplehrep(H)
-    @constraint(m, a * z .>= b)
+    c = @constraint(m, a * z .>= b)
+    set_name.(c, "comp-set constraint")
+
     return nothing
 end
 function add_complementary_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{VariableRef})
@@ -250,13 +252,16 @@ end
 
 function add_set_constraint!(m::Model, set::Union{HPolytope, HalfSpace}, z::Vector{VariableRef})
     A, b = tosimplehrep(set)
-    @constraint(m, A * z .<= b)
+    c = @constraint(m, A * z .<= b)
+    set_name.(c, "set constraint")
     return nothing
 end
 
 function add_set_constraint!(m::Model, set::Hyperrectangle, z::Vector{VariableRef})
-    @constraint(m, z .<= high(set))
-    @constraint(m, z .>= low(set))
+    c1 = @constraint(m, z .<= high(set))
+    c2 = @constraint(m, z .>= low(set))
+    set_name.(c1, "set constraint (ub)")
+    set_name.(c2, "set constraint (lb)")
     return nothing
 end
 

@@ -43,6 +43,9 @@ function find_relu_to_fix(ẑ, z)
 
         if type_one_broken(ẑᵢⱼ, zᵢⱼ) ||
            type_two_broken(ẑᵢⱼ, zᵢⱼ)
+           println("BROKEN: ", name(ẑ[i][j])=>name(z[i][j]))
+            println("BROKEN: ", ẑᵢⱼ => zᵢⱼ)
+
             return (i, j)
         end
     end
@@ -54,30 +57,43 @@ type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
 
 # Corresponds to a ReLU that shouldn't be active but is
 function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, ẑᵢⱼ == zᵢⱼ)
-    @constraint(model, ẑᵢⱼ >= 0.0)
+    c = @constraint(model, ẑᵢⱼ == zᵢⱼ)
+    set_name(c, "repair constraint")
+    c = @constraint(model, ẑᵢⱼ >= 0.0)
+    set_name(c, "repair constraint")
 end
 # Corresponds to a ReLU that should be active but isn't
 function type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, ẑᵢⱼ <= 0.0)
-    @constraint(model, zᵢⱼ == 0.0)
+    c = @constraint(model, ẑᵢⱼ <= 0.0)
+    set_name(c, "repair constraint")
+    c = @constraint(model, zᵢⱼ == 0.0)
+    set_name(c, "repair constraint")
 end
 
 function activation_constraint!(model, ẑᵢ, zᵢ, act::ReLU)
     # ReLU ensures that the variable after activation is always
     # greater than before activation and also ≥0
-    @constraint(model, zᵢ .>= ẑᵢ)
-    @constraint(model, zᵢ .>= 0.0)
+    c1 = @constraint(model, zᵢ .>= ẑᵢ)
+    c2 = @constraint(model, zᵢ .>= 0.0)
+    set_name.(c1, "activation constraint")
+    set_name.(c2, "activation constraint")
 end
 
 function activation_constraint!(model, ẑᵢ, zᵢ, act::Id)
-    @constraint(model, zᵢ .== ẑᵢ)
+    c = @constraint(model, zᵢ .== ẑᵢ)
+    set_name.(c, "identity constraint")
 end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
     ẑ = init_neurons(model, layers) # before activation
     z = init_neurons(model, layers) # after activation
+
+    for i in 1:length(ẑ)
+        for j in 1:length(ẑ[i])
+            set_name(ẑ[i][j], "ẑ$i[$j]")
+        end
+    end
 
     # Each layer has an input set constraint associated with it based on the bounds.
     # Additionally, consective variables zᵢ, ẑᵢ₊₁ are related by a constraint given
@@ -87,11 +103,22 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # its variables are related implicitly by identity.
     activation_constraint!(model, ẑ[1], z[1], Id())
     bounds = get_bounds(problem)
+
+
+    # for b in bounds
+    #     b.radius .*= 10
+    # end
+
+    # println.(low.(bounds) .=> high.(bounds))
+
+    add_set_constraint!(model, problem.input, ẑ[1])
     for (i, L) in enumerate(layers)
-        @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], ẑ[i])
+        c = @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
+        set_name.(c, "affine constraint")
+        # add_set_constraint!(model, bounds[i], ẑ[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
+    # add_set_constraint!(model, last(bounds), last(ẑ))
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
     return ẑ, z
@@ -118,6 +145,12 @@ function reluplex_step(solver::Reluplex,
                        relu_status::Vector{Vector{Int}})
 
     optimize!(model)
+
+    println("STEP")
+    @show termination_status(model)
+    for tup in list_of_constraint_types(model)
+        println.(all_constraints(model, tup...))
+    end
 
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid

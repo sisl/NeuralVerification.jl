@@ -270,7 +270,7 @@ Return:
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
     if act
-        solver = MaxSens(0.0, true)
+        solver = MaxSens(tight = false)
         bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
         bounds[1] = input
         for (i, layer) in enumerate(nnet.layers)
