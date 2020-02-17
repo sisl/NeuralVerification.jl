@@ -146,6 +146,9 @@ function tighten_bounds(problem::Problem, optimizer)
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
+        if any(lower[i] .> higher[i])
+            return (INFEASIBLE, bounds)
+        end
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
     end
     return (OPTIMAL, new_bounds)
