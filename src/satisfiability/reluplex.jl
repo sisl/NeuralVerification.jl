@@ -119,14 +119,13 @@ function reluplex_step(solver::Reluplex,
 
         for repair! in (type_one_repair!, type_two_repair!)
             # Add the constraints associated with the ReLU being fixed
-            con_one, con_two = repair!(model, ẑ[i][j], z[i][j])
+            new_constraints = repair!(model, ẑ[i][j], z[i][j])
 
             # Recurse with the ReLU i, j fixed to active or inactive
             result = reluplex_step(solver, problem, model, ẑ, z, relu_status)
 
             # Reset the model when we're done with this ReLU
-            delete(model, con_one)
-            delete(model, con_two)
+            delete.(model, new_constraints)
 
             result.status == :violated && return result
         end
