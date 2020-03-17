@@ -117,19 +117,14 @@ function reluplex_step(solver::Reluplex,
         # In case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
-        for repair_type in 1:2
-            # Add the constraints associated with
-            if (repair_type == 1)
-                con_one, con_two = type_one_repair!(model, ẑ[i][j], z[i][j])
-            else
-                con_one, con_two = type_two_repair!(model, ẑ[i][j], z[i][j])
-            end
+        for repair! in (type_one_repair!, type_two_repair!)
+            # Add the constraints associated with the ReLU being fixed
+            con_one, con_two = repair!(model, ẑ[i][j], z[i][j])
 
             # Recurse with the ReLU i, j fixed to active or inactive
             result = reluplex_step(solver, problem, model, ẑ, z, relu_status)
 
-            # Reset the relu (and our model) when we're done with it.
-            relu_status[i][j] = 0
+            # Reset the model when we're done with this ReLU
             delete(model, con_one)
             delete(model, con_two)
 
