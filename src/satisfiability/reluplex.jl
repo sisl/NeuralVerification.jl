@@ -91,7 +91,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], z[i])
+        add_set_constraint!(model, bounds[i], ẑ[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     add_complementary_set_constraint!(model, problem.output, last(z))
