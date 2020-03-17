@@ -94,7 +94,6 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
         add_set_constraint!(model, bounds[i], ẑ[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
-
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
     return ẑ, z
