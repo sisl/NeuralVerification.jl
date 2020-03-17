@@ -135,10 +135,8 @@ function reluplex_step(solver::Reluplex,
             relu_status[i][j] = repair_type
             if (repair_type == 1)
                 con_one, con_two = type_one_repair!(model, ẑ[i][j], z[i][j])
-                print("Con one, two: ", con_one, con_two)
             else
                 con_one, con_two = type_two_repair!(model, ẑ[i][j], z[i][j])
-                print("Con one, two: ", con_one, con_two)
             end
 
             # Recurse with the ReLU i, j fixed to active or inactive
