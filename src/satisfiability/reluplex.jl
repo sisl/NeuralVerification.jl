@@ -54,14 +54,14 @@ type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
 
 # Corresponds to a ReLU that shouldn't be active but is
 function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, con_one, ẑᵢⱼ == zᵢⱼ)
-    @constraint(model, con_two, ẑᵢⱼ >= 0.0)
+    con_one = @constraint(model, ẑᵢⱼ == zᵢⱼ)
+    con_two = @constraint(model, ẑᵢⱼ >= 0.0)
     return con_one, con_two
 end
 # Corresponds to a ReLU that should be active but isn't
 function type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, con_one, ẑᵢⱼ <= 0.0)
-    @constraint(model, con_two, zᵢⱼ == 0.0)
+    con_one = @constraint(model, ẑᵢⱼ <= 0.0)
+    con_two = @constraint(model, zᵢⱼ == 0.0)
     return con_one, con_two
 end
 
@@ -91,25 +91,12 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], ẑ[i])
+        add_set_constraint!(model, bounds[i], z[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
     return ẑ, z
-end
-
-function enforce_repairs!(model::Model, ẑ, z, relu_status)
-    # Need to decide what to do with last layer, this assumes there is no ReLU.
-    for i in 1:length(relu_status), j in 1:length(relu_status[i])
-        ẑᵢⱼ = ẑ[i][j]
-        zᵢⱼ = z[i][j]
-        if relu_status[i][j] == 1
-            type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
-        elseif relu_status[i][j] == 2
-            type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
-        end
-    end
 end
 
 function reluplex_step(solver::Reluplex,
@@ -131,8 +118,7 @@ function reluplex_step(solver::Reluplex,
         i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
         for repair_type in 1:2
-            # Set the relu status to the current fix.
-            relu_status[i][j] = repair_type
+            # Add the constraints associated with
             if (repair_type == 1)
                 con_one, con_two = type_one_repair!(model, ẑ[i][j], z[i][j])
             else
