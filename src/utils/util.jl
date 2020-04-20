@@ -259,6 +259,12 @@ function interval_map(W::Matrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) wh
     return (l_new, u_new)
 end
 
+function interval_map_right(W::Matrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
+    l_new = l * max.(W, zero(N)) + u * min.(W, zero(N))
+    u_new = u * max.(W, zero(N)) + l * min.(W, zero(N))
+    return (l_new, u_new)
+end
+
 """
     get_bounds(problem::Problem)
     get_bounds(nnet::Network, input::Hyperrectangle)

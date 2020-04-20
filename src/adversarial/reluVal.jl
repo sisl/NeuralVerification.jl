@@ -27,17 +27,9 @@ Sound but not complete.
 [https://github.com/tcwangshiqi-columbia/ReluVal](https://github.com/tcwangshiqi-columbia/ReluVal)
 """
 @with_kw struct ReluVal
-    max_iter::Int64     = 10
+    max_iter::Int64     = 100
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
-
-struct SymbolicInterval
-    Low::Matrix{Float64}
-    Up::Matrix{Float64}
-    interval::Hyperrectangle
-end
-
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
 # Data to be passed during forward_layer
 struct SymbolicIntervalMask
@@ -54,17 +46,26 @@ function solve(solver::ReluVal, problem::Problem)
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
-        LG, UG = get_gradient(problem.network, reach.LΛ, reach.UΛ)
-        feature = get_smear_index(problem.network, reach.sym.interval, LG, UG)
-        intervals = split_interval(reach.sym.interval, feature)
+        intervals = interval_refinement(problem.network, reach)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
+            if result.status == :violated
+                println("")
+                println("iter ", i)
+            end
             result.status == :violated && return result
             result.status == :holds || (push!(reach_list, reach))
         end
     end
     return BasicResult(:unknown)
+end
+
+function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
+    LG, UG = get_gradient(nnet, reach.LΛ, reach.UΛ)
+    feature, monotone = get_smear_index(nnet, reach.sym.interval, LG, UG)
+    print(feature, ' ')
+    return split_interval(reach.sym.interval, feature)
 end
 
 function pick_out!(reach_list, tree_search)
@@ -79,7 +80,7 @@ function pick_out!(reach_list, tree_search)
     return reach
 end
 
-function symbol_to_concrete(reach::SymbolicInterval)
+function symbol_to_concrete(reach::SymbolicInterval{Hyperrectangle{N}}) where N
     n_output = size(reach.Low, 1)
     upper = zeros(n_output)
     lower = zeros(n_output)
@@ -90,8 +91,10 @@ function symbol_to_concrete(reach::SymbolicInterval)
     return Hyperrectangle(low = lower, high = upper)
 end
 
-function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet::Network)
+function check_inclusion(reach::SymbolicInterval{Hyperrectangle{N}}, output::AbstractPolytope, nnet::Network) where N
     reachable = symbol_to_concrete(reach)
+    # println("reluval reachable")
+    # println(reachable)
     issubset(reachable, output) && return BasicResult(:holds)
     # is_intersection_empty(reachable, output) && return BasicResult(:violated)
 
@@ -103,7 +106,7 @@ function check_inclusion(reach::SymbolicInterval, output::AbstractPolytope, nnet
     return BasicResult(:unknown)
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle})
+function forward_layer(solver::ReluVal, layer::Layer, input)
     return forward_act(forward_linear(input, layer), layer)
 end
 
@@ -178,7 +181,8 @@ function get_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::M
             feature = i
         end
     end
-    return feature
+    monotone = all((LG[:, feature] .* UG[:, feature]) .> 0)
+    return feature, monotone
 end
 
 # Get upper bound in concretization
