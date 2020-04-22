@@ -27,6 +27,7 @@ Sound but not complete.
 
 @with_kw struct Neurify
     max_iter::Int64     = 100
+
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
@@ -45,19 +46,12 @@ struct SymbolicIntervalGradient
     UΛ::Vector{Vector{Float64}}
 end
 
-
 function solve(solver::Neurify, problem::Problem)
-
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
-
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
-
     for i in 2:solver.max_iter
-        if i % 10 == 0
-            println("iter ",i)
-        end
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
@@ -70,6 +64,7 @@ function solve(solver::Neurify, problem::Problem)
     end
     return BasicResult(:unknown)
 end
+
 
 function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
     # The output constraint is in the form A*x < b
@@ -244,3 +239,4 @@ function lower_bound(map::Vector{Float64}, input::HPolytope)
     optimize!(model)
     return objective_value(model)
 end
+

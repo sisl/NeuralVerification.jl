@@ -247,7 +247,7 @@ end
 
 Simple linear mapping on intervals
 Inputs:
-- `W::Matrix{N}`: linear mapping
+- `W::Matrix{N}`: linear mapping (left)
 - `l::Vector{N}`: lower bound
 - `u::Vector{N}`: upper bound
 Outputs:
