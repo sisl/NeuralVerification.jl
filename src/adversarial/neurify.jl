@@ -26,7 +26,7 @@ Sound but not complete.
 """
 
 @with_kw struct Neurify
-    max_iter::Int64     = 100
+    max_iter::Int64     = 1000
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 

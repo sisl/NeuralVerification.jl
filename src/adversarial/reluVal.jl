@@ -27,7 +27,7 @@ Sound but not complete.
 [https://github.com/tcwangshiqi-columbia/ReluVal](https://github.com/tcwangshiqi-columbia/ReluVal)
 """
 @with_kw struct ReluVal
-    max_iter::Int64     = 100
+    max_iter::Int64     = 1000
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
