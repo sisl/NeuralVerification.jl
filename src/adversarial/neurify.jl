@@ -24,8 +24,9 @@ Sound but not complete.
 *CoRR*, vol. abs/1809.08098, 2018. arXiv: 1809.08098.](https://arxiv.org/pdf/1809.08098.pdf)
 [https://github.com/tcwangshiqi-columbia/Neurify](https://github.com/tcwangshiqi-columbia/Neurify)
 """
+
 @with_kw struct Neurify
-    max_iter::Int64     = 10
+    max_iter::Int64     = 1000
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
@@ -44,12 +45,19 @@ struct SymbolicIntervalGradient
     UΛ::Vector{Vector{Float64}}
 end
 
+
 function solve(solver::Neurify, problem::Problem)
+
     reach = forward_network(solver, problem.network, problem.input)
-    result = check_inclusion(reach.sym, problem.output, problem.network)
+    result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
+
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
+
     for i in 2:solver.max_iter
+        if i % 10 == 0
+            println("iter ",i)
+        end
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
@@ -63,49 +71,62 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{HPolytope{N}}) where N
-    n_output = size(reach.Low, 1)
-    vertices = tovrep(reach.interval).vertices
-    new_v_up = vertices
-    new_v_low = vertices
-    for (i, v) in enumerate(vertices)
-        new_v_up[i] = reach.Low[:, 1:end-1] * v + reach.Low[:, end]
-        new_v_low[i] = reach.Up[:, 1:end-1] * v + reach.Up[:, end]
+function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
+    # The output constraint is in the form A*x < b
+    # We try to maximize output constraint to find a violated case, or to verify the inclusion, 
+    # suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
+
+
+    reach_lc = reach.interval.constraints
+    output_lc = output.constraints
+
+    n = size(reach_lc, 1)
+    m = size(reach_lc[1].a, 1)
+    model =Model(with_optimizer(GLPK.Optimizer))
+    @variable(model, x[1:m])
+    @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
+
+    for i in 1:size(output.constraints, 1)
+        obj = zeros(size(reach.Low, 2))
+        for j in 1:size(reach.Low, 1)
+            # println(j, " ", output.constraints[i].a[j])
+            if output.constraints[i].a[j] > 0
+                obj += output.constraints[i].a[j] * reach.Up[j,:]
+            else
+                obj += output.constraints[i].a[j] * reach.Low[j,:]
+            end
+        end
+        @objective(model, Min, obj' * [x; [1]])
+        optimize!(model)
+
+        y = compute_output(nnet, value(x))
+        ∈(y, output) || return CounterExampleResult(:violated, value(x))
+
+        if objective_value(model) > output.constraints[i].b
+            return BasicResult(:unknown)
+        end
+        
     end
-    V_up = VPolytope(new_v_up)
-    V_low = VPolytope(new_v_low)
-    return convex_hull([V_up, V_low])
+    return BasicResult(:holds)
 end
 
-function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
-    reachable = symbol_to_concrete(reach)
-    flag = true
-    for v in reachable.vertices
-        if ~∈(v, output)
-            flag = false
-            y = compute_output(nnet, v)
-            ∈(y, output) || return CounterExampleResult(:violated, v)
-        end
-    end
-    return ifelse(flag, BasicResult(:holds), BasicResult(:unknown))
-end
 
 function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
-    # We can generate four more constraints
+    # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
     nnet_new = Network(nnet.layers[1:i])
     reach_new = forward_network(solver, nnet_new, reach.sym.interval)
     C, d = tosimplehrep(reach.sym.interval)
-    l_sym = reach_new.sym.Low[j, 1:end-1]
-    l_off = reach_new.sym.Low[j, end]
-    u_sym = reach_new.sym.Up[j, 1:end-1]
-    u_off = reach_new.sym.Up[j, end]
-    intervals = Vector{HPolytope{Float64}}(undef, 4)
+    l_sym = reach_new.sym.Low[[j], 1:end-1]
+    l_off = reach_new.sym.Low[[j], end]
+    u_sym = reach_new.sym.Up[[j], 1:end-1]
+    u_off = reach_new.sym.Up[[j], end]
+    intervals = Vector{HPolytope{Float64}}(undef, 3)
     intervals[1] = HPolytope([C; l_sym; u_sym], [d; -l_off; -u_off])
     intervals[2] = HPolytope([C; l_sym; -u_sym], [d; -l_off; u_off])
-    intervals[3] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off])
-    intervals[4] = HPolytope([C; -l_sym; -u_sym], [d; l_off; u_off])
+    intervals[3] = HPolytope([C; -l_sym; -u_sym], [d; l_off; u_off])
+    # intervals[4] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off]) lower bound can not be greater than upper bound
     return intervals
 end
 
@@ -161,7 +182,7 @@ end
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
-    mask_lower, mask_upper = zeros(Int, n_node), ones(Int, n_node)
+    mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
     for i in 1:n_node
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
@@ -200,20 +221,26 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
+
 function upper_bound(map::Vector{Float64}, input::HPolytope)
-    vertices = tovrep(input).vertices
-    up = -Inf
-    for v in vertices
-        up = max(up, map'*[v;1.0])
-    end
-    return up
+    n = size(input.constraints, 1)
+    m = size(input.constraints[1].a, 1)
+    model =Model(with_optimizer(GLPK.Optimizer))
+    @variable(model, x[1:m])
+    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+    @objective(model, Max, map' * [x; [1]])
+    optimize!(model)
+    return objective_value(model)
 end
 
+
 function lower_bound(map::Vector{Float64}, input::HPolytope)
-    vertices = tovrep(input).vertices
-    low = Inf
-    for v in vertices
-        low = min(low, map'*[v;1.0])
-    end
-    return low
+    n = size(input.constraints, 1)
+    m = size(input.constraints[1].a, 1)
+    model =Model(with_optimizer(GLPK.Optimizer))
+    @variable(model, x[1:m])
+    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+    @objective(model, Min, map' * [x; [1]])
+    optimize!(model)
+    return objective_value(model)
 end

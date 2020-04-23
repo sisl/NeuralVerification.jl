@@ -1,9 +1,9 @@
 module NeuralVerification
 
 using JuMP
-using PicoSAT # needed for Planet
-using GLPK, SCS # SCS only needed for Certify
 
+using GLPK, SCS # SCS only needed for Certify
+using PicoSAT # needed for Planet
 using LazySets, LazySets.Approximations
 using Polyhedra, CDDLib
 
@@ -76,10 +76,12 @@ include("reachability/ai2.jl")
 export ExactReach, MaxSens, Ai2
 
 include("satisfiability/bab.jl")
-include("satisfiability/planet.jl")
 include("satisfiability/sherlock.jl")
 include("satisfiability/reluplex.jl")
-export BaB, Planet, Sherlock, Reluplex
+export BaB, Sherlock, Reluplex
+
+include("satisfiability/planet.jl")
+export Planet
 
 include("adversarial/neurify.jl")
 include("adversarial/reluVal.jl")

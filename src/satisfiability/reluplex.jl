@@ -54,13 +54,15 @@ type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
 
 # Corresponds to a ReLU that shouldn't be active but is
 function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, ẑᵢⱼ == zᵢⱼ)
-    @constraint(model, ẑᵢⱼ >= 0.0)
+    con_one = @constraint(model, ẑᵢⱼ == zᵢⱼ)
+    con_two = @constraint(model, ẑᵢⱼ >= 0.0)
+    return con_one, con_two
 end
 # Corresponds to a ReLU that should be active but isn't
 function type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
-    @constraint(model, ẑᵢⱼ <= 0.0)
-    @constraint(model, zᵢⱼ == 0.0)
+    con_one = @constraint(model, ẑᵢⱼ <= 0.0)
+    con_two = @constraint(model, zᵢⱼ == 0.0)
+    return con_one, con_two
 end
 
 function activation_constraint!(model, ẑᵢ, zᵢ, act::ReLU)
@@ -97,19 +99,6 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     return ẑ, z
 end
 
-function enforce_repairs!(model::Model, ẑ, z, relu_status)
-    # Need to decide what to do with last layer, this assumes there is no ReLU.
-    for i in 1:length(relu_status), j in 1:length(relu_status[i])
-        ẑᵢⱼ = ẑ[i][j]
-        zᵢⱼ = z[i][j]
-        if relu_status[i][j] == 1
-            type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
-        elseif relu_status[i][j] == 2
-            type_two_repair!(model, ẑᵢⱼ, zᵢⱼ)
-        end
-    end
-end
-
 function reluplex_step(solver::Reluplex,
                        problem::Problem,
                        model::Model,
@@ -128,17 +117,15 @@ function reluplex_step(solver::Reluplex,
         # In case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
-        for repair_type in 1:2
-            # Set the relu status to the current fix.
-            relu_status[i][j] = repair_type
-            new_m  = Model(solver)
-            bs, fs = encode(solver, new_m, problem)
-            enforce_repairs!(new_m, bs, fs, relu_status)
+        for repair! in (type_one_repair!, type_two_repair!)
+            # Add the constraints associated with the ReLU being fixed
+            new_constraints = repair!(model, ẑ[i][j], z[i][j])
 
-            result = reluplex_step(solver, problem, new_m, bs, fs, relu_status)
+            # Recurse with the ReLU i, j fixed to active or inactive
+            result = reluplex_step(solver, problem, model, ẑ, z, relu_status)
 
-            # Reset the relu when we're done with it.
-            relu_status[i][j] = 0
+            # Reset the model when we're done with this ReLU
+            delete.(model, new_constraints)
 
             result.status == :violated && return result
         end
