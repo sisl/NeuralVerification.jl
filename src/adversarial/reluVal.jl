@@ -50,10 +50,6 @@ function solve(solver::ReluVal, problem::Problem)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            if result.status == :violated
-                println("")
-                println("iter ", i)
-            end
             result.status == :violated && return result
             result.status == :holds || (push!(reach_list, reach))
         end
@@ -63,8 +59,7 @@ end
 
 function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient(nnet, reach.LΛ, reach.UΛ)
-    feature, monotone = get_smear_index(nnet, reach.sym.interval, LG, UG)
-    print(feature, ' ')
+    feature, monotone = get_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
     return split_interval(reach.sym.interval, feature)
 end
 
