@@ -47,6 +47,7 @@ end
 
 
 function solve(solver::Neurify, problem::Problem)
+    problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
 
     reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
@@ -55,9 +56,6 @@ function solve(solver::Neurify, problem::Problem)
     reach_list = SymbolicIntervalGradient[reach]
 
     for i in 2:solver.max_iter
-        if i % 10 == 0
-            println("iter ",i)
-        end
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
@@ -76,7 +74,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     # We try to maximize output constraint to find a violated case, or to verify the inclusion, 
     # suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
 
-
     reach_lc = reach.interval.constraints
     output_lc = output.constraints
 
@@ -89,7 +86,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     for i in 1:size(output.constraints, 1)
         obj = zeros(size(reach.Low, 2))
         for j in 1:size(reach.Low, 1)
-            # println(j, " ", output.constraints[i].a[j])
             if output.constraints[i].a[j] > 0
                 obj += output.constraints[i].a[j] * reach.Up[j,:]
             else
@@ -98,10 +94,14 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
         end
         @objective(model, Min, obj' * [x; [1]])
         optimize!(model)
-
+        # println("termination_status")
+        # println(termination_status(model))        
         y = compute_output(nnet, value(x))
-        ∈(y, output) || return CounterExampleResult(:violated, value(x))
-
+        if !∈(y, output)
+            if ∈(value(x), reach.interval)
+                return CounterExampleResult(:violated, value(x))
+            end
+        end
         if objective_value(model) > output.constraints[i].b
             return BasicResult(:unknown)
         end
@@ -109,7 +109,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     end
     return BasicResult(:holds)
 end
-
 
 function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
