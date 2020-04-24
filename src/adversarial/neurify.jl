@@ -45,16 +45,13 @@ struct SymbolicIntervalGradient
     UΛ::Vector{Vector{Float64}}
 end
 
-
 function solve(solver::Neurify, problem::Problem)
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
-
-    reach = forward_network(solver, problem.network, problem.input)
+    
+reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
-
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
-
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
