@@ -9,7 +9,7 @@ activation(::typeof(relu)) = ReLU()
 
 layer(x) = error("Can't use $x as a layer.")
 
-layer(d::Dense) = Layer(Tracker.data(d.W), Tracker.data(d.b), activation(d.σ))
+layer(d::Dense) = Layer(data(d.W), data(d.b), activation(d.σ))
 
 network(c::Chain) = Network([layer.(c.layers)...])
 

@@ -1,5 +1,6 @@
 
 using NeuralVerification
+using LazySets
 using Test
 
 macro no_error(ex)
@@ -35,9 +36,12 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_small = Problem(mnist_small, inputSet, outputSet)
-solver_reluVal = ReluVal(max_iter = 2)
 
+solver_reluVal = ReluVal(max_iter = 2)
 @test @no_error solve(solver_reluVal, problem_hyperrect_small)
+
+solver_neurify = Neurify(max_iter = 2)
+@test @no_error solve(solver_neurify, problem_hyperrect_small)
 
 solver_reluplex=Reluplex()
 @test @no_error solve(solver_reluplex, problem_hyperrect_small)
@@ -64,9 +68,13 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_deep = Problem(mnist_large, inputSet, outputSet)
-solver_reluVal = ReluVal(max_iter = 2)
 
+solver_reluVal = ReluVal(max_iter = 2)
 @test @no_error solve(solver_reluVal, problem_hyperrect_deep)
+
+solver_neurify = Neurify(max_iter = 2)
+@test @no_error solve(solver_neurify, problem_hyperrect_deep)
+
 
 solver_reluplex=Reluplex()
 @test @no_error solve(solver_reluplex, problem_hyperrect_deep)
@@ -90,9 +98,12 @@ inputSet = Hyperrectangle(low=input_low, high=input_high)
 outputSet = Hyperrectangle(low=output_low, high=output_high)
 
 problem_hyperrect_wide = Problem(mnist_wide, inputSet, outputSet)
-solver_reluVal = ReluVal(max_iter = 2)
 
+solver_reluVal = ReluVal(max_iter = 2)
 @test @no_error solve(solver_reluVal, problem_hyperrect_wide)
+
+solver_neurify = Neurify(max_iter = 2)
+@test @no_error solve(solver_neurify, problem_hyperrect_wide)
 
 solver_reluplex=Reluplex()
 @test @no_error solve(solver_reluplex, problem_hyperrect_wide)
