@@ -28,15 +28,18 @@ Sound but not complete.
 @with_kw struct Neurify
     max_iter::Int64     = 100
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
+    model = Nothing()
 end
 
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
     Up::Matrix{Float64}
     interval::F
+    model
 end
 
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
+SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]), Nothing())
+SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}, interval::AbstractPolytope) = SymbolicInterval(x, y, interval, Nothing())
 
 # Data to be passed during forward_layer
 struct SymbolicIntervalGradient
@@ -47,9 +50,18 @@ end
 
 function solve(solver::Neurify, problem::Problem)
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
+
+    reach_lc = problem.input.constraints
+    output_lc = problem.output.constraints
+
+    n = size(reach_lc, 1)
+    m = size(reach_lc[1].a, 1)
+    model =Model(with_optimizer(GLPK.Optimizer))
+    @variable(model, x[1:m], base_name="x")
+    @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
-    reach = forward_network(solver, problem.network, problem.input)
-    result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
+    reach = forward_network(solver, problem.network, problem.input, model)
+    result = check_inclusion(reach.sym, problem.output, problem.network, model) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
     for i in 2:solver.max_iter
@@ -58,8 +70,8 @@ function solve(solver::Neurify, problem::Problem)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
         for interval in intervals
-            reach = forward_network(solver, problem.network, interval)
-            result = check_inclusion(reach.sym, problem.output, problem.network)
+            reach = forward_network(solver, problem.network, interval, model)
+            result = check_inclusion(reach.sym, problem.output, problem.network, model)
             result.status == :violated && return result
             result.status == :holds || (push!(reach_list, reach))
         end
@@ -67,19 +79,19 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network, model) where N
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion, 
     # suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
-
-    reach_lc = reach.interval.constraints
-    output_lc = output.constraints
-
-    n = size(reach_lc, 1)
-    m = size(reach_lc[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
+    
+    x = model[:x]
+    # reach_lc = reach.interval.constraints
+    # output_lc = output.constraints
+    # n = size(reach_lc, 1)
+    # m = size(reach_lc[1].a, 1)
+    # model =Model(with_optimizer(GLPK.Optimizer))
+    # @variable(model, x[1:m])
+    # @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
 
     for i in 1:size(output.constraints, 1)
         obj = zeros(size(reach.Low, 2))
@@ -169,8 +181,16 @@ function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ:
     return max_tuple
 end
 
-function forward_layer(solver::Neurify, layer::Layer, input)
-    return forward_act(forward_linear(solver, input, layer), layer)
+function forward_network(solver, nnet::Network, input::AbstractPolytope, model)
+    reach = input
+    for layer in nnet.layers
+        reach = forward_layer(solver, layer, reach, model)
+    end
+    return reach
+end
+
+function forward_layer(solver::Neurify, layer::Layer, input, model)
+    return forward_act(forward_linear(solver, input, layer), layer, model)
 end
 
 # Symbolic forward_linear for the first layer
@@ -194,26 +214,26 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
+function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU}, model)
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
     mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
     for i in 1:n_node
-        if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
+        if upper_bound(input.sym.Up[i, :], input.sym.interval, model) <= 0.0
             # Update to zero
             mask_lower[i], mask_upper[i] = 0, 0
             output_Up[i, :] = zeros(n_input)
             output_Low[i, :] = zeros(n_input)
-        elseif lower_bound(input.sym.Low[i, :], input.sym.interval) >= 0
+        elseif lower_bound(input.sym.Low[i, :], input.sym.interval, model) >= 0
             # Keep dependency
             mask_lower[i], mask_upper[i] = 1, 1
         else
             # Symbolic linear relaxation
             # This is different from ReluVal
-            up_up = upper_bound(input.sym.Up[i, :], input.sym.interval)
-            up_low = lower_bound(input.sym.Up[i, :], input.sym.interval)
-            low_up = upper_bound(input.sym.Low[i, :], input.sym.interval)
-            low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
+            up_up = upper_bound(input.sym.Up[i, :], input.sym.interval, model)
+            up_low = lower_bound(input.sym.Up[i, :], input.sym.interval, model)
+            low_up = upper_bound(input.sym.Low[i, :], input.sym.interval, model)
+            low_low = lower_bound(input.sym.Low[i, :], input.sym.interval, model)
             up_slop = up_up / (up_up - up_low)
             low_slop = low_up / (low_up - low_low)
             output_Low[i, :] =  low_slop * output_Low[i, :]
@@ -228,7 +248,7 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
-function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
+function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id}, model)
     sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, ones(Float64, n_node))
@@ -237,24 +257,26 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
 end
 
 
-function upper_bound(map::Vector{Float64}, input::HPolytope)
-    n = size(input.constraints, 1)
-    m = size(input.constraints[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+function upper_bound(map::Vector{Float64}, input::HPolytope, model)
+    # n = size(input.constraints, 1)
+    # m = size(input.constraints[1].a, 1)
+    # model =Model(with_optimizer(GLPK.Optimizer))
+    # @variable(model, x[1:m])
+    # @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+    x = model[:x]
     @objective(model, Max, map' * [x; [1]])
     optimize!(model)
     return objective_value(model)
 end
 
 
-function lower_bound(map::Vector{Float64}, input::HPolytope)
-    n = size(input.constraints, 1)
-    m = size(input.constraints[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+function lower_bound(map::Vector{Float64}, input::HPolytope, model)
+    # n = size(input.constraints, 1)
+    # m = size(input.constraints[1].a, 1)
+    # model =Model(with_optimizer(GLPK.Optimizer))
+    # @variable(model, x[1:m])
+    # @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+    x = model[:x]
     @objective(model, Min, map' * [x; [1]])
     optimize!(model)
     return objective_value(model)
