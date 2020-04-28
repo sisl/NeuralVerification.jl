@@ -26,7 +26,7 @@ Sound but not complete.
 """
 
 @with_kw struct Neurify
-    max_iter::Int64     = 1000
+    max_iter::Int64     = 100
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
@@ -48,11 +48,12 @@ end
 function solve(solver::Neurify, problem::Problem)
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
     
-reach = forward_network(solver, problem.network, problem.input)
+    reach = forward_network(solver, problem.network, problem.input)
     result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
     for i in 2:solver.max_iter
+        # println("iter ",i)
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
@@ -89,17 +90,35 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
                 obj += output.constraints[i].a[j] * reach.Low[j,:]
             end
         end
-        @objective(model, Min, obj' * [x; [1]])
+        @objective(model, Max, obj' * [x; [1]])
         optimize!(model)
         # println("termination_status")
         # println(termination_status(model))        
-        y = compute_output(nnet, value(x))
-        if !∈(y, output)
-            if ∈(value(x), reach.interval)
-                return CounterExampleResult(:violated, value(x))
+        # if termination_status(model) != MOI.OPTIMAL
+        #     println(reach.interval)
+        #     println(value(x))
+        #     println(termination_status(model))
+        #     exit()
+        # end
+
+        if termination_status(model) == MOI.OPTIMAL
+            y = compute_output(nnet, value(x))
+            if !∈(y, output)
+                if ∈(value(x), reach.interval)
+                    return CounterExampleResult(:violated, value(x))
+                else
+                    print("OPTIMAL, but x not in the input set")
+                    exit()
+                end
             end
-        end
-        if objective_value(model) > output.constraints[i].b
+            if objective_value(model) > output.constraints[i].b
+                return BasicResult(:unknown)
+            end
+        else
+            if ∈(value(x), reach.interval)
+                print("Not OPTIMAL, but x in the input set")
+                exit()
+            end
             return BasicResult(:unknown)
         end
         
