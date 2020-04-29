@@ -78,7 +78,7 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network, model) where N
+function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network, model::JuMP.Model) where N
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion, 
     # suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
@@ -103,14 +103,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
         end
         @objective(model, Max, obj' * [x; [1]])
         optimize!(model)
-        # println("termination_status")
-        # println(termination_status(model))        
-        # if termination_status(model) != MOI.OPTIMAL
-        #     println(reach.interval)
-        #     println(value(x))
-        #     println(termination_status(model))
-        #     exit()
-        # end
 
         if termination_status(model) == MOI.OPTIMAL
             y = compute_output(nnet, value(x))
@@ -137,7 +129,7 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     return BasicResult(:holds)
 end
 
-function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, model)
+function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, model::JuMP.Model)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
@@ -180,7 +172,7 @@ function get_nodewise_gradient(nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ:
     return max_tuple
 end
 
-function forward_network(solver, nnet::Network, input::AbstractPolytope, model)
+function forward_network(solver, nnet::Network, input::AbstractPolytope, model::JuMP.Model)
     reach = input
     for layer in nnet.layers
         reach = forward_layer(solver, layer, reach, model)
@@ -188,7 +180,7 @@ function forward_network(solver, nnet::Network, input::AbstractPolytope, model)
     return reach
 end
 
-function forward_layer(solver::Neurify, layer::Layer, input, model)
+function forward_layer(solver::Neurify, layer::Layer, input, model::JuMP.Model)
     return forward_act(forward_linear(solver, input, layer), layer, model)
 end
 
@@ -213,7 +205,7 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU}, model)
+function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU}, model::JuMP.Model)
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
     mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
@@ -247,7 +239,7 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU}, model)
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
-function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id}, model)
+function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id}, model::JuMP.Model)
     sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, ones(Float64, n_node))
@@ -256,7 +248,7 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id}, model)
 end
 
 
-function upper_bound(map::Vector{Float64}, input::HPolytope, model)
+function upper_bound(map::Vector{Float64}, input::HPolytope, model::JuMP.Model)
     # n = size(input.constraints, 1)
     # m = size(input.constraints[1].a, 1)
     # model =Model(with_optimizer(GLPK.Optimizer))
@@ -269,7 +261,7 @@ function upper_bound(map::Vector{Float64}, input::HPolytope, model)
 end
 
 
-function lower_bound(map::Vector{Float64}, input::HPolytope, model)
+function lower_bound(map::Vector{Float64}, input::HPolytope, model::JuMP.Model)
     # n = size(input.constraints, 1)
     # m = size(input.constraints[1].a, 1)
     # model =Model(with_optimizer(GLPK.Optimizer))
