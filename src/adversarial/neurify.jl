@@ -65,10 +65,9 @@ function solve(solver::Neurify, problem::Problem)
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
     for i in 2:solver.max_iter
-        # println("iter ",i)
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
-        intervals = constraint_refinement(solver, problem.network, reach)
+        intervals = constraint_refinement(solver, problem.network, reach, model)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval, model)
             result = check_inclusion(reach.sym, problem.output, problem.network, model)
@@ -138,12 +137,12 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     return BasicResult(:holds)
 end
 
-function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
+function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, model)
     i, j, gradient = get_nodewise_gradient(nnet, reach.LΛ, reach.UΛ)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
     nnet_new = Network(nnet.layers[1:i])
-    reach_new = forward_network(solver, nnet_new, reach.sym.interval)
+    reach_new = forward_network(solver, nnet_new, reach.sym.interval, model)
     C, d = tosimplehrep(reach.sym.interval)
     l_sym = reach_new.sym.Low[[j], 1:end-1]
     l_off = reach_new.sym.Low[[j], end]
