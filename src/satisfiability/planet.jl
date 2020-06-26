@@ -126,6 +126,7 @@ function max_slack(x::Vector{Vector{Float64}}, act)
     return (m, index)
 end
 
+# Only use tighten_bounds for feasibility check
 function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
     model = Model(with_optimizer(optimizer))
@@ -139,16 +140,17 @@ function tighten_bounds(problem::Problem, optimizer)
     termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
     lower = value.(neurons)
 
+    #=
     max_sum!(model, neurons)
     optimize!(model)
     termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
     upper = value.(neurons)
-
+        
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
         new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
-    end
-    return (OPTIMAL, new_bounds)
+    end=#
+    return (OPTIMAL, bounds)
 end
 
 
