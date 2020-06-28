@@ -33,8 +33,8 @@ end
 function solve(solver::Duality, problem::Problem)
     model = Model(solver)
     c, d = tosimplehrep(problem.output)
-    λ = init_multipliers(model, problem.network)
-    μ = init_multipliers(model, problem.network)
+    λ = init_multipliers(model, problem.network, "λ")
+    μ = init_multipliers(model, problem.network, "μ")
     o = dual_value(solver, problem, model, λ, μ)
     @constraint(model, last(λ) .== -c)
     optimize!(model)
@@ -45,7 +45,7 @@ end
 function interpret_result(solver::Duality, status, o)
     status != OPTIMAL && return BasicResult(:unknown)
     value(o) <= 0.0 && return BasicResult(:holds)
-    return BasicResult(:violated)
+    return BasicResult(:violated) # This violation may not be true violation
 end
 
 function dual_value(solver::Duality,
@@ -75,9 +75,11 @@ function activation_value(layer::Layer,
     b_hat = approximate_affine_map(layer, bound)
     l_hat, u_hat = low(b_hat), high(b_hat)
     l, u = layer.activation(l_hat), layer.activation(u_hat)
-
-    o += sum(symbolic_max.(μᵢ .* l_hat, μᵢ .* u_hat))
-    o += sum(symbolic_max.(λᵢ .* l,     λᵢ .* u))
+    for j in 1:length(l)
+        s_max = symbolic_max(μᵢ[j] * l_hat[j], μᵢ[j] * u_hat[j] - λᵢ[j] * u_hat[j])
+        l_hat[j] * u_hat[j] >= 0 || @constraint(μᵢ[j].model, s_max >= 0.0)
+        o += s_max
+    end
     return o
 end
 
