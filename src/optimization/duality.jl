@@ -76,7 +76,7 @@ function activation_value(layer::Layer,
     l_hat, u_hat = low(b_hat), high(b_hat)
     l, u = layer.activation(l_hat), layer.activation(u_hat)
     for j in 1:length(l)
-        s_max = symbolic_max(μᵢ[j] * l_hat[j], μᵢ[j] * u_hat[j] - λᵢ[j] * u_hat[j])
+        s_max = symbolic_max(μᵢ[j] * l_hat[j] - λᵢ[j] * l[j], μᵢ[j] * u_hat[j] - λᵢ[j] * u[j])
         l_hat[j] * u_hat[j] >= 0 || @constraint(μᵢ[j].model, s_max >= 0.0)
         o += s_max
     end
