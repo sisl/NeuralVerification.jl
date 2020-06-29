@@ -48,6 +48,102 @@ function read_layer(output_dim::Int64, f::IOStream, act = ReLU())
 end
 
 """
+    write_nnet(fname::String, network::Network)
+    write out a neural network in the .nnet format. Based on
+    code here: https://github.com/sisl/NNet/blob/master/utils/writeNNet.py.
+"""
+function write_nnet(fname::String, network::Network)
+    println("Writting to: ", fname)
+    println("Size last layer: ", size(network.layers[end].weights))
+    open(fname, "w") do f
+        #####################
+        # First, we write the header lines:
+        # The first line written is just a line of text
+        # The second line gives the four values:
+        #     Number of fully connected layers in the network
+        #     Number of inputs to the network
+        #     Number of outputs from the network
+        #     Maximum size of any hidden layer
+        # The third line gives the sizes of each layer, including the input and output layers
+        # The fourth line gives an outdated flag, so this can be ignored
+        # The fifth line specifies the minimum values each input can take
+        # The sixth line specifies the maximum values each input can take
+        #     Inputs passed to the network are truncated to be between this range
+        # The seventh line gives the mean value of each input and of all outputs
+        # The eighth line gives the range of each input and of all outputs
+        #     These two lines are used to map raw inputs to the 0 mean, unit range of the inputs and outputs
+        #     used during training
+        # The ninth line begins the network weights and biases
+        ####################
+        layers = network.layers
+
+        # line 1
+        write(f, "// Neural Network File Format by Kyle Julian, Stanford 2016\n") # line 1
+
+        # line 2 (i)
+        write(f, string(length(network.layers), ",")) # number of layer connections (# of weight bias pairs)
+
+        num_inputs = size(network.layers[1].weights, 2)
+        write(f, string(num_inputs, ",")) # number of inputs
+
+        num_outputs = length(network.layers[end].bias)
+        write(f, string(num_outputs, ",")) # number of outputs
+
+        hidden_layer_sizes = [size(layer.weights, 1) for layer in network.layers][1:end-1] # chop off the output layer
+        # mimicking https://github.com/sisl/NNet/blob/master/utils/writeNNet.py,
+        # set the max hidden layer size to just be the input size
+        write(f, string(num_inputs), ",\n") # max size of any hidden layer
+
+        # line 3
+        layer_sizes = [num_inputs, hidden_layer_sizes..., num_outputs]
+        write(f, string(join(layer_sizes, ','), ","))
+        write(f, "\n")
+
+        # line 4
+        write(f, "0,\n") # outdated flag, ignore
+
+        # line 5, 6
+        write(f, string(join(fill(-floatmax(Float16), num_inputs), ","), ",\n"))
+        write(f, string(join(fill(floatmax(Float16), num_inputs), ","), ",\n"))
+
+        # line 7, 8 - mean, range of 0, 1 means it won't rescale the input at all
+        # is asserting our inputs are already scaled to be mean 0, range 1
+        write(f, string(join(fill(0.0, num_inputs), ","), ",\n"))
+        write(f, string(join(fill(1.0, num_inputs), ","), ",\n"))
+
+        ##################
+        # Write weights and biases of neural network
+        # First, the weights from the input layer to the first hidden layer are written
+        # Then, the biases of the first hidden layer are written
+        # The pattern is repeated by next writing the weights from the first hidden layer to the second hidden layer,
+        # followed by the biases of the second hidden layer.
+        ##################
+        for layer in layers
+            # each output of a layer gets a line for its corresponding weights
+            # and corresponding bias
+
+            # Write the current weight
+            weights = layer.weights
+            for i = 1:size(weights, 1)
+                for j = 1:size(weights, 2)
+                    write(f, @sprintf("%.10e,", weights[i, j])) #five digits written. More can be used, but that requires more space.
+                end
+                write(f, "\n")
+            end
+
+            # Write the current bias
+            bias = layer.bias
+            for i = 1:length(bias)
+                write(f, @sprintf("%.10e,", bias[i])) #five digits written. More can be used, but that requires more space.
+                write(f, "\n")
+            end
+
+        end
+
+        close(f)
+    end
+
+"""
     compute_output(nnet::Network, input::Vector{Float64})
 
 Propagate a given vector through a nnet and compute the output.
