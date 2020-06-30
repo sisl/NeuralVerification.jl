@@ -51,6 +51,7 @@ export
     AdversarialResult,
     ReachabilityResult,
     read_nnet,
+    write_nnet,
     solve,
     forward_network,
     check_inclusion
