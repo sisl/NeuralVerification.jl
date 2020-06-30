@@ -138,7 +138,7 @@ function write_nnet(fname::String, network::Network)
             # Write the current bias
             bias = layer.bias
             for i = 1:length(bias)
-                write(f, @sprintf("%.10e,", bias[i])) #five digits written. More can be used, but that requires more space.
+                write(f, @sprintf("%.10e,", bias[i])) # ten digits written. More can be used, but that requires more space.
                 write(f, "\n")
             end
 
