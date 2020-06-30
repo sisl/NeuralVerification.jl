@@ -51,6 +51,12 @@ end
     write_nnet(fname::String, network::Network)
     write out a neural network in the .nnet format. Based on
     code here: https://github.com/sisl/NNet/blob/master/utils/writeNNet.py.
+    The nnet format can be found at: https://github.com/sisl/NNet
+
+    The Network object doesn't currently store upper and lower bounds on the input
+    so we write the upper and lower bounds to be floatmax(Float16) and -floatmax(Float16)
+
+    We write out our floats with 10 characters past the decimal point.
 """
 function write_nnet(fname::String, network::Network)
     open(fname, "w") do f
