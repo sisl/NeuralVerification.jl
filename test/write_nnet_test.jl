@@ -14,12 +14,19 @@
     # Read back in the network
     new_nnet = NeuralVerification.read_nnet(network_file)
 
+    # Test that all weights and biases are the same
     @test new_nnet.layers[1].weights == l1.weights;
     @test new_nnet.layers[1].bias == l1.bias;
+    @test new_nnet.layers[1].activation == l1.activation;
+
     @test new_nnet.layers[2].weights == l2.weights;
     @test new_nnet.layers[2].bias == l2.bias;
+    @test new_nnet.layers[2].activation == l2.activation;
+
     @test new_nnet.layers[3].weights == l3.weights;
     @test new_nnet.layers[3].bias == l3.bias;
+    @test new_nnet.layers[3].activation == l3.activation;
+
 
 
 end
