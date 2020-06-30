@@ -142,7 +142,7 @@ function write_nnet(fname::String, network::Network)
 
         close(f)
     end
-
+end
 """
     compute_output(nnet::Network, input::Vector{Float64})
 
