@@ -8,7 +8,7 @@
     l3 = NeuralVerification.Layer([10.0 -1.0; -2.0 3.0; 4.0 5.0; 10.0 7.0; -3.5 -4.5], [0.0; -1.0; 0.0; 10.0; -10.0], NeuralVerification.Id())
 
     # Write out the network
-    network_file = string(tempname(), ".nnet")
+    network_file = string(tempname())
     nnet = NeuralVerification.Network([l1, l2, l3])
     NeuralVerification.write_nnet(network_file, nnet)
 

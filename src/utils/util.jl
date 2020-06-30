@@ -89,18 +89,20 @@ function print_header(file::IOStream, network; header_text="")
    # maximum vals of inputs
    println(file, string(join(fill(floatmax(Float16), num_inputs), ","), ",\n"))
    # mean vals of inputs
-   println(file, string(join(fill(0.0, num_inputs), ","), ",\n"))
+   println(file, string(join(fill(0.0, num_inputs+1), ","), ",\n"))
    # range vals of inputs
-   println(file, string(join(fill(1.0, num_inputs), ","), ",\n"))
+   println(file, string(join(fill(1.0, num_inputs+1), ","), ",\n"))
    return nothing
 end
 
 """
     write_nnet(filename, model[; header_text])
 
-Write `model` to \$filename.nnet. `model` should be an iterable object containing
-layers of a feed-forward, fully connected neural network with ReLU activations.
+Write `network` to \$filename.nnet.
 Note: Does not perform safety checks on inputs, so use with caution.
+
+Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet.py
+and follows .nnet format given here: https://github.com/sisl/NNet.
 """
 function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
     name, ext = splitext(outfile, ".")
