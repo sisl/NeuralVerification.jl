@@ -105,7 +105,7 @@ Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet
 and follows .nnet format given here: https://github.com/sisl/NNet.
 """
 function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
-    name, ext = splitext(outfile, ".")
+    name, ext = splitext(outfile)
     outfile = name*".nnet"
     open(outfile, "w") do f
         print_header(f, network, header_text=header_text)
