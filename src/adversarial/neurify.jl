@@ -26,11 +26,11 @@ Sound but not complete.
 """
 
 @with_kw struct Neurify
-    max_iter::Int64     = 5
+    max_iter::Int64     = 10
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
     model = Nothing()
     optimizer = GLPK.Optimizer
-    splitted = Set()
+    splitted = Set() # To prevent infinity loop. Not the best solution, need to be modified in the future.
 end
 
 struct SymbolicInterval{F<:AbstractPolytope}
@@ -51,6 +51,8 @@ struct SymbolicIntervalGradient
 end
 
 function solve(solver::Neurify, problem::Problem)
+
+    while !isempty(solver.splitted) pop!(solver.splitted) end
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
 
     reach_lc = problem.input.constraints
@@ -63,20 +65,16 @@ function solve(solver::Neurify, problem::Problem)
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
     reach = forward_network(solver, problem.network, problem.input)
-    # println("forward finish")
-    # println(reach)
     result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
     reach_list = SymbolicIntervalGradient[reach]
     for i in 2:solver.max_iter
-        println("splitting ", i)
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
         intervals = constraint_refinement(solver, problem.network, reach)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            # println(result)
             result.status == :violated && return result
             result.status == :holds || (push!(reach_list, reach))
         end
@@ -98,22 +96,13 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
 
-    # println("checking inclusion")
-    # println(reach_lc)
-    # println(output_lc)
 
     for i in 1:size(output_lc, 1)
         obj = zeros(size(reach.Low, 2))
-        # println(i, "constraint")
-        # println(output_lc[i].a)
         for j in 1:size(reach.Low, 1)
             if output_lc[i].a[j] > 0
-                # println("up")
-                # println(reach.Up[j,:])
                 obj += output_lc[i].a[j] * reach.Up[j,:]
             else
-                # println("low")
-                # println(reach.Low[j,:])
                 obj += output_lc[i].a[j] * reach.Low[j,:]
             end
         end
@@ -130,7 +119,7 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
                 end
             end
             if objective_value(model) > output_lc[i].b
-                println(objective_value(model)," ", output_lc[i].b)
+                # println(objective_value(model)," ", output_lc[i].b)
                 return BasicResult(:unknown)
             end
         else
@@ -158,37 +147,17 @@ function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIn
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
 
-    # println("constraint_refinement")
-    # println(i," ",j)
     nnet_new = Network(nnet.layers[1:i])
     reach_new = forward_network(solver, nnet_new, reach.sym.interval)
-    # println(reach_new)
     C, d = tosimplehrep(reach.sym.interval)
-    # println("C")
-    # println(C)
-    # println("d")
-    # println(d)
-    # printconvex(reach.sym.interval)
     l_sym = reach_new.sym.Low[[j], 1:end-1]
     l_off = reach_new.sym.Low[[j], end]
     u_sym = reach_new.sym.Up[[j], 1:end-1]
     u_off = reach_new.sym.Up[[j], end]
-    # println("l_sym, u_sym")
-    # println(l_sym)
-    # println(u_sym)
-    # println("l_off, u_off")
-    # println(l_off)
-    # println(u_off)
     intervals = Vector{HPolytope{Float64}}(undef, 3)
     intervals[1] = HPolytope([C; l_sym; u_sym], [d; -l_off; -u_off])
     intervals[2] = HPolytope([C; l_sym; -u_sym], [d; -l_off; u_off])
     intervals[3] = HPolytope([C; -l_sym; -u_sym], [d; l_off; u_off])
-    # println("interval 1")
-    # printconvex(intervals[1])
-    # println("interval 2")
-    # printconvex(intervals[2])
-    # println("interval 3")
-    # printconvex(intervals[3])
     # intervals[4] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off]) lower bound can not be greater than upper bound
     return intervals
 end
