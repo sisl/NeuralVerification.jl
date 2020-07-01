@@ -87,13 +87,13 @@ function print_header(file::IOStream, network; header_text="")
    # empty
    println(file, "This line extraneous")
    # minimum vals of inputs
-   println(file, string(join(fill(-floatmax(Float16), num_inputs), ","), ",\n"))
+   println(file, string(join(fill(-floatmax(Float16), num_inputs), ","), ","))
    # maximum vals of inputs
-   println(file, string(join(fill(floatmax(Float16), num_inputs), ","), ",\n"))
-   # mean vals of inputs
-   println(file, string(join(fill(0.0, num_inputs+1), ","), ",\n"))
-   # range vals of inputs
-   println(file, string(join(fill(1.0, num_inputs+1), ","), ",\n"))
+   println(file, string(join(fill(floatmax(Float16), num_inputs), ","), ","))
+   # mean vals of inputs + 1 for output
+   println(file, string(join(fill(0.0, num_inputs+1), ","), ","))
+   # range vals of inputs + 1 for output
+   println(file, string(join(fill(1.0, num_inputs+1), ","), ","))
    return nothing
 end
 
