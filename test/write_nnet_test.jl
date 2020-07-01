@@ -10,7 +10,7 @@
     # Write out the network
     network_file = string(tempname())
     nnet = NeuralVerification.Network([l1, l2, l3])
-    NeuralVerification.write_nnet(network_file, nnet)
+    NeuralVerification.write_nnet(network_file, nnet; header_text="test_header")
 
     # Read back in the network
     new_nnet = NeuralVerification.read_nnet(network_file)

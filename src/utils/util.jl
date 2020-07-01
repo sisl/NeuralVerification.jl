@@ -66,19 +66,21 @@ function print_layer(file::IOStream, layer)
 end
 
 """
-    print_header(file::IOStream, model[; header_text])
+    print_header(file::IOStream, network[; header_text])
 
 The NNet format has a particular header containing information about the network size and training data.
 `print_header` does not take training-related information into account (subject to change).
 """
 function print_header(file::IOStream, network; header_text="")
    println(file, to_comment(header_text))
+   layer_sizes = [size(layer.weights, 1) for layer in network.layers] # doesn't include the output layer
+   pushfirst!(layer_sizes, size(network.layers[end].weights, 1)) # add the output layer
+
    # num layers, num inputs, num outputs, max layer size
-   layer_sizes = [layer_size(model[1], 2); layer_size.(model, 1)]
-   num_layers = length(model)
+   num_layers = length(network.layers)
    num_inputs = layer_sizes[1]
    num_outputs = layer_sizes[end]
-   max_layer = maximum(layer_sizes)
+   max_layer = maximum(layer_sizes[1:end-1]) # chop off the output layer for the maximum,
    println(file, join([num_layers, num_inputs, num_outputs, max_layer], ", "), ",")
    #layer sizes input, ..., output
    println(file, join(layer_sizes, ", "), ",")
@@ -96,7 +98,7 @@ function print_header(file::IOStream, network; header_text="")
 end
 
 """
-    write_nnet(filename, model[; header_text])
+    write_nnet(filename, network[; header_text])
 
 Write `network` to \$filename.nnet.
 Note: Does not perform safety checks on inputs, so use with caution.
@@ -105,7 +107,7 @@ Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet
 and follows .nnet format given here: https://github.com/sisl/NNet.
 """
 function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
-    name, ext = splitext(outfile, ".")
+    name, ext = splitext(outfile)
     outfile = name*".nnet"
     open(outfile, "w") do f
         print_header(f, network, header_text=header_text)
