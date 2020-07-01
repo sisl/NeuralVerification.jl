@@ -32,6 +32,31 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
         cur_bias = min_bias .+ (max_bias - min_bias) * rand(rng, Float64, (next_size))
         push!(layers, NeuralVerification.Layer(cur_weights, cur_bias, cur_activation))
     end
-    
+
     return Network(layers)
+end
+
+
+function write_problem(file, problem::Problem)
+    write_
+
+    @assert problem.P
+end
+
+function write_set(set)
+    # Only support hyperrectangle, hyperpolytope, zonotope, polytope complement, and halfspace
+    @assert (set isa Hyperrectangle) || (set isa HPolytope) || (set isa Zonotope) || (set isa Halfspace) || (set isa PolytopeComplement)
+
+    # Save the type and the
+    output_dict = Dict()
+    if set isa Halfspace
+
+    elseif set isa Hyperrectangle
+    elseif set isa HPolytope
+    elseif set isa PolytopeComplement
+    elseif set isa Zonotope
+end
+
+function read_set(file)
+    if
 end
