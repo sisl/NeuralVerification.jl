@@ -32,13 +32,13 @@ Sound but not complete.
     # Becuase of over-approximation, a split may not bisect the input set. 
     # Therefore, the gradient remains unchanged (since input didn't change).
     # And this node will be chosen to split forever.
-    # To prevent this, we split each node only once. 
-    # $splits is used to record which node has been split.
+    # To prevent this, we split each node only once if the gradient of this node doesn't change. 
+    # Each element in splits is a tuple (gradient_of_the_node, layer_index, node_index).
 
-    splits = Set() # To prevent infinity loop. Not the best solution, need to be modified in the future.
+    splits = Set() # To prevent infinity loop.
 
     # But in some cases (which I don't have an example, just a sense), 
-    # due to over-approximation, a node indeed needs to be split twice.
+    # it can happen that a node indeed needs to be split twice with the same gradient.
 end
 
 struct SymbolicInterval{F<:AbstractPolytope}
@@ -178,13 +178,13 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
             # Only split Relu nodes
             # A split over id node may not reduce over-approximation (the input set may not bisected).
             for j in 1:size(layer.bias,1)
-                if in((i,j), solver.splits)
-                    # To prevent infinity loop
-                    continue
-                end
-                if (0 < LΛ[i][j] < 1) && (0 < UΛ[i][j] < 1)
+                if (0 < LΛ[i][j] < 1) && (0 < UΛ[i][j] < 1)                    
                     max_gradient = max(abs(LG[j]), abs(UG[j]))
-                    if max_gradient >= max_tuple[3]
+                    if in((i,j, max_gradient), solver.splits) # To prevent infinity loop
+                        continue
+                    end
+                    # If we use > here, in the case that largest gradient is 0, this function will return (0, 0 ,0)
+                    if max_gradient >= max_tuple[3] 
                         max_tuple = (i, j, max_gradient)
                     end
                 end
@@ -195,7 +195,7 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
         UG_hat = Diagonal(LΛ[i]) * min.(UG, 0.0) + Diagonal(UΛ[i]) * max.(UG, 0.0)
         LG, UG = interval_map(transpose(layer.weights), LG_hat, UG_hat)
     end
-    push!(solver.splits, (max_tuple[1], max_tuple[2]))
+    push!(solver.splits, max_tuple)
     return max_tuple
 end
 
