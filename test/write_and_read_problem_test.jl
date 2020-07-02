@@ -1,12 +1,15 @@
 # Test by creating a problem, then writing it, then reading it back in
 # afterwards make sure that they are equal.
-@testset "Read and write set test" begin
+@testset "Read and write problem test" begin
     # Construct the problem from a network, input set, and output set
     cartpole_nnet_file = "$(@__DIR__)/../examples/networks/cartpole_nnet.nnet" # 4 --> 16 --> 16 --> 16 --> 2
     nnet = read_nnet(cartpole_nnet_file)
     input_set = Hyperrectangle([1.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0])
     output_set = HalfSpace([1.0, -1.0], 5.0)
     problem = Problem(nnet, input_set, output_set)
+
+    # Test problem equality operator
+    @test problem == deepcopy(problem)
 
     # Write out the problem
     nnet_file = string(tempname(), ".nnet")

@@ -15,7 +15,7 @@ import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 using Requires
 using Printf # for write_nnet
-using JSON2 
+using JSON2
 
 # abstract type Solver end # no longer needed
 
@@ -60,7 +60,8 @@ export
     write_problem,
     read_problem,
     write_set,
-    read_set
+    read_set,
+    is_complete
 
 solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
 export solve

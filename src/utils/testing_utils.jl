@@ -10,7 +10,7 @@ and max_weight and min_bias and max_bias respectively. The last layer will have 
 activation function and the rest will have ReLU() activation functions. Allow a random number
 generator(rng) to be passed in. This allows for seeded random network generation.
 """
-function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister(0))
+function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister())
     # Create each layer based on the layer_size
     layers = []
     for index in 1:(length(layer_sizes)-1)
@@ -37,12 +37,12 @@ end
 
 
 """
-    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem, [query_file = ""])
+    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem; [query_file = ""])
 
 Write a the information from a problem to files. The input set, output set, and network will
 each be written to a separate file. If a query file is given it will append this test to the corresponding query file
 """
-function write_problem(network_file::String, input_file::String, output_file::String, problem::Problem, query_file="")
+function write_problem(network_file::String, input_file::String, output_file::String, problem::Problem; query_file="")
     write_nnet(network_file, problem.network)
     write_set(input_file, problem.input)
     write_set(output_file, problem.output)
@@ -82,8 +82,8 @@ end
 """
     write_set(filename::String, set::Union{PolytopeComplement, LazySet})
 
-Return a string corresponding to the object's type. This will be used to store
-these sets to file.
+Write a set in JSON format to a file along with its type. This supports HalfSpace, Hyperrectangle,
+HPolytope, PolytopeComplement, and Zonotope objects.
 """
 function write_set(filename::String, set::Union{PolytopeComplement, LazySet})
     # Only support hyperrectangle, hyperpolytope, zonotope, polytope complement, and halfspace
@@ -104,18 +104,24 @@ end
 
 
 """
-    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+    read_problem(network_file::String, input_file::String, output_file::String)
 
-Read in a network, input set, and output set and return the corresponding problem.
+Take in a network, input set, and output set and return the corresponding problem.
 """
-function read_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+function read_problem(network_file::String, input_file::String, output_file::String)
     network = read_nnet(network_file)
     input_set = read_set(input_file)
     output_set = read_set(output_file)
     return Problem(network, input_set, output_set)
 end
 
-function read_set(filename)
+"""
+    read_set(filename::String)
+
+Read in a set from a file. This supports HalfSpace, Hyperrectangle,
+HPolytope, PolytopeComplement, and Zonotope objects.
+"""
+function read_set(filename::String)
     json_string = read(filename, String)
     dict = JSON2.read(json_string)
     type = dict[:type]
@@ -152,9 +158,154 @@ function read_set(filename)
     end
 end
 
-function run_correctness_tests_on_file(filename)
-    queries = readlines(filename)
-    for query in queries
-        println("Query: ", query)
+
+"""
+function query_line_to_problem(line::String)
+
+Take in a line from a query file and read in then return the corresponding problem.
+This line will be in the format:
+some/path/network.nnet other/path/input_set.json third/path/output_set.json
+
+It splits it apart by spaces then reads in the problem.
+"""
+function query_line_to_problem(line::String)
+    network_file, input_file, output_file = string.(split(line, " "))
+    return read_problem(network_file, input_file, output_file)
+end
+
+"""
+    get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test())
+
+Return a list of valid instantitated solvers for a particular problem. This will depend
+on compatibility with the input set, output set, and network.
+
+If a list of solvers is given, it filters that list. Otherwise, it gets a default list
+from get_all_solvers_to_test() and uses that list of solvers.
+"""
+function get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test())
+    # Get all solvers, then filter out those that don't work
+    # with the input set, output set, or network
+    return filter(solver->solver_works_with_input_set(solver, problem.input)
+            && solver_works_with_output_set(solver, problem.output)
+            && solver_works_with_network(solver, problem.network), solvers)
+end
+
+"""
+    solver_works_with_input_set(solver, input_set)
+
+Return true if the solver can handle the input given by input_set.
+Return false otherwise.
+"""
+function solver_works_with_input_set(solver, input_set)
+    half_space_solver_types = Union{}
+    hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex}
+    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
+    polytope_complement_solver_types = Union{}
+    zonotope_solver_types = Union{}
+
+    if input_set isa HalfSpace
+        return solver isa half_space_solver_types
+    elseif input_set isa Hyperrectangle
+        # Duality and ConvDual require uniform HR (hypercube) input set
+        if (solver isa Union{Duality, ConvDual})
+            return all(y->y==y[1], input_set.radius)
+        else
+            return solver isa hyperrectangle_solver_types
+        end
+    elseif input_set isa HPolytope
+        return solver isa hyperpolytope_solver_types
+    elseif input_set isa PolytopeComplement
+        return solver isa polytope_complement_solver_types
+    elseif input_set isa Zonotope
+        return solver isa zonotope_solver_types
+    else
+        println("Unsupported input set")
+        @assert false
     end
+end
+
+"""
+    solver_works_with_output_set(solver, output_set)
+
+Return true if the solver can handle the output given by output_set.
+Return false otherwise.
+"""
+function solver_works_with_output_set(solver, output_set)
+    half_space_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip}
+    hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB}
+    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
+    polytope_complement_solver_types = Union{NSVerify, MIPVerify, ILP, Planet, Reluplex}
+    zonotope_solver_types = Union{}
+
+    if output_set isa HalfSpace
+        return solver isa half_space_solver_types
+    elseif output_set isa Hyperrectangle
+        # For DLV, Sherlock, and BaB it must be 1-D
+        if (solver isa Union{DLV, Sherlock, BaB})
+            return length(output_set.center) == 1
+        else
+            return solver isa hyperrectangle_solver_types
+        end
+    elseif output_set isa HPolytope
+        # We will assume that the polytope is bounded
+        return solver isa hyperpolytope_solver_types
+    elseif output_set isa PolytopeComplement
+        return solver isa polytope_complement_solver_types
+    elseif output_set isa Zonotope
+        return solver isa zonotope_solver_types
+    else
+        println("Unsupported output set")
+        @assert false
+    end
+end
+
+"""
+    solver_work_with_network(solver, network)
+
+Return true if the solver can handle the network given by network.
+Return false otherwise.
+"""
+function solver_works_with_network(solver, network)
+    if (solver isa Certify)
+        return length(network.Layers) == 2 # certify only works with 1 hidden layer
+    else
+        return true
+    end
+end
+
+"""
+    get_all_solvers_to_test()
+
+Return all solver configurations that we'd like to test
+"""
+function get_all_solvers_to_test()
+    return [
+            ExactReach(),
+            Ai2(),
+            MaxSens(resolution = 0.6),
+            NSVerify(),
+            MIPVerify(),
+            ILP(),
+            Duality(),
+            ConvDual(),
+            Certify(),
+            FastLin(),
+            FastLip(),
+            ReluVal(max_iter = 10),
+            DLV(),
+            Sherlock(ϵ = 0.5),
+            BaB(),
+            Planet(),
+            Reluplex()
+            ]
+end
+
+"""
+    is_complete(solver)
+
+Return whether a solver is complete or not.
+"""
+function is_complete(solver)
+    complete_solvers = Union{ExactReach, NSVerify, MIPVerify, ReluVal, DLV, Planet, Reluplex}
+    return solver isa complete_solvers
 end
