@@ -1,0 +1,1 @@
+{"set":{"constraints":[{"a":[1.0],"b":-23.0},{"a":[-1.0],"b":70.0}]},"type":"HPolytope"}
