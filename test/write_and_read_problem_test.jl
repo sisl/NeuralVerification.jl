@@ -3,7 +3,7 @@
 @testset "Read and write set test" begin
     # Construct the problem from a network, input set, and output set
     cartpole_nnet_file = "$(@__DIR__)/../examples/networks/cartpole_nnet.nnet" # 4 --> 16 --> 16 --> 16 --> 2
-    nnet = read_nnet(small_nnet_file)
+    nnet = read_nnet(cartpole_nnet_file)
     input_set = Hyperrectangle([1.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0])
     output_set = HalfSpace([1.0, -1.0], 5)
     problem = Problem(nnet, input_set, output_set)
