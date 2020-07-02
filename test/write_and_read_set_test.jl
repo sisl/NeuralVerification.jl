@@ -4,7 +4,7 @@
     # and make sure they are written and read correctly
 
     # Create the objects
-    half_space = HalfSpace([1 2 3], 4)
+    half_space = HalfSpace([1, 2, 3], 4)
     hyperrectangle = Hyperrectangle([1, 2, 3], [4, 5, 6])
     polytope = HPolytope([1 2 3; 4 5 6; 7 8 9; 10 11 12], [1; 2; 3; 4])
     polytope_complement = PolytopeComplement(polytope)
