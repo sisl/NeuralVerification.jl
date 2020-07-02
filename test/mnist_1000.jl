@@ -5,7 +5,7 @@ using JLD2
 
 function test_solver(solver, test_selected)
 
-    # index of all violation cases in the first 1000 images.
+    # index of all violated cases in the first 1000 images.
     violation_idx = [25, 142, 179, 183, 283, 285, 387, 392, 612, 647, 737]
     # index of selected holding cases in the first 1000 images.
     satisfied_idx = [10, 100, 200, 300, 400, 500 ,600, 700, 800, 900, 999, 213, 391, 660, 911]
@@ -56,7 +56,7 @@ function test_solver(solver, test_selected)
             @test noisy != pred
         elseif result.status == :holds
             @test !(i ∈ violation_idx)
-        else #result.status == :unkown
+        else #result.status == :unknown
             
         end
     end
@@ -64,6 +64,9 @@ end
 
 # if test_selected = true, only test selected index. Otherwise, test all 1000 images.
 test_selected = true
+
+# Please note the number of tests maybe different for different solvers. 
+# Because the test cases depends on the result.
 
 if test_selected
     @testset "MNIST selected, ReluVal" begin

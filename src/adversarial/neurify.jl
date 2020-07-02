@@ -28,20 +28,26 @@ Sound but not complete.
 @with_kw struct Neurify
     max_iter::Int64     = 10
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
-    model = Nothing()
-    optimizer = GLPK.Optimizer
-    splitted = Set() # To prevent infinity loop. Not the best solution, need to be modified in the future.
+
+    # Becuase of over-approximation, a split may not bisect the input set. 
+    # Therefore, the gradient remains unchanged (since input didn't change).
+    # And this node will be chosen to split forever.
+    # To prevent this, we split each node only once. 
+    # $splits is used to record which node has been split.
+
+    splits = Set() # To prevent infinity loop. Not the best solution, need to be modified in the future.
+
+    # But in some cases (which I don't have an example, just a sense), 
+    # due to over-approximation, a node indeed needs to be split twice.
 end
 
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
     Up::Matrix{Float64}
     interval::F
-    model
 end
 
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]), Nothing())
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}, interval::AbstractPolytope) = SymbolicInterval(x, y, interval, Nothing())
+SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
 # Data to be passed during forward_layer
 struct SymbolicIntervalGradient
@@ -52,7 +58,7 @@ end
 
 function solve(solver::Neurify, problem::Problem)
 
-    while !isempty(solver.splitted) pop!(solver.splitted) end
+    while !isempty(solver.splits) pop!(solver.splits) end
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
 
     reach_lc = problem.input.constraints
@@ -65,9 +71,12 @@ function solve(solver::Neurify, problem::Problem)
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
     reach = forward_network(solver, problem.network, problem.input)
-    result = check_inclusion(reach.sym, problem.output, problem.network) # This called the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
+    
+    result = check_inclusion(reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
+
     reach_list = SymbolicIntervalGradient[reach]
+
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
         reach = pick_out!(reach_list, solver.tree_search)
@@ -84,10 +93,9 @@ end
 
 function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
     # The output constraint is in the form A*x < b
-    # We try to maximize output constraint to find a violated case, or to verify the inclusion, 
-    # suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
+    # We try to maximize output constraint to find a violated case, or to verify the inclusion.
+    # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
     
-    # x = model[:x]
     reach_lc = reach.interval.constraints
     output_lc = output.constraints
     n = size(reach_lc, 1)
@@ -114,17 +122,21 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
                 if ∈(value(x), reach.interval)
                     return CounterExampleResult(:violated, value(x))
                 else
-                    print("OPTIMAL, but x not in the input set")
-                    exit()
+                    println("OPTIMAL, but x not in the input set")
+                    println("This is usually caused by precision problem, you can omit this")
+                    println("x = ", value(x))
+                    println("A * x = ", obj' * [value(x); [1]])
+                    println("b = ", reach_lc[i].b)
                 end
             end
             if objective_value(model) > output_lc[i].b
-                # println(objective_value(model)," ", output_lc[i].b)
                 return BasicResult(:unknown)
             end
         else
             if ∈(value(x), reach.interval)
-                print("Not OPTIMAL, but x in the input set")
+                println("Not OPTIMAL, but x in the input set")
+                println("This is usually caused by open shape input set.")
+                println("Check your input constraints.")
                 exit()
             end
             return BasicResult(:unknown)
@@ -132,14 +144,6 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
         
     end
     return BasicResult(:holds)
-end
-
-function printconvex(shape)
-    vertices = tovrep(shape).vertices
-    for v in vertices
-        print(v, " ")
-    end
-    println()
 end
 
 function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
@@ -171,14 +175,11 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
     for (k, layer) in enumerate(reverse(nnet.layers))
         i = n_length - k + 1
         if layer.activation != Id() 
-            # Not sure whether this is right, but by experiments, this caused infinity loop. 
-            # Because a split didn't reduce over-approximation at all (the input set is not bisected).
+            # Only split Relu nodes
+            # A split over id node may not reduce over-approximation (the input set may not bisected).
             for j in 1:size(layer.bias,1)
-                if in((i,j), solver.splitted)
+                if in((i,j), solver.splits)
                     # To prevent infinity loop
-                    # Becuase the over-approximation, a split may not bisect the input set.
-                    # But in some cases (which I don't have an example, just a sense)
-                    # a node is indeed can be splitted twice.
                     continue
                 end
                 if (0 < LΛ[i][j] < 1) && (0 < UΛ[i][j] < 1)
@@ -192,9 +193,9 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
         i >= 1 || break
         LG_hat = Diagonal(LΛ[i]) * max.(LG, 0.0) + Diagonal(UΛ[i]) * min.(LG, 0.0)
         UG_hat = Diagonal(LΛ[i]) * min.(UG, 0.0) + Diagonal(UΛ[i]) * max.(UG, 0.0)
-        LG, UG = interval_map(copy(transpose(layer.weights)), LG_hat, UG_hat)
+        LG, UG = interval_map(transpose(layer.weights), LG_hat, UG_hat)
     end
-    push!(solver.splitted, (max_tuple[1], max_tuple[2]))
+    push!(solver.splits, (max_tuple[1], max_tuple[2]))
     return max_tuple
 end
 
@@ -272,7 +273,6 @@ function upper_bound(map::Vector{Float64}, input::HPolytope)
     model =Model(with_optimizer(GLPK.Optimizer))
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-    x = model[:x]
     @objective(model, Max, map' * [x; [1]])
     optimize!(model)
     return objective_value(model)
@@ -285,7 +285,6 @@ function lower_bound(map::Vector{Float64}, input::HPolytope)
     model =Model(with_optimizer(GLPK.Optimizer))
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-    x = model[:x]
     @objective(model, Min, map' * [x; [1]])
     optimize!(model)
     return objective_value(model)

@@ -2,16 +2,6 @@ using LazySets, Test, LinearAlgebra
 using NeuralVerification
 import NeuralVerification: ReLU, Id
 
-macro no_error(ex)
-    quote
-        try $(esc(ex))
-            true
-        catch
-            false
-        end
-    end
-end
-
 @testset "Splitting Test" begin
 
     net_file = "$(@__DIR__)/../examples/networks/R2_R2.nnet"
@@ -36,14 +26,12 @@ end
 
     @testset "Neurify" begin
         solver = Neurify()
-        @test @no_error result = solve(solver, problem)
         result = solve(solver, problem)
         @test result.status == :holds
     end
 
     @testset "ReluVal" begin
         solver = ReluVal()
-        @test @no_error result = solve(solver, problem)
         result = solve(solver, problem)
         @test result.status == :holds
     end
