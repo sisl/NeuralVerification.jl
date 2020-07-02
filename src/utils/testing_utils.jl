@@ -37,15 +37,23 @@ end
 
 
 """
-    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem, [query_file = ""])
 
 Write a the information from a problem to files. The input set, output set, and network will
-each be written to a separate file.
+each be written to a separate file. If a query file is given it will append this test to the corresponding query file
 """
-function write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+function write_problem(network_file::String, input_file::String, output_file::String, problem::Problem, query_file="")
     write_nnet(network_file, problem.network)
     write_set(input_file, problem.input)
     write_set(output_file, problem.output)
+
+    # If a query file is given, append this problem to the file by writing out
+    # the network file, input file, and output file names
+    if query_file != ""
+        open(query_file, "a") do f
+            println(f, string(network_file, " ", input_file, " ", output_file))
+        end
+    end
 end
 
 """
@@ -143,5 +151,8 @@ function read_set(filename)
 end
 
 function run_correctness_tests_on_file(filename)
-
+    queries = readlines(filename)
+    for query in queries
+        println("Query: ", query)
+    end
 end

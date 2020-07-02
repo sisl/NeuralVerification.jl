@@ -33,7 +33,7 @@
 
     # Test that they are equal
     @test half_space == half_space_in
-    @test hyperrectangle = hyperrectangle_in
+    @test hyperrectangle == hyperrectangle_in
     @test polytope == polytope_in
     @test polytope_complement == polytope_complement_in
     @test zonotope == zonotope_in
