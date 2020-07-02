@@ -5,7 +5,7 @@
     cartpole_nnet_file = "$(@__DIR__)/../examples/networks/cartpole_nnet.nnet" # 4 --> 16 --> 16 --> 16 --> 2
     nnet = read_nnet(cartpole_nnet_file)
     input_set = Hyperrectangle([1.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0])
-    output_set = HalfSpace([1.0, -1.0], 5)
+    output_set = HalfSpace([1.0, -1.0], 5.0)
     problem = Problem(nnet, input_set, output_set)
 
     # Write out the problem

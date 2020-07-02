@@ -50,6 +50,7 @@ function write_problem(network_file::String, input_file::String, output_file::St
     # If a query file is given, append this problem to the file by writing out
     # the network file, input file, and output file names
     if query_file != ""
+        mkpath(dirname(query_file))
         open(query_file, "a") do f
             println(f, string(network_file, " ", input_file, " ", output_file))
         end
@@ -95,6 +96,7 @@ function write_set(filename::String, set::Union{PolytopeComplement, LazySet})
     output_dict["set"] = set
 
     # Write to file
+    mkpath(dirname(filename))
     open(filename, "w") do f
         JSON2.write(f, output_dict)
     end
