@@ -27,6 +27,7 @@ include("utils/activation.jl")
 include("utils/network.jl")
 include("utils/problem.jl")
 include("utils/util.jl")
+include("utils/testing_utils.jl")
 
 function __init__()
   @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" include("utils/flux.jl")
@@ -54,7 +55,11 @@ export
     write_nnet,
     solve,
     forward_network,
-    check_inclusion
+    check_inclusion,
+    write_problem,
+    read_problem,
+    write_set,
+    read_set
 
 solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
 export solve

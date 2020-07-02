@@ -1,5 +1,4 @@
 using Random
-using NeuralVerification;
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -37,26 +36,112 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
 end
 
 
-function write_problem(file, problem::Problem)
-    write_
+"""
+    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
 
-    @assert problem.P
+Write a the information from a problem to files. The input set, output set, and network will
+each be written to a separate file.
+"""
+function write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+    write_nnet(network_file, problem.network)
+    write_set(input_file, problem.input)
+    write_set(output_file, problem.output)
 end
 
-function write_set(set)
-    # Only support hyperrectangle, hyperpolytope, zonotope, polytope complement, and halfspace
-    @assert (set isa Hyperrectangle) || (set isa HPolytope) || (set isa Zonotope) || (set isa Halfspace) || (set isa PolytopeComplement)
+"""
+    get_set_type_string(set::Union{PolytopeComplement, LazySet})
 
-    # Save the type and the
-    output_dict = Dict()
-    if set isa Halfspace
-
+Return a string corresponding to the object's type. This will be used to store
+these sets to file.
+"""
+function get_set_type_string(set::Union{PolytopeComplement, LazySet})
+    if set isa HalfSpace
+        return "HalfSpace"
     elseif set isa Hyperrectangle
+        return "Hyperrectangle"
     elseif set isa HPolytope
+        return "HPolytope"
     elseif set isa PolytopeComplement
+        return "PolytopeComplement"
     elseif set isa Zonotope
+        return "Zonotope"
+    else
+        return ""
+    end
 end
 
-function read_set(file)
-    if
+"""
+    write_set(filename::String, set::Union{PolytopeComplement, LazySet})
+
+Return a string corresponding to the object's type. This will be used to store
+these sets to file.
+"""
+function write_set(filename::String, set::Union{PolytopeComplement, LazySet})
+    # Only support hyperrectangle, hyperpolytope, zonotope, polytope complement, and halfspace
+    type_string = get_set_type_string(set)
+    @assert type_string != ""
+
+    # Save the type and the object itself
+    output_dict = Dict()
+    output_dict["type"] = type_string
+    output_dict["set"] = set
+
+    # Write to file
+    open(filename, "w") do f
+        JSON2.write(f, output_dict)
+    end
+end
+
+
+"""
+    write_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+
+Read in a network, input set, and output set and return the corresponding problem.
+"""
+function read_problem(network_file::String, input_file::String, output_file::String, problem::Problem)
+    network = read_nnet(network_file)
+    input_set = read_set(input_file)
+    output_set = read_set(output_file)
+    return Problem(network, input_set, output_set)
+end
+
+function read_set(filename)
+    json_string = read(filename, String)
+    dict = JSON2.read(json_string)
+    type = dict[:type]
+    set = dict[:set]
+
+    # helper function to convert from Any arrays to Float arrays
+    function convert_float(elem)
+        if elem isa Array
+            return convert(Array{Float64}, elem)
+        else
+            return convert(Float64, elem)
+        end
+    end
+
+    if type == "HalfSpace"
+        return HalfSpace(convert_float(set[:a]), convert_float(set[:b]))
+    elseif type == "Hyperrectangle"
+        return Hyperrectangle(convert_float(set[:center]), convert_float(set[:radius]))
+    elseif type == "HPolytope"
+        constraints = set[:constraints]
+        half_spaces = [HalfSpace(convert_float(constraints[i][:a]), convert_float(constraints[i][:b])) for i = 1:length(constraints)]
+        return HPolytope(half_spaces)
+    elseif type == "PolytopeComplement"
+        constraints = set[:P][:constraints]
+        half_spaces = [HalfSpace(convert_float(constraints[i][:a]), convert_float(constraints[i][:b])) for i = 1:length(constraints)]
+        return PolytopeComplement(HPolytope(half_spaces))
+    elseif type == "Zonotope"
+        center = set[:center]
+        generator_list = set[:generators]
+        generator_matrix = reshape(generator_list, (length(center), :)) # Check the reshape here
+        return Zonotope(convert_float(center), convert_float(generator_matrix))
+    else
+        @assert false
+    end
+end
+
+function run_correctness_tests_on_file(filename)
+
 end

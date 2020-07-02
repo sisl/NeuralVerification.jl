@@ -21,5 +21,6 @@ if Base.find_package("Flux") != nothing
     #include("flux.jl")
 end
 include("complements.jl")
-#include("write_nnet_test.jl")
+include("write_nnet_test.jl")
+include("write_and_read_set_test.jl")
 include("run_correctness_tests.jl")
