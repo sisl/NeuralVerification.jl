@@ -49,6 +49,8 @@ struct Problem{P, Q}
     input::P
     output::Q
 end
+Base.:(==)(x::Problem, y::Problem) = x.network == y.network && x.input == y.input && x.output == y.output
+
 
 """
     Result

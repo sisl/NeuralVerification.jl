@@ -29,6 +29,8 @@ struct Layer{F<:ActivationFunction, N<:Number}
     bias::Vector{N}
     activation::F
 end
+Base.:(==)(x::Layer, y::Layer) = x.weights == y.weights && x.bias == y.bias && x.activation == y.activation
+
 
 """
 A Vector of layers.
@@ -40,6 +42,8 @@ See also: [`Layer`](@ref)
 struct Network
     layers::Vector{Layer} # layers includes output layer
 end
+Base.:(==)(x::Network, y::Network) = all(x.layers .== y.layers)
+
 
 """
     n_nodes(L::Layer)
@@ -47,4 +51,3 @@ end
 Returns the number of neurons in a layer.
 """
 n_nodes(L::Layer) = length(L.bias)
-
