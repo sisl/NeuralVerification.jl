@@ -14,7 +14,6 @@ using Interpolations # only for PiecewiseLinear
 import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 using Requires
-using Printf # for write_nnet
 using JSON2
 
 # abstract type Solver end # no longer needed

@@ -48,104 +48,74 @@ function read_layer(output_dim::Int64, f::IOStream, act = ReLU())
 end
 
 """
-    write_nnet(fname::String, network::Network)
-    write out a neural network in the .nnet format. Based on
-    code here: https://github.com/sisl/NNet/blob/master/utils/writeNNet.py.
-    The nnet format can be found at: https://github.com/sisl/NNet
-
-    The Network object doesn't currently store upper and lower bounds on the input
-    so we write the upper and lower bounds to be floatmax(Float16) and -floatmax(Float16)
-
-    We write out our floats with 10 characters past the decimal point.
+Prepend `//` to each line of a string.
 """
-function write_nnet(fname::String, network::Network)
-    open(fname, "w") do f
-        #####################
-        # First, we write the header lines:
-        # The first line written is just a line of text
-        # The second line gives the four values:
-        #     Number of fully connected layers in the network
-        #     Number of inputs to the network
-        #     Number of outputs from the network
-        #     Maximum size of any hidden layer
-        # The third line gives the sizes of each layer, including the input and output layers
-        # The fourth line gives an outdated flag, so this can be ignored
-        # The fifth line specifies the minimum values each input can take
-        # The sixth line specifies the maximum values each input can take
-        #     Inputs passed to the network are truncated to be between this range
-        # The seventh line gives the mean value of each input and of all outputs
-        # The eighth line gives the range of each input and of all outputs
-        #     These two lines are used to map raw inputs to the 0 mean, unit range of the inputs and outputs
-        #     used during training
-        # The ninth line begins the network weights and biases
-        ####################
-        layers = network.layers
+to_comment(txt) = "//"*replace(txt, "\n"=>"\n//")
 
-        # line 1
-        write(f, "// Neural Network File Format by Kyle Julian, Stanford 2016\n") # line 1
+"""
+    print_layer(file::IOStream, layer)
 
-        # line 2 (i)
-        write(f, string(length(network.layers), ",")) # number of layer connections (# of weight bias pairs)
+Print to `file` an object implementing `weights(layer)` and `bias(layer)`
+"""
+function print_layer(file::IOStream, layer)
+   print_row(W, i) = println(file, join(W[i,:], ", "), ",")
+   W = layer.weights
+   b = layer.bias
+   [print_row(W, row) for row in axes(W, 1)]
+   [println(file, b[row], ",") for row in axes(W, 1)]
+end
 
-        num_inputs = size(network.layers[1].weights, 2)
-        write(f, string(num_inputs, ",")) # number of inputs
+"""
+    print_header(file::IOStream, network[; header_text])
 
-        num_outputs = length(network.layers[end].bias)
-        write(f, string(num_outputs, ",")) # number of outputs
+The NNet format has a particular header containing information about the network size and training data.
+`print_header` does not take training-related information into account (subject to change).
+"""
+function print_header(file::IOStream, network; header_text="")
+   println(file, to_comment(header_text))
+   layer_sizes = [size(layer.weights, 1) for layer in network.layers] # doesn't include the output layer
+   pushfirst!(layer_sizes, size(network.layers[end].weights, 1)) # add the output layer
 
-        hidden_layer_sizes = [size(layer.weights, 1) for layer in network.layers][1:end-1] # chop off the output layer
-        # mimicking https://github.com/sisl/NNet/blob/master/utils/writeNNet.py,
-        # set the max hidden layer size to just be the input size
-        write(f, string(num_inputs), ",\n") # max size of any hidden layer
+   # num layers, num inputs, num outputs, max layer size
+   num_layers = length(network.layers)
+   num_inputs = layer_sizes[1]
+   num_outputs = layer_sizes[end]
+   max_layer = maximum(layer_sizes[1:end-1]) # chop off the output layer for the maximum,
+   println(file, join([num_layers, num_inputs, num_outputs, max_layer], ", "), ",")
+   #layer sizes input, ..., output
+   println(file, join(layer_sizes, ", "), ",")
+   # empty
+   println(file, "This line extraneous")
+   # minimum vals of inputs
+   println(file, string(join(fill(-floatmax(Float16), num_inputs), ","), ","))
+   # maximum vals of inputs
+   println(file, string(join(fill(floatmax(Float16), num_inputs), ","), ","))
+   # mean vals of inputs + 1 for output
+   println(file, string(join(fill(0.0, num_inputs+1), ","), ","))
+   # range vals of inputs + 1 for output
+   println(file, string(join(fill(1.0, num_inputs+1), ","), ","))
+   return nothing
+end
 
-        # line 3
-        layer_sizes = [num_inputs, hidden_layer_sizes..., num_outputs]
-        write(f, string(join(layer_sizes, ','), ","))
-        write(f, "\n")
+"""
+    write_nnet(filename, network[; header_text])
 
-        # line 4
-        write(f, "0,\n") # outdated flag, ignore
+Write `network` to \$filename.nnet.
+Note: Does not perform safety checks on inputs, so use with caution.
 
-        # line 5, 6
-        write(f, string(join(fill(-floatmax(Float16), num_inputs), ","), ",\n"))
-        write(f, string(join(fill(floatmax(Float16), num_inputs), ","), ",\n"))
-
-        # line 7, 8 - mean, range of 0, 1 means it won't rescale the input at all
-        # is asserting our inputs are already scaled to be mean 0, range 1
-        write(f, string(join(fill(0.0, num_inputs), ","), ",\n"))
-        write(f, string(join(fill(1.0, num_inputs), ","), ",\n"))
-
-        ##################
-        # Write weights and biases of neural network
-        # First, the weights from the input layer to the first hidden layer are written
-        # Then, the biases of the first hidden layer are written
-        # The pattern is repeated by next writing the weights from the first hidden layer to the second hidden layer,
-        # followed by the biases of the second hidden layer.
-        ##################
-        for layer in layers
-            # each output of a layer gets a line for its corresponding weights
-            # and corresponding bias
-
-            # Write the current weight
-            weights = layer.weights
-            for i = 1:size(weights, 1)
-                for j = 1:size(weights, 2)
-                    write(f, @sprintf("%.10e,", weights[i, j])) #five digits written. More can be used, but that requires more space.
-                end
-                write(f, "\n")
-            end
-
-            # Write the current bias
-            bias = layer.bias
-            for i = 1:length(bias)
-                write(f, @sprintf("%.10e,", bias[i])) # ten digits written. More can be used, but that requires more space.
-                write(f, "\n")
-            end
-
+Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet.py
+and follows .nnet format given here: https://github.com/sisl/NNet.
+"""
+function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
+    name, ext = splitext(outfile)
+    outfile = name*".nnet"
+    open(outfile, "w") do f
+        print_header(f, network, header_text=header_text)
+        for layer in network.layers
+            print_layer(f, layer)
         end
-
-        close(f)
     end
+    nothing
 end
 """
     compute_output(nnet::Network, input::Vector{Float64})
