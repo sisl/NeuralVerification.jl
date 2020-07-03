@@ -54,6 +54,7 @@ struct SymbolicIntervalGradient
     sym::SymbolicInterval
     LΛ::Vector{Vector{Float64}} # mask for computing gradient.
     UΛ::Vector{Vector{Float64}}
+    r::Vector{Vector{Float64}} # range of a input interval (upper_bound - lower_bound)
 end
 
 function solve(solver::Neurify, problem::Problem)
@@ -70,32 +71,32 @@ function solve(solver::Neurify, problem::Problem)
     @variable(model, x[1:m], base_name="x")
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
-    reach = forward_network(solver, problem.network, problem.input)
-    
-    result = check_inclusion(reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
+    reach = forward_network(solver, problem.network, problem.input)    
+    result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
 
-    reach_list = SymbolicIntervalGradient[reach]
+    reach_list = [(reach, max_violation_con)]
 
     for i in 2:solver.max_iter
         length(reach_list) > 0 || return BasicResult(:holds)
-        reach = pick_out!(reach_list, solver.tree_search)
-        intervals = constraint_refinement(solver, problem.network, reach)
+        reach, max_violation_con = pick_out!(reach_list, solver.tree_search)
+        intervals = constraint_refinement(solver, problem.network, reach, max_violation_con)
         for interval in intervals
             reach = forward_network(solver, problem.network, interval)
-            result = check_inclusion(reach.sym, problem.output, problem.network)
+            result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
             result.status == :violated && return result
-            result.status == :holds || (push!(reach_list, reach))
+            result.status == :holds || (push!(reach_list, (reach, max_violation_con)))
         end
     end
     return BasicResult(:unknown)
 end
 
-function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(solver, reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
     # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
     
+    # return a result and the most violated constraint.
     reach_lc = reach.interval.constraints
     output_lc = output.constraints
     n = size(reach_lc, 1)
@@ -103,8 +104,8 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
     model =Model(with_optimizer(GLPK.Optimizer))
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
-
-
+    max_violation = -1e9
+    max_violation_con = nothing
     for i in 1:size(output_lc, 1)
         obj = zeros(size(reach.Low, 2))
         for j in 1:size(reach.Low, 1)
@@ -114,23 +115,27 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
                 obj += output_lc[i].a[j] * reach.Low[j,:]
             end
         end
-        @objective(model, Max, obj' * [x; [1]])
+        obj = transpose(obj)
+        @objective(model, Max, obj * [x; [1]])
         optimize!(model)
         if termination_status(model) == MOI.OPTIMAL
             y = compute_output(nnet, value(x))
             if !∈(y, output)
                 if ∈(value(x), reach.interval)
-                    return CounterExampleResult(:violated, value(x))
+                    return CounterExampleResult(:violated, value(x)), nothing
                 else
                     println("OPTIMAL, but x not in the input set")
                     println("This is usually caused by precision problem, you can omit this")
                     println("x = ", value(x))
-                    println("A * x = ", obj' * [value(x); [1]])
+                    println("A * x = ", obj * [value(x); [1]])
                     println("b = ", reach_lc[i].b)
                 end
             end
             if objective_value(model) > output_lc[i].b
-                return BasicResult(:unknown)
+                if objective_value(model) - output_lc[i].b > max_violation
+                    max_violation = objective_value(model) - output_lc[i].b
+                    max_violation_con = output_lc[i].a
+                end
             end
         else
             if ∈(value(x), reach.interval)
@@ -139,18 +144,19 @@ function check_inclusion(reach::SymbolicInterval{HPolytope{N}}, output::Abstract
                 println("Check your input constraints.")
                 exit()
             end
-            return BasicResult(:unknown)
+            println("No solution, please check the problem definition.")
+            exit()
         end
         
     end
-    return BasicResult(:holds)
+    max_violation > 0 && return BasicResult(:unknown), max_violation_con
+    return BasicResult(:holds), nothing
 end
 
-function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient)
-    i, j, gradient = get_nodewise_gradient(solver, nnet, reach.LΛ, reach.UΛ)
+function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::Vector{Float64})
+    i, j, influence = get_nodewise_influence(solver, nnet, reach, max_violation_con)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-
     nnet_new = Network(nnet.layers[1:i])
     reach_new = forward_network(solver, nnet_new, reach.sym.interval)
     C, d = tosimplehrep(reach.sym.interval)
@@ -166,11 +172,14 @@ function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIn
     return intervals
 end
 
-function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ::Vector{Vector{Float64}})
+function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::Vector{Float64})
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
-    LG = ones(1,n_output)
-    UG = ones(1,n_output)
+    # We want to find the node with the largest influence
+    # Influence is defined as gradient * interval width
+    # The gradient is with respect to a loss defined by the most violated constraint.
+    LG = transpose(copy(max_violation_con))
+    UG = transpose(copy(max_violation_con))
     max_tuple = (0, 0, 0.0)
     for (k, layer) in enumerate(reverse(nnet.layers))
         i = n_length - k + 1
@@ -178,21 +187,23 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
             # Only split Relu nodes
             # A split over id node may not reduce over-approximation (the input set may not bisected).
             for j in 1:size(layer.bias,1)
-                if (0 < LΛ[i][j] < 1) && (0 < UΛ[i][j] < 1)                    
+                if (0 < reach.LΛ[i][j] < 1) && (0 < reach.UΛ[i][j] < 1)                    
                     max_gradient = max(abs(LG[j]), abs(UG[j]))
-                    if in((i,j, max_gradient), solver.splits) # To prevent infinity loop
+                    influence = max_gradient * reach.r[i][j]
+                    if in((i,j, influence), solver.splits) # To prevent infinity loop
                         continue
                     end
                     # If we use > here, in the case that largest gradient is 0, this function will return (0, 0 ,0)
-                    if max_gradient >= max_tuple[3] 
-                        max_tuple = (i, j, max_gradient)
+                    if influence >= max_tuple[3] 
+                        max_tuple = (i, j, influence)
                     end
                 end
             end
         end
+        
         i >= 1 || break
-        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
-        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
+        LG_hat = max.(LG, 0.0) * Diagonal(reach.LΛ[i]) + min.(LG, 0.0) * Diagonal(reach.UΛ[i])
+        UG_hat = min.(UG, 0.0) * Diagonal(reach.LΛ[i]) + max.(UG, 0.0) * Diagonal(reach.UΛ[i])
         LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
     end
     push!(solver.splits, max_tuple)
@@ -209,7 +220,8 @@ function forward_linear(solver::Neurify, input::AbstractPolytope, layer::Layer)
     sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
     LΛ = Vector{Vector{Int64}}(undef, 0)
     UΛ = Vector{Vector{Int64}}(undef, 0)
-    return SymbolicIntervalGradient(sym, LΛ, UΛ)
+    r = Vector{Vector{Int64}}(undef, 0)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
 # Symbolic forward_linear
@@ -220,7 +232,7 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
     output_Up[:, end] += b
     output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
+    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ, input.r)
 end
 
 # Symbolic forward_act
@@ -228,6 +240,7 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
     mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
+    interval_width = zeros(Float64, n_node)
     for i in 1:n_node
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
@@ -250,12 +263,14 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
             output_Up[i, end] -= up_low
             output_Up[i, :] = up_slop * output_Up[i, :]
             mask_lower[i], mask_upper[i] = low_slop, up_slop
+            interval_width[i] = up_up - low_low
         end
     end
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     LΛ = push!(input.LΛ, mask_lower)
     UΛ = push!(input.UΛ, mask_upper)
-    return SymbolicIntervalGradient(sym, LΛ, UΛ)
+    r = push!(input.r, interval_width)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
@@ -263,7 +278,8 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, ones(Float64, n_node))
     UΛ = push!(input.UΛ, ones(Float64, n_node))
-    return SymbolicIntervalGradient(sym, LΛ, UΛ)
+    r = push!(input.r, ones(Float64, n_node))
+    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
 
