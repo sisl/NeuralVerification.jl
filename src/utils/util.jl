@@ -48,6 +48,76 @@ function read_layer(output_dim::Int64, f::IOStream, act = ReLU())
 end
 
 """
+Prepend `//` to each line of a string.
+"""
+to_comment(txt) = "//"*replace(txt, "\n"=>"\n//")
+
+"""
+    print_layer(file::IOStream, layer)
+
+Print to `file` an object implementing `weights(layer)` and `bias(layer)`
+"""
+function print_layer(file::IOStream, layer)
+   print_row(W, i) = println(file, join(W[i,:], ", "), ",")
+   W = layer.weights
+   b = layer.bias
+   [print_row(W, row) for row in axes(W, 1)]
+   [println(file, b[row], ",") for row in axes(W, 1)]
+end
+
+"""
+    print_header(file::IOStream, network[; header_text])
+
+The NNet format has a particular header containing information about the network size and training data.
+`print_header` does not take training-related information into account (subject to change).
+"""
+function print_header(file::IOStream, network; header_text="")
+   println(file, to_comment(header_text))
+   layer_sizes = [size(layer.weights, 1) for layer in network.layers] # doesn't include the output layer
+   pushfirst!(layer_sizes, size(network.layers[end].weights, 1)) # add the output layer
+
+   # num layers, num inputs, num outputs, max layer size
+   num_layers = length(network.layers)
+   num_inputs = layer_sizes[1]
+   num_outputs = layer_sizes[end]
+   max_layer = maximum(layer_sizes[1:end-1]) # chop off the output layer for the maximum,
+   println(file, join([num_layers, num_inputs, num_outputs, max_layer], ", "), ",")
+   #layer sizes input, ..., output
+   println(file, join(layer_sizes, ", "), ",")
+   # empty
+   println(file, "This line extraneous")
+   # minimum vals of inputs
+   println(file, string(join(fill(-floatmax(Float16), num_inputs), ","), ","))
+   # maximum vals of inputs
+   println(file, string(join(fill(floatmax(Float16), num_inputs), ","), ","))
+   # mean vals of inputs + 1 for output
+   println(file, string(join(fill(0.0, num_inputs+1), ","), ","))
+   # range vals of inputs + 1 for output
+   println(file, string(join(fill(1.0, num_inputs+1), ","), ","))
+   return nothing
+end
+
+"""
+    write_nnet(filename, network[; header_text])
+
+Write `network` to \$filename.nnet.
+Note: Does not perform safety checks on inputs, so use with caution.
+
+Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet.py
+and follows .nnet format given here: https://github.com/sisl/NNet.
+"""
+function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
+    name, ext = splitext(outfile)
+    outfile = name*".nnet"
+    open(outfile, "w") do f
+        print_header(f, network, header_text=header_text)
+        for layer in network.layers
+            print_layer(f, layer)
+        end
+    end
+    nothing
+end
+"""
     compute_output(nnet::Network, input::Vector{Float64})
 
 Propagate a given vector through a nnet and compute the output.

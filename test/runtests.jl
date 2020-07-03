@@ -21,3 +21,4 @@ if Base.find_package("Flux") != nothing
     include("flux.jl")
 end
 include("complements.jl")
+include("write_nnet_test.jl")
