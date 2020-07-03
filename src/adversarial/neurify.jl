@@ -169,8 +169,8 @@ end
 function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vector{Float64}}, UΛ::Vector{Vector{Float64}})
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
-    LG = ones(n_output)
-    UG = ones(n_output)
+    LG = ones(1,n_output)
+    UG = ones(1,n_output)
     max_tuple = (0, 0, 0.0)
     for (k, layer) in enumerate(reverse(nnet.layers))
         i = n_length - k + 1
@@ -191,9 +191,9 @@ function get_nodewise_gradient(solver::Neurify, nnet::Network, LΛ::Vector{Vecto
             end
         end
         i >= 1 || break
-        LG_hat = Diagonal(LΛ[i]) * max.(LG, 0.0) + Diagonal(UΛ[i]) * min.(LG, 0.0)
-        UG_hat = Diagonal(LΛ[i]) * min.(UG, 0.0) + Diagonal(UΛ[i]) * max.(UG, 0.0)
-        LG, UG = interval_map(transpose(layer.weights), LG_hat, UG_hat)
+        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
+        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
+        LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
     end
     push!(solver.splits, max_tuple)
     return max_tuple
