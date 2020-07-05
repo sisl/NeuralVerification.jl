@@ -135,22 +135,24 @@ function tighten_bounds(problem::Problem, optimizer)
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
 
-    min_sum!(model, neurons)
-    optimize!(model)
-    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-    lower = value.(neurons)
-
-    #=
-    max_sum!(model, neurons)
-    optimize!(model)
-    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-    upper = value.(neurons)
-        
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
-        new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
-    end=#
-    return (OPTIMAL, bounds)
+        lower = low(bounds[i])
+        upper = high(bounds[i])
+        for j in 1:length(neurons[i])
+            neuron = neurons[i][j]
+            @objective(model, Min, neuron)
+            optimize!(model)
+            termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
+            lower[j] = value(neuron)
+
+            @objective(model, Max, neuron)
+            optimize!(model)
+            upper[j] = value(neuron)
+        end
+        new_bounds[i] = Hyperrectangle(low = lower, high = upper)
+    end
+    return (OPTIMAL, new_bounds)
 end
 
 
