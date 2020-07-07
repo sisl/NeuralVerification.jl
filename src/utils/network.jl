@@ -1,19 +1,4 @@
 """
-    Node{N, F}
-
-A single node in a layer.
-### Fields
- - `w::Vector{N}`
- - `b::N`
- - `activation::F`
-"""
-struct Node{F<:ActivationFunction, N<:Number}
-    w::Vector{N}
-    b::N
-    act::F
-end
-
-"""
     Layer{F, N}
 
 Consists of `weights` and `bias` for linear mapping, and `activation` for nonlinear mapping.

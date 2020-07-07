@@ -41,27 +41,25 @@ end
 # This function is called by forward_network
 function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
     (W, b, act) = (L.weights, L.bias, L.activation)
-    center = zeros(size(W, 1))
-    gamma  = zeros(size(W, 1))
-    for j in 1:size(W, 1)
-        node = Node(W[j,:], b[j], act)
-        center[j], gamma[j] = forward_node(solver, node, input)
+    c, r = center(input), radius_hyperrectangle(input)
+
+    output = W * c + b
+    deviation = abs.(W) * r
+
+    β = @. act(output)
+    βmax = @. act(output + deviation)
+    βmin = @. act(output - deviation)
+
+    if solver.tight
+        center = (βmax + βmin)/2
+        gamma =  (βmax - βmin)/2
+    else
+        center = β
+        gamma = @. max(abs(βmax - β), abs(βmin - β))
     end
     return Hyperrectangle(center, gamma)
 end
 
-function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
-    output    = node.w' * input.center + node.b
-    deviation = sum(abs.(node.w) .* input.radius)
-    β    = node.act(output)  # TODO expert suggestion for variable name. beta? β? O? x?
-    βmax = node.act(output + deviation)
-    βmin = node.act(output - deviation)
-    if solver.tight
-        return ((βmax + βmin)/2, (βmax - βmin)/2)
-    else
-        return (β, max(abs(βmax - β), abs(βmin - β)))
-    end
-end
 
 function partition(input::Hyperrectangle, Δ)
     # treat radius = 0 as a flag not to partition the input set at all.
