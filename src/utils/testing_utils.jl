@@ -36,6 +36,85 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
 end
 
 
+# Store paths relative to NeuralVerification.jl
+function make_random_query_file(num_networks_for_size::Array{Int, 1},
+                                layer_sizes::Array{Array{Int, 1}},
+                                network_dir,
+                                input_set_dir,
+                                output_set_dir,
+                                query_file
+                                ; min_weight = -1.0,
+                                max_weight = 1.0,
+                                min_bias = -1.0,
+                                max_bias = 1.0,
+                                rng=MersenneTwister())
+
+    for (num_networks, layer_sizes) in zip(num_networks_for_size, layer_sizes)
+        index = 0
+        for i = 1:num_networks
+            index = index + 1
+            # Create a random network
+            network = make_random_network(layer_sizes, min_weight, max_weight, min_bias, max_bias, rng)
+            num_inputs = layer_sizes[1]
+            num_outputs = layer_sizes[end]
+
+            # Create several input sets and a variety of corresponding output sets.
+            halfspace_output = HalfSpace(rand(num_outputs) .- 0.5, rand() - 0.5)
+
+            hyperrectangle_input_center = rand(num_inputs) .- 0.5
+            hyperrectangle_input_radius = rand(num_inputs)
+            hyperrectangle_input = Hyperrectangle(hyperrectangle_input_center, hyperrectangle_input_radius)
+
+            hyperrcube_input_radius = rand() * ones(num_inputs)
+            hypercube_input = Hyperrectangle(hyperrectangle_input_center, hyperrcube_input_radius)
+
+            hyperrectangle_output_center = rand(num_outputs) .- 0.5
+            hyperrectangle_output_radius = rand(num_outputs)
+            hyperrectangle_output = Hyperrectangle(hyperrectangle_output_center, hyperrectangle_output_radius)
+
+            hpolytope_in_one  = convert(HPolytope, hyperrectangle_input)
+            hpolytope_out_one = convert(HPolytope, hyperrectangle_output)
+
+            polytopecomplement_in_one = PolytopeComplement(hpolytope_in_one)
+            polytopecomplement_out_one = PolytopeComplement(hpolytope_out_one)
+
+            # Add rotated hyperrectangle as well
+
+            # Ignore zonotopes for now
+
+            # Create a problem with HP/HP, HR/PC, HR(uniform)/HS, HR/HS, HR/HR, HR/PC
+            hp_hp_problem = Problem(network, hpolytope_in_one, hpolytope_out_one)
+            hr_pc_problem = Problem(network, hyperrectangle_input, polytopecomplement_out_one)
+            hr_uniform_hs_problem = Problem(network, hypercube_input, halfspace_output)
+            hr_hs_problem = Problem(network, hyperrectangle_input, halfspace_output)
+            hr_hr_problem = Problem(network, hyperrectangle_input, hyperrectangle_output)
+            hr_pc_problem = Problem(network, hyperrectangle_input, polytopecomplement_out_one)
+
+            problems = [hp_hp_problem, hr_pc_problem, hr_uniform_hs_problem, hr_hs_problem, hr_hr_problem, hr_pc_problem]
+            identifier_string = replace(string(layer_sizes, "_", index), " "=>"") # remove all spaces
+
+            base_filenames = string.(["hp_hp_", "hr_pc_", "hr_uniform_hs", "hr_hs_", "hr_hr_", "hr_pc_"], identifier_string)
+            network_filenames = joinpath.(network_dir, fill("rand_"*identifier_string*".nnet", length(problems))) # all use the same network
+            input_filenames = joinpath.(input_set_dir, base_filenames.*"_inputset.json")
+            output_filenames = joinpath.(output_set_dir, base_filenames.*"_outputset.json")
+
+            println(network_filenames)
+            println(input_filenames)
+            println(output_filenames)
+
+            write_problem.(network_filenames, input_filenames, output_filenames, problems; query_file=query_file)
+        end
+
+    end
+end
+
+function write_to_query_file(network_file::String, input_file::String, output_file::String, query_file::String)
+    mkpath(dirname(query_file))
+    open(query_file, "a") do f
+        println(f, string(network_file, " ", input_file, " ", output_file))
+    end
+end
+
 """
     write_problem(network_file::String, input_file::String, output_file::String, problem::Problem; [query_file = ""])
 
@@ -50,12 +129,10 @@ function write_problem(network_file::String, input_file::String, output_file::St
     # If a query file is given, append this problem to the file by writing out
     # the network file, input file, and output file names
     if query_file != ""
-        mkpath(dirname(query_file))
-        open(query_file, "a") do f
-            println(f, string(network_file, " ", input_file, " ", output_file))
-        end
+        write_to_query_file(network_file, input_file, output_file, query_file)
     end
 end
+
 
 """
     get_set_type_string(set::Union{PolytopeComplement, LazySet})
@@ -168,9 +245,9 @@ some/path/network.nnet other/path/input_set.json third/path/output_set.json
 
 It splits it apart by spaces then reads in the problem.
 """
-function query_line_to_problem(line::String)
+function query_line_to_problem(line::String; base_dir="")
     network_file, input_file, output_file = string.(split(line, " "))
-    return read_problem(network_file, input_file, output_file)
+    return read_problem(joinpath(base_dir, network_file), joinpath(base_dir, input_file), joinpath(base_dir, output_file))
 end
 
 """
@@ -208,7 +285,7 @@ function solver_works_with_input_set(solver, input_set)
     elseif input_set isa Hyperrectangle
         # Duality and ConvDual require uniform HR (hypercube) input set
         if (solver isa Union{Duality, ConvDual})
-            return all(y->y==y[1], input_set.radius)
+            return all(iszero.(input_set.radius .- input_set.radius[1]))
         else
             return solver isa hyperrectangle_solver_types
         end
@@ -267,7 +344,7 @@ Return false otherwise.
 """
 function solver_works_with_network(solver, network)
     if (solver isa Certify)
-        return length(network.Layers) == 2 # certify only works with 1 hidden layer
+        return length(network.layers) == 2 # certify only works with 1 hidden layer
     else
         return true
     end
