@@ -148,6 +148,7 @@ end
     function make_random_test_set()
 
 A function that generates the set of random query files to be used in testing.
+We generate three different test sets - small, medium, and large.
 """
 function make_random_test_sets()
     NeuralVerification.make_random_query_file([3, 3],
@@ -170,8 +171,6 @@ function make_random_test_sets()
                                               "test/test_sets/random/large/input_sets",
                                               "test/test_sets/random/large/output_sets",
                                               "test/test_sets/random/large/query_file_large.txt")
-
-
 
 end
 
@@ -280,6 +279,7 @@ function read_set(filename::String)
         end
     end
 
+    # Based on the type we interpret the stored JSON data and creates the corresponding object
     if type == "HalfSpace"
         return HalfSpace(convert_float(set[:a]), convert_float(set[:b]))
     elseif type == "Hyperrectangle"
@@ -301,7 +301,6 @@ function read_set(filename::String)
         @assert false
     end
 end
-
 
 """
 function query_line_to_problem(line::String)
@@ -341,12 +340,14 @@ Return true if the solver can handle the input given by input_set.
 Return false otherwise.
 """
 function solver_works_with_input_set(solver, input_set)
+    # Define which solvers work with which input sets
     half_space_solver_types = Union{}
     hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex}
     hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
     polytope_complement_solver_types = Union{}
     zonotope_solver_types = Union{}
 
+    # Check to see for each supported input set which solvers work with it
     if input_set isa HalfSpace
         return solver isa half_space_solver_types
     elseif input_set isa Hyperrectangle
