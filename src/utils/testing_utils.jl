@@ -36,7 +36,30 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
 end
 
 
-# Store paths relative to NeuralVerification.jl
+"""
+    function make_random_query_file(num_networks_for_size::Array{Int, 1},
+                                layer_sizes::Array{Array{Int, 1}},
+                                network_dir,
+                                input_set_dir,
+                                output_set_dir,
+                                query_file
+                                ; [min_weight = -1.0],
+                                [max_weight = 1.0],
+                                [min_bias = -1.0],
+                                [max_bias = 1.0],
+                                [rng=MersenneTwister()])
+
+
+Generates a random query file. num_networks_for_size gives the number of networks
+to make for each shape. The network_dir, input_set_dir, output_set_dir, and query_file
+variables give the location to write out the files - these will be written relative
+to where the function is called from. These relative paths will be stored in the query_file.
+
+An example call would look like:
+NeuralVerification.make_random_query_file([3, 3], [[1, 3, 1], [2, 5, 2]], "test_rand/networks", "test_rand/input_sets", "test_rand/output_sets", "test_rand/query_file.txt")
+
+Which will make 3 networks with shape [1, 3, 1] and 3 networks with shape [2, 5, 2].
+"""
 function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 layer_sizes::Array{Array{Int, 1}},
                                 network_dir,
@@ -106,6 +129,38 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
         end
 
     end
+end
+
+
+"""
+    function make_random_test_set()
+
+A function that generates the set of random query files to be used in testing.
+"""
+function make_random_test_sets()
+    NeuralVerification.make_random_query_file([3, 3],
+                                              [[1, 3, 1], [2, 5, 2]],
+                                              "test/test_sets/random/small/networks",
+                                              "test/test_sets/random/small/input_sets",
+                                              "test/test_sets/random/small/output_sets",
+                                              "test/test_sets/random/small/query_file_small.txt")
+
+    NeuralVerification.make_random_query_file([5, 5, 5],
+                                              [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
+                                              "test/test_sets/random/medium/networks",
+                                              "test/test_sets/random/medium/input_sets",
+                                              "test/test_sets/random/medium/output_sets",
+                                              "test/test_sets/random/medium/query_file_medium.txt")
+
+    NeuralVerification.make_random_query_file([5, 5, 5, 5, 5],
+                                              [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [10, 3, 2], [3, 4, 3], [6, 8, 1]],
+                                              "test/test_sets/random/large/networks",
+                                              "test/test_sets/random/large/input_sets",
+                                              "test/test_sets/random/large/output_sets",
+                                              "test/test_sets/random/large/query_file_large.txt")
+
+
+
 end
 
 function write_to_query_file(network_file::String, input_file::String, output_file::String, query_file::String)

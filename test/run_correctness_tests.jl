@@ -3,8 +3,8 @@
 
 """
 
-#file_name = "$(@__DIR__)/../examples/query_files/single_query.txt"
-file_name = "$(@__DIR__)/../test_rand/query_file.txt"
+file_name = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.txt"
+#file_name = "$(@__DIR__)/../test_rand/query_file.txt"
 
 path, file = splitdir(file_name)
 @testset "Correctness Tests on $(file)" begin
