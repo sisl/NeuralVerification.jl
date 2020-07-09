@@ -106,7 +106,7 @@ Note: Does not perform safety checks on inputs, so use with caution.
 Based on python code at https://github.com/sisl/NNet/blob/master/utils/writeNNet.py
 and follows .nnet format given here: https://github.com/sisl/NNet.
 """
-function write_nnet(outfile, network; header_text="Default header text.\nShould replace with the real deal.")
+function write_nnet(outfile, network; header_text="Neural Network File Format by Kyle Julian, Stanford 2016.")
     mkpath(dirname(outfile))
     name, ext = splitext(outfile)
     outfile = name*".nnet"
