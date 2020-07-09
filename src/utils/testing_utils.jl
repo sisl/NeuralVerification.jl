@@ -1,4 +1,5 @@
 using Random
+using LinearAlgebra
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -98,32 +99,43 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
             hpolytope_in_one  = convert(HPolytope, hyperrectangle_input)
             hpolytope_out_one = convert(HPolytope, hyperrectangle_output)
 
+            # Generate two orthogonal matrices which will be used to rotate the hyperrectangle
+            # to create a rotated polytope
+            rand_in = rand(num_inputs, num_inputs)
+            rand_out = rand(num_outputs, num_outputs)
+            Q_in, R_in = qr(rand_in)
+            Q_out, R_out = qr(rand_out)
+
+            A_in, b_in = tosimplehrep(hyperrectangle_input)
+            A_out, b_out = tosimplehrep(hyperrectangle_output)
+            hpolytope_in_two = HPolytope(A_in * Q_in, b_in)
+            hpolytope_out_two = HPolytope(A_out * Q_out, b_out)
+
+            # Create polytope complements from the two created polytopes
             polytopecomplement_in_one = PolytopeComplement(hpolytope_in_one)
             polytopecomplement_out_one = PolytopeComplement(hpolytope_out_one)
 
-            # Add rotated hyperrectangle as well
+            polytopecomplement_in_two = PolytopeComplement(hpolytope_in_two)
+            polytopecomplement_out_two = PolytopeComplement(hpolytope_out_two)
 
             # Ignore zonotopes for now
 
-            # Create a problem with HP/HP, HR/PC, HR(uniform)/HS, HR/HS, HR/HR, HR/PC
-            hp_hp_problem = Problem(network, hpolytope_in_one, hpolytope_out_one)
-            hr_pc_problem = Problem(network, hyperrectangle_input, polytopecomplement_out_one)
+            # Create a problem with HP/HP, HR/PC, HR(uniform)/HS, HR/HS, HR/HR
+            hp_hp_problem_one = Problem(network, hpolytope_in_one, hpolytope_out_one)
+            hp_hp_problem_two = Problem(network, hpolytope_in_two, hpolytope_out_two)
+            hr_pc_problem_one = Problem(network, hyperrectangle_input, polytopecomplement_out_one)
+            hr_pc_problem_two = Problem(network, hyperrectangle_input, polytopecomplement_out_two)
             hr_uniform_hs_problem = Problem(network, hypercube_input, halfspace_output)
             hr_hs_problem = Problem(network, hyperrectangle_input, halfspace_output)
             hr_hr_problem = Problem(network, hyperrectangle_input, hyperrectangle_output)
-            hr_pc_problem = Problem(network, hyperrectangle_input, polytopecomplement_out_one)
 
-            problems = [hp_hp_problem, hr_pc_problem, hr_uniform_hs_problem, hr_hs_problem, hr_hr_problem, hr_pc_problem]
+            problems = [hp_hp_problem_one, hp_hp_problem_two, hr_pc_problem_one, hr_pc_problem_two, hr_uniform_hs_problem, hr_hs_problem, hr_hr_problem]
             identifier_string = replace(string(layer_sizes, "_", index), " "=>"") # remove all spaces
 
-            base_filenames = string.(["hp_hp_", "hr_pc_", "hr_uniform_hs", "hr_hs_", "hr_hr_", "hr_pc_"], identifier_string)
+            base_filenames = string.(["hp_hp_one_", "hp_hp_two_", "hr_pc_one_", "hr_pc_two_", "hr_uniform_hs", "hr_hs_", "hr_hr_"], identifier_string)
             network_filenames = joinpath.(network_dir, fill("rand_"*identifier_string*".nnet", length(problems))) # all use the same network
             input_filenames = joinpath.(input_set_dir, base_filenames.*"_inputset.json")
             output_filenames = joinpath.(output_set_dir, base_filenames.*"_outputset.json")
-
-            println(network_filenames)
-            println(input_filenames)
-            println(output_filenames)
 
             write_problem.(network_filenames, input_filenames, output_filenames, problems; query_file=query_file)
         end
