@@ -47,7 +47,6 @@ function test_query_file(file_name::String)
                         else
                             # Results match or solver one unknown or solver two unknown or
                             # no test since any mix of outcomes could be justified with two incomplete ones
-                            @test true
                         end
                     end
                 end
@@ -60,6 +59,9 @@ file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.t
 file_name_medium = "$(@__DIR__)/../test/test_sets/random/small/query_file_medium.txt"
 file_name_large = "$(@__DIR__)/../test/test_sets/random/small/query_file_large.txt"
 
+println("Starting test on small")
 test_query_file(file_name_small)
+println("Starting test on medium")
 test_query_file(file_name_medium)
+println("Starting test on large")
 test_query_file(file_name_large)
