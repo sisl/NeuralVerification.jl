@@ -56,8 +56,8 @@ function test_query_file(file_name::String)
 end
 
 file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.txt"
-file_name_medium = "$(@__DIR__)/../test/test_sets/random/small/query_file_medium.txt"
-file_name_large = "$(@__DIR__)/../test/test_sets/random/small/query_file_large.txt"
+file_name_medium = "$(@__DIR__)/../test/test_sets/random/medium/query_file_medium.txt"
+file_name_large = "$(@__DIR__)/../test/test_sets/random/large/query_file_large.txt"
 
 println("Starting test on small")
 test_query_file(file_name_small)
