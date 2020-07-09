@@ -308,7 +308,7 @@ Return true if the solver can handle the output given by output_set.
 Return false otherwise.
 """
 function solver_works_with_output_set(solver, output_set)
-    half_space_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip}
+    half_space_solver_types = Union{Duality, ConvDual, Certify, FastLin, FastLip}
     hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB}
     hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
     polytope_complement_solver_types = Union{NSVerify, MIPVerify, ILP, Planet, Reluplex}
