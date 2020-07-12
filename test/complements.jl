@@ -15,7 +15,6 @@
         # Hyperrectangle contained in HS
         hr = Hyperrectangle(low = [1.0, 1.0], high = [2.0, 2.0])
 
-        @show vertices_list(hr)
 
         @test is_intersection_empty(hr, PC) == true
         @test is_intersection_empty(hr, HS) == false
