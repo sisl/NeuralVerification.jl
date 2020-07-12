@@ -39,13 +39,14 @@ function solve(solver::BaB, problem::Problem)
     return interpret_result(reach, bound, problem.output, x_l, x_u)
 end
 
+# This function is used by BaB and Sherlock
 function interpret_result(reach, bound, output, x_l, x_u)
     if high(reach) < high(output) && low(reach) > low(output)
         return ReachabilityResult(:holds, [reach])
     end
     high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
     low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
-    return ReachabilityResult(:unknown, reach)
+    return ReachabilityResult(:unknown, [reach])
 end
 
 function output_bound(solver::BaB, problem::Problem, type::Symbol)
