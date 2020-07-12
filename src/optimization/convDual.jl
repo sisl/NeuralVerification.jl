@@ -23,7 +23,7 @@ Sound but not complete.
 
 [https://github.com/locuslab/convex_adversarial](https://github.com/locuslab/convex_adversarial)
 """
-struct ConvDual end
+struct ConvDual <: Solver end
 
 function solve(solver::ConvDual, problem::Problem)
     o = dual_value(solver, problem.network, problem.input, problem.output)

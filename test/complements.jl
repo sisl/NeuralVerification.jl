@@ -9,8 +9,8 @@
         @test [5.0, 5.0]   ∈ HS && [5.0, 5.0]   ∉ PC
         @test [-1.0, -1.0] ∉ HS && [-1.0, -1.0] ∈ PC
 
-        @test complement(PC) === HS
-        @test complement(HS) === PC
+        @test complement(PC) == HS
+        @test complement(HS) == PC
 
         # Hyperrectangle contained in HS
         hr = Hyperrectangle(low = [1.0, 1.0], high = [2.0, 2.0])

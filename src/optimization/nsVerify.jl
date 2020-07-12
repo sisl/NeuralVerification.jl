@@ -23,7 +23,7 @@ Sound and complete.
 "An Approach to Reachability Analysis for Feed-Forward Relu Neural Networks,"
 *ArXiv Preprint ArXiv:1706.07351*, 2017.](https://arxiv.org/abs/1706.07351)
 """
-@with_kw struct NSVerify
+@with_kw struct NSVerify <: Solver
     optimizer = GLPK.Optimizer
     m::Float64 = 1000.0  # The big M in the linearization
 end

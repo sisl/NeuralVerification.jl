@@ -27,7 +27,7 @@ Sound but not complete.
 
 [https://github.com/souradeep-111/sherlock](https://github.com/souradeep-111/sherlock)
 """
-@with_kw struct Sherlock
+@with_kw struct Sherlock <: Solver
     optimizer = GLPK.Optimizer
     ϵ::Float64 = 0.1
 end
@@ -63,7 +63,7 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     nnet = problem.network
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, problem.input, first(neurons))
     encode_network!(model, nnet, neurons, act_pattern, StandardLP())

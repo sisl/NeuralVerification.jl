@@ -25,7 +25,7 @@ in *International Symposium on Automated Technology for Verification and Analysi
 
 [https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
-@with_kw struct Planet
+@with_kw struct Planet <: Solver
     optimizer = GLPK.Optimizer
     eager::Bool = false
 end
@@ -79,7 +79,7 @@ end
 
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
@@ -129,7 +129,7 @@ end
 # Only use tighten_bounds for feasibility check
 function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))

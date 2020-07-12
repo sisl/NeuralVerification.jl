@@ -23,7 +23,7 @@ Sound but not complete.
 "A Dual Approach to Scalable Verification of Deep Networks,"
 *ArXiv Preprint ArXiv:1803.06567*, 2018.](https://arxiv.org/abs/1803.06567)
 """
-@with_kw struct Duality
+@with_kw struct Duality <: Solver
     optimizer = GLPK.Optimizer
 end
 
