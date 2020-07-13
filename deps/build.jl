@@ -1,2 +1,2 @@
 import Pkg
-Pkg.add("PicoSAT#master")
+Pkg.add(Pkg.PackageSpec(name="PicoSAT", rev="master"))
