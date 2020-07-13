@@ -1,5 +1,9 @@
 """
-    Run a set of benchmarks on a variety of query files
+test_query_file(file_name::String)
+
+    Run a set of benchmarks on a query file given by file_name.
+    Compares results for consistency, but has no ground truth to compare against.
+
 """
 function test_query_file(file_name::String)
     path, file = splitdir(file_name)
