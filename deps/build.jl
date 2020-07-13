@@ -1,2 +1,2 @@
-using Pkg
+import Pkg
 Pkg.add("PicoSAT#master")
