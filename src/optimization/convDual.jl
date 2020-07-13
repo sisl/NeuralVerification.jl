@@ -111,6 +111,10 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         # Compute bounds
         ψ = v1' * input + sum(γ)
         eps_v1_sum = ϵ * vec(sum(abs, v1, dims = 1))
+        println("Num output: ", n_output)
+        println("mu: ", μ)
+        println("Length mu: ", length(μ))
+        println("Slopes: ", input_ReLU)
         neg, pos = all_neg_pos_sums(input_ReLU, l, μ, n_output)
         push!(l,  ψ - eps_v1_sum + neg )
         push!(u,  ψ + eps_v1_sum - pos )
@@ -126,6 +130,7 @@ function all_neg_pos_sums(slopes, l, μ, n_output)
     pos = zeros(n_output)
     # Need to debug
     for (i, ℓ) in enumerate(l)                # ℓ::Vector{Float64}
+        println("Mu[i] size: ", size(μ[i]))
         for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
             if 0 < slopes[j] < 1              # if in the triangle region of relaxed ReLU
                 #posind = M .> 0
