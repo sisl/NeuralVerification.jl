@@ -24,6 +24,7 @@ Sound and complete.
 """
 @with_kw struct Reluplex
     optimizer = GLPK.Optimizer
+    tolerance::Float64 = 1e-8
 end
 
 function solve(solver::Reluplex, problem::Problem)
@@ -36,21 +37,21 @@ function solve(solver::Reluplex, problem::Problem)
     return reluplex_step(solver, problem, initial_model, bs, fs, initial_status)
 end
 
-function find_relu_to_fix(ẑ, z)
+function find_relu_to_fix(solver::Reluplex, ẑ, z)
     for i in 1:length(z), j in 1:length(z[i])
         ẑᵢⱼ = value(ẑ[i][j])
         zᵢⱼ = value(z[i][j])
 
-        if type_one_broken(ẑᵢⱼ, zᵢⱼ) ||
-           type_two_broken(ẑᵢⱼ, zᵢⱼ)
+        if type_one_broken(solver, ẑᵢⱼ, zᵢⱼ) ||
+           type_two_broken(solver, ẑᵢⱼ, zᵢⱼ)
             return (i, j)
         end
     end
     return (0, 0)
 end
 
-type_one_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ > 0.0)  && (zᵢⱼ != ẑᵢⱼ)  # TODO consider renaming to `inactive_broken` and `active_broken`
-type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
+type_one_broken(solver::Reluplex, ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ > 0.0 + solver.tolerance)  && (!(-solver.tolerance < ẑᵢⱼ - zᵢⱼ < solver.tolerance))  # TODO consider renaming to `inactive_broken` and `active_broken`
+type_two_broken(solver::Reluplex, ẑᵢⱼ, zᵢⱼ) = (-solver.tolerance < zᵢⱼ < solver.tolerance) && (ẑᵢⱼ > 0.0 + solver.tolerance)
 
 # Corresponds to a ReLU that shouldn't be active but is
 function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
@@ -115,7 +116,7 @@ function reluplex_step(solver::Reluplex,
     # Branch by repair type (inactive or active) and redetermine if this is a valid
     # counterexample. If the problem is infeasible or unbounded. The property holds.
     if termination_status(model) == OPTIMAL
-        i, j = find_relu_to_fix(ẑ, z)
+        i, j = find_relu_to_fix(solver, ẑ, z)
 
         # In case no broken relus could be found, return the "input" as a counterexample
         i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
