@@ -111,7 +111,6 @@ function reluplex_step(solver::Reluplex,
 
     optimize!(model)
 
-    println(model)
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid
     # counterexample. If the problem is infeasible or unbounded. The property holds.
