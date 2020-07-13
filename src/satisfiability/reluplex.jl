@@ -91,9 +91,12 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], ẑ[i])
+        add_set_constraint!(model, bounds[i], z[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
+    # Add the bounds on your output layer
+    add_set_constraint!(model, last(bounds), last(z))
+    # Add the complementary set defind as part of the problem
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
     return ẑ, z
@@ -108,6 +111,7 @@ function reluplex_step(solver::Reluplex,
 
     optimize!(model)
 
+    println(model)
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid
     # counterexample. If the problem is infeasible or unbounded. The property holds.
