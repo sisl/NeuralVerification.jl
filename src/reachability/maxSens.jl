@@ -63,29 +63,31 @@ function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
     end
 end
 
-function partition(input::Hyperrectangle, delta::Float64)
-    n_dim = dim(input)
+function partition(input::Hyperrectangle, Δ)
+    # treat radius = 0 as a flag not to partition the input set at all.
+    Δ == 0 && return [input]
+
     lower, upper = low(input), high(input)
-    radius = fill(delta/2, n_dim)
 
-    hyperrectangle_list = [1; ceil.(Int, (upper - lower)/delta)]
-    n_hyperrectangle = prod(max.(hyperrectangle_list, 1))
+    # The number of sub-hyperrectangles that fit in each dimension, rounding up
+    n_hypers_per_dim = max.(ceil.(Int, (upper-lower) / Δ), 1)
 
-    hyperrectangles = Vector{Hyperrectangle}(undef, n_hyperrectangle)
-    for k in 1:n_hyperrectangle
-        n = k
-        center = Vector{Float64}(undef, n_dim)
-        for i in n_dim:-1:1
-            id = div(n-1, hyperrectangle_list[i])
-            n = mod(n-1, hyperrectangle_list[i])+1
-            lower_cell = lower[i] + min(delta, input.radius[i]*2) * id
-            radius[i] = min(delta, upper[i] - lower_cell) * 0.5
-            center[i] = lower_cell + radius[i];
-        end
-        hyperrectangles[k] = Hyperrectangle(center[:], radius[:])
+    # preallocate
+    hypers = Vector{typeof(input)}(undef, prod(n_hypers_per_dim))
+    local_lower, local_upper = similar(lower), similar(upper)
+    CI = CartesianIndices(Tuple(n_hypers_per_dim))
+
+    # iterate from the lower corner to the upper corner
+    for i in 1:length(CI)
+        I = collect(Tuple(CI[i])) .- 1
+        @. local_lower = min(lower + Δ*I,     upper)
+        @. local_upper = min(local_lower + Δ, upper)
+
+        hypers[i] = Hyperrectangle(low = local_lower, high = local_upper)
     end
-    return hyperrectangles
+    return hypers
 end
+
 
 function partition(input::HPolytope, delta::Float64)
     @info "MaxSens overapproximates HPolytope input sets as Hyperrectangles."
