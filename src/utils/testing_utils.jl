@@ -60,6 +60,10 @@ An example call would look like:
 NeuralVerification.make_random_query_file([3, 3], [[1, 3, 1], [2, 5, 2]], "test_rand/networks", "test_rand/input_sets", "test_rand/output_sets", "test_rand/query_file.txt")
 
 Which will make 3 networks with shape [1, 3, 1] and 3 networks with shape [2, 5, 2].
+
+If network_files is non-empty, it should have sum(num_networks_for_size) network files
+with the corresponding shapes. Instead of generating random networks, we will use
+these networks as we make our queries.
 """
 function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 layer_sizes::Array{Array{Int, 1}},
@@ -71,14 +75,19 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 max_weight = 1.0,
                                 min_bias = -1.0,
                                 max_bias = 1.0,
-                                rng=MersenneTwister())
+                                rng=MersenneTwister(),
+                                network_files=[])
 
     for (num_networks, layer_sizes) in zip(num_networks_for_size, layer_sizes)
         index = 0
         for i = 1:num_networks
             index = index + 1
             # Create a random network
-            network = make_random_network(layer_sizes, min_weight, max_weight, min_bias, max_bias, rng)
+            if (length(network_files)) == 0
+                network = make_random_network(layer_sizes, min_weight, max_weight, min_bias, max_bias, rng)
+            else
+                network = read_nnet(network_files[i])
+            end
             num_inputs = layer_sizes[1]
             num_outputs = layer_sizes[end]
 
