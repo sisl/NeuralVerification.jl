@@ -90,4 +90,7 @@ include("adversarial/fastLip.jl")
 include("adversarial/dlv.jl")
 export ReluVal, FastLin, FastLip, DLV
 
+const TOL = Ref(sqrt(eps()))
+set_tolerance(x::Real) = (TOL[] = x)
+
 end
