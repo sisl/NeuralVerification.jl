@@ -31,7 +31,7 @@ function solve(solver::ConvDual, problem::Problem)
     if o >= 0.0
         return BasicResult(:holds)
     end
-    return BasicResult(:unknown)
+    return BasicResult(:violated)
 end
 
 # compute lower bound of the dual problem.
