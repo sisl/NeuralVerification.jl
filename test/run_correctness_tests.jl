@@ -17,11 +17,12 @@ function test_query_file(file_name::String)
 
                 # Solve the problem with each solver that applies for the problem, then compare the results
                 results = []
+                println(cur_problem)
                 for solver in solvers
                     println("Solving on: ", typeof(solver))
                     if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
                         println("output is: ", typeof(cur_problem.output))
-                        cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
+                        cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                     end
                     push!(results, NeuralVerification.solve(solver, cur_problem))
                     println("Result: ", results[end])
@@ -63,9 +64,16 @@ file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.t
 file_name_medium = "$(@__DIR__)/../test/test_sets/random/medium/query_file_medium.txt"
 file_name_large = "$(@__DIR__)/../test/test_sets/random/large/query_file_large.txt"
 
-println("Starting test on small")
+file_name_previous_problems = "$(@__DIR__)/../test/test_sets/previous_issues/query_file_previous_issues.txt"
+#file_name_real_networks = ""
+
+println("Starting tests on small random")
 test_query_file(file_name_small)
-println("Starting test on medium")
+println("Starting tests on medium random")
 test_query_file(file_name_medium)
-println("Starting test on large")
+println("Starting tests on large random")
 test_query_file(file_name_large)
+println("Starting tests on previous issues")
+test_query_file(file_name_previous_problems)
+println("Starting tests on real networks")
+#test_query_file(file_name_real_networks)
