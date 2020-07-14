@@ -92,5 +92,6 @@ export ReluVal, FastLin, FastLip, DLV
 
 const TOL = Ref(sqrt(eps()))
 set_tolerance(x::Real) = (TOL[] = x)
+export set_tolerance
 
 end
