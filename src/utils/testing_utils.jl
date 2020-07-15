@@ -1,5 +1,6 @@
 using Random
 using LinearAlgebra
+using Gurobi
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])

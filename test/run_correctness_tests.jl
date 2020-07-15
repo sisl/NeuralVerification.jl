@@ -20,11 +20,25 @@ function test_query_file(file_name::String)
                 println(cur_problem)
                 for solver in solvers
                     println("Solving on: ", typeof(solver))
+
+                    # Workaround to have ConvDual and FastLip take in halfspace output sets as expected 
                     if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
                         println("output is: ", typeof(cur_problem.output))
                         cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                     end
-                    push!(results, NeuralVerification.solve(solver, cur_problem))
+
+                    # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
+                    try
+                        push!(results, NeuralVerification.solve(solver, cur_problem))
+                    catch e
+                        if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob" && solver isa NeuralVerification.Sherlock
+                            solver = NeuralVerification.Sherlock(ϵ = solver.ϵ, optimizer = Gurobi.Optimizer)
+                            push!(results,  NeuralVerification.solve(solver, cur_problem))
+                        else
+                            throw(e)
+                        end
+                    end
+
                     println("Result: ", results[end])
                 end
 
@@ -68,11 +82,11 @@ file_name_previous_problems = "$(@__DIR__)/../test/test_sets/previous_issues/que
 #file_name_real_networks = ""
 
 println("Starting tests on small random")
-test_query_file(file_name_small)
+#test_query_file(file_name_small)
 println("Starting tests on medium random")
-test_query_file(file_name_medium)
+#test_query_file(file_name_medium)
 println("Starting tests on large random")
-test_query_file(file_name_large)
+#test_query_file(file_name_large)
 println("Starting tests on previous issues")
 test_query_file(file_name_previous_problems)
 println("Starting tests on real networks")
