@@ -121,15 +121,7 @@ function check_inclusion(solver, reach::SymbolicInterval{HPolytope{N}}, output::
         if termination_status(model) == MOI.OPTIMAL
             y = compute_output(nnet, value(x))
             if !∈(y, output)
-                if ∈(value(x), reach.interval)
-                    return CounterExampleResult(:violated, value(x)), nothing
-                else
-                    println("OPTIMAL, but x not in the input set")
-                    println("This is usually caused by precision problem, you can omit this")
-                    println("x = ", value(x))
-                    println("A * x = ", obj * [value(x); [1]])
-                    println("b = ", reach_lc[i].b)
-                end
+                return CounterExampleResult(:violated, value(x)), nothing
             end
             if objective_value(model) > output_lc[i].b
                 if objective_value(model) - output_lc[i].b > max_violation
@@ -140,8 +132,8 @@ function check_inclusion(solver, reach::SymbolicInterval{HPolytope{N}}, output::
         else
             if ∈(value(x), reach.interval)
                 println("Not OPTIMAL, but x in the input set")
-                println("This is usually caused by open shape input set.")
-                println("Check your input constraints.")
+                println("This is usually caused by open input set.")
+                println("Please check your input constraints.")
                 exit()
             end
             println("No solution, please check the problem definition.")
