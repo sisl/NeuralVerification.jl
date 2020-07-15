@@ -5,4 +5,6 @@ test/test_sets/previous_issues/networks/issue_111_network2.nnet test/test_sets/p
 test/test_sets/previous_issues/networks/issue_112_network.nnet test/test_sets/previous_issues/input_sets/issue_112_input_set.json test/test_sets/previous_issues/output_sets/issue_112_output_set.json
 test/test_sets/previous_issues/networks/issue_113_network.nnet test/test_sets/previous_issues/input_sets/issue_113_input_set.json test/test_sets/previous_issues/output_sets/issue_113_output_set.json
 test/test_sets/previous_issues/networks/issue_110_network.nnet test/test_sets/previous_issues/input_sets/issue_110_input_set.json test/test_sets/previous_issues/output_sets/issue_110_output_set.json
+test/test_sets/previous_issues/networks/issue_111_network2.nnet test/test_sets/previous_issues/input_sets/issue_111_input_set2.json test/test_sets/previous_issues/output_sets/issue_111_output_set2.json
+test/test_sets/previous_issues/networks/issue_111_network2.nnet test/test_sets/previous_issues/input_sets/issue_111_input_set2.json test/test_sets/previous_issues/output_sets/issue_111_output_set2.json
 test/test_sets/previous_issues/networks/issue_114_network.nnet test/test_sets/previous_issues/input_sets/issue_114_input_set.json test/test_sets/previous_issues/output_sets/issue_114_output_set.json
