@@ -30,9 +30,15 @@ end
 
 function solve(solver::NSVerify, problem::Problem)
     # Set M automatically if not already set.
-    M = solver.m == nothing ? set_automatic_M(problem) : solver.m
-
-    @show M
+    if isnothing(solver.m)
+        M = set_automatic_M(problem)
+    else
+        @warn "M should be chosen carefully. An M which is too small will cause
+        the problem to be solved incorrectly. Not setting the `m` keyword, or setting
+        it equal to `nothing` will cause a safe value to be calculated automatically.
+        E.g. NSVerify()." maxlog = 1
+        M = solver.m
+    end
 
     # Set up and solve the problem
     model = Model(solver)
@@ -41,31 +47,11 @@ function solve(solver::NSVerify, problem::Problem)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(M))
-    # encode_network!(model, problem.network, neurons, deltas, get_bounds(problem), BoundedMixedIntegerLP())
     feasibility_problem!(model)
     optimize!(model)
 
 
-   #  @show model
-
-   #  for T in list_of_constraint_types(model)
-   #     cs = all_constraints(model, T...)
-   #     println(T)
-   #     println.("\t", cs)
-   # end
-
-
     if termination_status(model) == OPTIMAL
-        # Issue a warning if M is not sufficiently large.
-        # M must be larger than any other variable in the problem.
-        # @show value.(neurons)
-        @show max_z = mapreduce(x->norm(x, Inf), max, value.(neurons))
-        @show M
-        if max_z >= M
-            @warn "M not sufficiently large. Problem may have been solved incorrectly.
-            The minimum viable value of M was found to be $max_z"
-        end
-
         return CounterExampleResult(:violated, value.(first(neurons)))
 
     elseif termination_status(model) == INFEASIBLE
@@ -76,13 +62,7 @@ function solve(solver::NSVerify, problem::Problem)
 end
 
 function set_automatic_M(problem)
-    # new_nnet = Network([Layer(L.weights, L.bias, Id()) for L in problem.network.layers])
-    # new_problem = Problem(new_nnet, problem.input, problem.output)
-
-    flat = Iterators.flatten
-    # bounds = get_bounds(new_problem)
-    bounds = get_bounds(problem)
-    M = maximum(abs, flat(hr.center + hr.radius for hr in bounds))
-    # add 1% margin?
-    # M *= 1.1
+    # Compute the largest absolute value of
+    bounds = get_bounds(problem, false)
+    M = maximum(abs, Iterators.flatten(hr.center + hr.radius for hr in bounds))
 end
