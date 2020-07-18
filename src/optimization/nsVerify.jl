@@ -62,7 +62,9 @@ function solve(solver::NSVerify, problem::Problem)
 end
 
 function set_automatic_M(problem)
-    # Compute the largest absolute value of
+    # Compute the largest pre-activation bound absolute value.
+    # M must be larger than any value a variable in the problem
+    # can take.
     bounds = get_bounds(problem, false)
     M = maximum(abs, Iterators.flatten(hr.center + hr.radius for hr in bounds))
 end
