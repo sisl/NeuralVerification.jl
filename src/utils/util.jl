@@ -339,19 +339,22 @@ Return:
 - `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    if act
-        solver = MaxSens(0.0, true)
-        bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
-        bounds[1] = input
-        for (i, layer) in enumerate(nnet.layers)
-            bounds[i+1] = forward_layer(solver, layer, bounds[i])
-        end
-        return bounds
-    else
-       error("before activation bounds not supported yet.")
+    solver = MaxSens(0.0, true)
+    bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
+    bounds[1] = input
+    for (i, layer) in enumerate(nnet.layers)
+        bounds[i+1] = forward_layer(solver, layer, bounds[i])
+
     end
+    if !act
+        for (i, layer) in enumerate(nnet.layers)
+            bounds[i+1] = approximate_affine_map(layer, bounds[i])
+        end
+    end
+
+    return bounds
 end
-get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
+get_bounds(problem::Problem, args...) = get_bounds(problem.network, problem.input, args...)
 
 """
     affine_map(layer, input::AbstractPolytope)
