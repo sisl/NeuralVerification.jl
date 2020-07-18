@@ -354,30 +354,15 @@ end
 get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
 
 """
-    affine_map(layer, input::AbstractPolytope)
+    affine_map(layer, x)
 
-Affine transformation of a set using the weights and bias of a layer.
-
-Inputs:
-- `layer`: Layer
-- `input`: input set (Hyperrectangle, HPolytope)
-Return:
-- `output`: set after transformation.
-
-
-    affine_map(layer, input)
-
-Inputs:
-- `layer`: Layer
-- `input`: Vector
-Return:
-- `output`: Vector after mapping
+Compute W*x ⊕ b for a vector or LazySet `x`
 """
-affine_map(layer::Layer, input) = layer.weights*input + layer.bias
-function affine_map(layer::Layer, input::AbstractPolytope)
-    W, b = layer.weights, layer.bias
-    return translate(b, linear_map(W, input))
+affine_map(layer::Layer, x) = layer.weights*x + layer.bias
+function affine_map(layer::Layer, x::LazySet)
+    LazySets.affine_map(layer.weights, x, layer.bias)
 end
+
 
 """
    approximate_affine_map(layer, input::Hyperrectangle)
@@ -390,14 +375,6 @@ function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     return Hyperrectangle(c, r)
 end
 
-function translate(v::Vector, H::HPolytope)
-    # translate each halfpsace according to:
-    # a⋅(x-v) ≤ b  ⟶  a⋅x ≤ b+a⋅v
-    C, d = tosimplehrep(H)
-    return HPolytope(C, d+C*v)
-end
-# translate(v::Vector, H::Hyperrectangle)   = Hyperrectangle(H.center .+ v, H.radius)
-translate(v::Vector, V::AbstractPolytope) = tohrep(VPolytope([x+v for x in vertices_list(V)]))
 
 """
     split_interval(dom, i)
