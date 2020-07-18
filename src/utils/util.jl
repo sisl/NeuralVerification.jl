@@ -344,8 +344,8 @@ function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NO
     bounds[1] = input
     for (i, layer) in enumerate(nnet.layers)
         bounds[i+1] = forward_layer(solver, layer, bounds[i])
-
     end
+
     if !act
         for (i, layer) in enumerate(nnet.layers)
             bounds[i+1] = approximate_affine_map(layer, bounds[i])
