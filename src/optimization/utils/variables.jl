@@ -27,15 +27,28 @@ function init_variables(model::Model, layers::Vector{Layer}; binary = false, inc
     return vars
 end
 
+
+_model(a::Number) = nothing
+_model(a::VariableRef) = a.model
+_model(a::Array) = _model(first(a))
+_model(a::GenericAffExpr) = isempty(a.terms) ? nothing : _model(first(keys(a.terms)))
+_model(as...) = something(_model.(as)..., missing)
+
+# These should only be hit if we're comparing 0 with 0 or if we somehow
+# hit a branch that is numbers only (no variables or expressions).
+# We don't have a way to get the model in that case. This is a problem since
+# we do sometimes end up with (0, 0). It shouldn't happen in any other case.
+symbolic_max(m::Missing, a, b) = (iszero(a) && iszero(b)) ? (return zero(promote_type(typeof(a), typeof(b)))) : ArgumentError("Cannot get model from ($a, $b)")
+symbolic_abs(m::Missing, a, b) = (iszero(a) && iszero(b)) ? (return zero(promote_type(typeof(a), typeof(b)))) : ArgumentError("Cannot get model from ($a, $b)")
+
 function symbolic_max(m::Model, a, b)
     aux = @variable(m)
     @constraint(m, aux >= a)
     @constraint(m, aux >= b)
     return aux
 end
-symbolic_max(a::VariableRef, b::VariableRef)                         = symbolic_max(a.model, a, b)
-symbolic_max(a::GenericAffExpr, b::GenericAffExpr)                   = symbolic_max(first(first(a.terms)).model, a, b)
-symbolic_max(a::Array{<:GenericAffExpr}, b::Array{<:GenericAffExpr}) = symbolic_max.(a, b)
+symbolic_max(a, b) = symbolic_max(_model(a, b), a, b)
+
 
 function symbolic_abs(m::Model, v)
     aux = @variable(m) #get an anonymous variable
@@ -44,9 +57,8 @@ function symbolic_abs(m::Model, v)
     @constraint(m, aux >= -v)
     return aux
 end
-symbolic_abs(v::VariableRef)             = symbolic_abs(v.m, v)
-symbolic_abs(v::GenericAffExpr)          = symbolic_abs(first(first(v.terms)).model, v)
-symbolic_abs(v::Array{<:GenericAffExpr}) = symbolic_abs.(v)
+symbolic_abs(v) = symbolic_abs(_model(v), v)
+
 
 function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
     aux = @variable(m)
@@ -55,7 +67,4 @@ function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
     @constraint(m, aux .>= -v)
     return aux
 end
-# # in general, default to symbolic_abs behavior:
-# symbolic_infty_norm(v) = symbolic_abs(v)
-# only Array{<:GenericAffExpr} is needed
-symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(first(first(first(v).terms)).model, v)
+symbolic_infty_norm(v::Array{<:GenericAffExpr}) = symbolic_infty_norm(_model(v), v)

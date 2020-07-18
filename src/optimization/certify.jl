@@ -23,7 +23,7 @@ Sound but not complete.
 "Certified Defenses against Adversarial Examples,"
 *ArXiv Preprint ArXiv:1801.09344*, 2018.](https://arxiv.org/abs/1801.09344)
 """
-@with_kw struct Certify
+@with_kw struct Certify <: Solver
     optimizer = SCS.Optimizer
 end
 
