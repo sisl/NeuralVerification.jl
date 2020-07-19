@@ -331,12 +331,13 @@ end
 
 """
     get_bounds(problem::Problem)
-    get_bounds(nnet::Network, input::Hyperrectangle)
+    get_bounds(nnet::Network, input::Hyperrectangle, [true])
 
 This function calls maxSens to compute node-wise bounds given a input set.
+The optional last argument determines whether the bounds are pre- or post-activation.
 
 Return:
-- `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
+- `Vector{Hyperrectangle}`: bounds for all nodes. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
     bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
@@ -396,6 +397,7 @@ end
    approximate_act_map(layer, input::Hyperrectangle)
 
 Returns a Hyperrectangle overapproximation of the activation map of the input.
+`act`must be monotonic.
 """
 function approximate_act_map(act::ActivationFunction, input::Hyperrectangle)
     β    = act.(input.center)
