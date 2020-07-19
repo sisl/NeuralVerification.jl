@@ -339,19 +339,18 @@ Return:
 - `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    solver = MaxSens(0.0, true)
     bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
     bounds[1] = input
+    b = input
     for (i, layer) in enumerate(nnet.layers)
-        bounds[i+1] = forward_layer(solver, layer, bounds[i])
-    end
-
-    if !act
-        for (i, layer) in enumerate(nnet.layers)
-            bounds[i+1] = approximate_affine_map(layer, bounds[i])
+        if act
+            b = approximate_affine_map(layer, bounds[i])
+            bounds[i+1] = approximate_act_map(layer, b)
+        else
+            bounds[i+1] = approximate_affine_map(layer, b)
+            b = approximate_act_map(layer, bounds[i+1])
         end
     end
-
     return bounds
 end
 get_bounds(problem::Problem, args...) = get_bounds(problem.network, problem.input, args...)
@@ -392,6 +391,22 @@ function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     r = abs.(layer.weights) * input.radius
     return Hyperrectangle(c, r)
 end
+
+"""
+   approximate_act_map(layer, input::Hyperrectangle)
+
+Returns a Hyperrectangle overapproximation of the activation map of the input.
+"""
+function approximate_act_map(act::ActivationFunction, input::Hyperrectangle)
+    β    = act.(input.center)
+    βmax = act.(high(input))
+    βmin = act.(low(input))
+    c    = (βmax + βmin)/2
+    r    = (βmax - βmin)/2
+    return Hyperrectangle(c, r)
+end
+
+approximate_act_map(layer::Layer, input::Hyperrectangle) = approximate_act_map(layer.activation, input)
 
 function translate(v::Vector, H::HPolytope)
     # translate each halfpsace according to:
