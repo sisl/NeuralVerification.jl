@@ -66,5 +66,5 @@ function set_automatic_M(problem)
     # M must be larger than any value a variable in the problem
     # can take.
     bounds = get_bounds(problem, false)
-    M = maximum(abs, Iterators.flatten(hr.center + hr.radius for hr in bounds))
+    M = maximum(abs, Iterators.flatten(abs.(hr.center) + hr.radius for hr in bounds))
 end
