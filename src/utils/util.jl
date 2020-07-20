@@ -331,27 +331,30 @@ end
 
 """
     get_bounds(problem::Problem)
-    get_bounds(nnet::Network, input::Hyperrectangle)
+    get_bounds(nnet::Network, input::Hyperrectangle, [true])
 
-This function calls maxSens to compute node-wise bounds given a input set.
+Computes node-wise bounds given a input set. The optional last 
+argument determines whether the bounds are pre- or post-activation.
 
 Return:
-- `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
+- `Vector{Hyperrectangle}`: bounds for all nodes. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    if act
-        solver = MaxSens(0.0, true)
-        bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
-        bounds[1] = input
-        for (i, layer) in enumerate(nnet.layers)
-            bounds[i+1] = forward_layer(solver, layer, bounds[i])
+    bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
+    bounds[1] = input
+    b = input
+    for (i, layer) in enumerate(nnet.layers)
+        if act
+            b = approximate_affine_map(layer, bounds[i])
+            bounds[i+1] = approximate_act_map(layer, b)
+        else
+            bounds[i+1] = approximate_affine_map(layer, b)
+            b = approximate_act_map(layer, bounds[i+1])
         end
-        return bounds
-    else
-       error("before activation bounds not supported yet.")
     end
+    return bounds
 end
-get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
+get_bounds(problem::Problem, args...) = get_bounds(problem.network, problem.input, args...)
 
 """
     affine_map(layer, x)
@@ -374,6 +377,23 @@ function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     r = abs.(layer.weights) * input.radius
     return Hyperrectangle(c, r)
 end
+
+"""
+   approximate_act_map(layer, input::Hyperrectangle)
+
+Returns a Hyperrectangle overapproximation of the activation map of the input.
+`act`must be monotonic.
+"""
+function approximate_act_map(act::ActivationFunction, input::Hyperrectangle)
+    β    = act.(input.center)
+    βmax = act.(high(input))
+    βmin = act.(low(input))
+    c    = (βmax + βmin)/2
+    r    = (βmax - βmin)/2
+    return Hyperrectangle(c, r)
+end
+
+approximate_act_map(layer::Layer, input::Hyperrectangle) = approximate_act_map(layer.activation, input)
 
 
 """

@@ -184,8 +184,8 @@ function encode_layer!(MIP::MixedIntegerLP,
         @constraints(model, begin
                                 z_next[j] >= ẑ[j]
                                 z_next[j] >= 0.0
-                                z_next[j] <= ẑ[j] + m * δ[j]
-                                z_next[j] <= m - m * δ[j]
+                                z_next[j] <= ẑ[j] + m * (1 - δ[j])
+                                z_next[j] <= m * δ[j]
                             end)
     end
 end
