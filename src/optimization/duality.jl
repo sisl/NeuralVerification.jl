@@ -27,25 +27,27 @@ Sound but not complete.
     optimizer = GLPK.Optimizer
 end
 
-# can pass keyword args to optimizer
-# Duality(optimizer::DataType = GLPKSolverMIP; kwargs...) =  Duality(optimizer(kwargs...))
-
 function solve(solver::Duality, problem::Problem)
     model = Model(solver)
     c, d = tosimplehrep(problem.output)
-    λ = init_multipliers(model, problem.network)
-    μ = init_multipliers(model, problem.network)
+
+    @assert length(d) == 1 "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
+    d = d[1]
+
+    λ = init_multipliers(model, problem.network, "λ")
+    μ = init_multipliers(model, problem.network, "μ")
     o = dual_value(solver, problem, model, λ, μ)
     @constraint(model, last(λ) .== -c)
     optimize!(model)
-    return interpret_result(solver, termination_status(model), o - d[1])
-end
 
-# False if o > 0, True if o <= 0
-function interpret_result(solver::Duality, status, o)
-    status != OPTIMAL && return BasicResult(:unknown)
-    value(o) <= 0.0 && return BasicResult(:holds)
-    return BasicResult(:violated)
+    # Interpret result:
+    if termination_status(model) != OPTIMAL
+        return BasicResult(:unknown)
+    elseif value(o) - d <= 0.0
+        return BasicResult(:holds)
+    else
+        return BasicResult(:violated)
+    end
 end
 
 function dual_value(solver::Duality,
@@ -55,54 +57,46 @@ function dual_value(solver::Duality,
                     μ::Vector{Vector{VariableRef}})
     bounds = get_bounds(problem)
     layers = problem.network.layers
-    # input layer
-    o = input_layer_value(layers[1], μ[1], bounds[1])
-    o += activation_value(layers[1], μ[1], λ[1], bounds[1])
-    # other layers
-    for i in 2:length(layers)
-        o += layer_value(layers[i], μ[i], λ[i-1], bounds[i])
-        o += activation_value(layers[i], μ[i], λ[i], bounds[i])
+
+    # prepend an array of 0s to λ so the λᵢ
+    # term cancels in the input layer
+    λ = [zeros(dim(bounds[1])), λ...]
+
+    o = 0
+    for i in 1:length(layers)
+        Lᵢ, Bᵢ = layers[i], bounds[i]
+        W, b = Lᵢ.weights, Lᵢ.bias
+        c, r = Bᵢ.center, Bᵢ.radius
+        B̂ᵢ₊₁ = approximate_affine_map(Lᵢ, Bᵢ)
+
+        # layer value
+        o += λ[i]'*c - μ[i]'*(W*c + b) + sum(symbolic_abs.(λ[i] .- W'*μ[i]) .* r)
+
+        # activation value
+        o += activation_value(Lᵢ.activation, μ[i], λ[i+1], low(B̂ᵢ₊₁), high(B̂ᵢ₊₁))
     end
+
     @objective(model, Min, o)
     return o
 end
 
-function activation_value(layer::Layer,
-                          μᵢ::Vector{VariableRef},
-                          λᵢ::Vector{VariableRef},
-                          bound::Hyperrectangle)
-    o = zero(eltype(μᵢ))
-    b_hat = approximate_affine_map(layer, bound)
-    l_hat, u_hat = low(b_hat), high(b_hat)
-    l, u = layer.activation(l_hat), layer.activation(u_hat)
+function activation_value(σ::ReLU, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
 
-    o += sum(symbolic_max.(μᵢ .* l_hat, μᵢ .* u_hat))
-    o += sum(symbolic_max.(λᵢ .* l,     λᵢ .* u))
-    return o
+    gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
+    gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
+
+    max = symbolic_max
+    return sum(@. ifelse(l̂ᵢ < 0 < ûᵢ,
+                         max(gᵢl̂ᵢ, gᵢûᵢ, 0),
+                         max(gᵢl̂ᵢ, gᵢûᵢ)))
 end
 
-function layer_value(layer::Layer,
-                     μᵢ::Vector{VariableRef},
-                     λᵢ::Vector{VariableRef},
-                     bound::Hyperrectangle)
-    W = layer.weights
-    c = bound.center
-    r = bound.radius
-
-    o = λᵢ'*c - μᵢ'*affine_map(layer, c)
-    # instead of for-loop:
-    o += sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* r) # TODO check that this is equivalent to before
-    return o
+function activation_value(σ::Id, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
+    max = symbolic_max
+    sum(@. max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
 end
 
-function input_layer_value(layer::Layer,
-                           μᵢ::Vector{VariableRef},
-                           input::Hyperrectangle)
-    W = layer.weights
-    c = input.center
-    r = input.radius
-
-    o = -μᵢ' * affine_map(layer, c)
-    o += sum(symbolic_abs.(μᵢ'*W) .* r)   # TODO check that this is equivalent to before
-    return o
+function activation_value(σ::Any, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
+    max = symbolic_max
+    sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ)))
 end
