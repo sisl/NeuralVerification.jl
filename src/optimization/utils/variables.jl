@@ -49,6 +49,14 @@ function symbolic_max(m::Model, a, b)
 end
 symbolic_max(a, b) = symbolic_max(_model(a, b), a, b)
 
+function symbolic_max(m::Model, a...)
+    aux = @variable(m)
+    for z in a
+        @constraint(m, aux >= z)
+    end
+    aux
+end
+symbolic_max(a...) = symbolic_max(_model(a...), a...)
 
 function symbolic_abs(m::Model, v)
     aux = @variable(m, base_name = "aux_abs") #get an anonymous variable
