@@ -55,14 +55,17 @@ function dual_value(solver::Duality,
                     μ::Vector{Vector{VariableRef}})
     bounds = get_bounds(problem)
     layers = problem.network.layers
-    # input layer
-    o = layer_value(layers[1], μ[1], 0, bounds[1])
-    o += activation_value(layers[1], μ[1], λ[1], bounds[1])
-    # other layers
-    for i in 2:length(layers)
-        o += layer_value(layers[i], μ[i], λ[i-1], bounds[i])
-        o += activation_value(layers[i], μ[i], λ[i], bounds[i])
+
+    # prepend an array of 0 to λ so the input layer
+    # behaves correctly
+    λ = [zeros(dim(bounds[1])), λ...]
+
+    o = 0
+    for i in 1:length(layers)
+        o += layer_value(layers[i], μ[i], λ[i], bounds[i])
+        o += activation_value(layers[i], μ[i], λ[i+1], bounds[i])
     end
+
     @objective(model, Min, o)
     return o
 end
@@ -72,26 +75,32 @@ function activation_value(layer::Layer,
                           λᵢ::Vector{VariableRef},
                           bound::Hyperrectangle)
     B = approximate_affine_map(layer, bound)
-    l̂, û = low(B), high(B)
-    o = zero(eltype(μᵢ))
+    l̂ᵢ, ûᵢ = low(B), high(B)
 
-    for (μᵢⱼ, λᵢⱼ, l̂ᵢⱼ, ûᵢⱼ) in zip(μᵢ, λᵢ, l̂, û)
+    σ = layer.activation
+    max = symbolic_max
 
-        gᵢⱼ(ẑᵢⱼ) = μᵢⱼ*ẑᵢⱼ - λᵢⱼ*L.activation(ẑᵢⱼ)
+    if σ isa ReLU
+        gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
+        gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
 
-        if l̂ᵢⱼ < 0 < ûᵢⱼ && layer.activation isa ReLU
-            o += symbolic_max(gᵢⱼ(l̂ᵢⱼ), gᵢⱼ(ûᵢⱼ), 0)
-        else
-            o += symbolic_max(gᵢⱼ(l̂ᵢⱼ), gᵢⱼ(ûᵢⱼ))
-        end
+        o = sum(@. ifelse(l̂ᵢ < 0 < ûᵢ,
+                      max(gᵢl̂ᵢ, gᵢûᵢ, 0),
+                      max(gᵢl̂ᵢ, gᵢûᵢ)))
+
+    elseif σ == Id
+        o = sum(@. max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
+    else
+        o = sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ)))
     end
-    o
+    return o
 end
 
 
 function layer_value(layer::Layer, μᵢ, λᵢ, bound::Hyperrectangle)
     W, b = layer.weights, layer.bias
     c, r = bound.center, bound.radius
+    abs = symbolic_abs
 
-    return λᵢ'c - μᵢ'(W*c + b) + sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* r)
+    return λᵢ'*c - μᵢ'*(W*c + b) + sum(abs.(λᵢ .- W'*μᵢ) .* r)
 end
