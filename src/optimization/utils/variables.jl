@@ -27,6 +27,18 @@ function init_variables(model::Model, layers::Vector{Layer}; binary = false, inc
     return vars
 end
 
+# For the aux_* variables, we want unique names counting up from 1.
+# E.g. aux_abs1 To this end, we store each type of aux variable in the
+# model in a vector accessible as `m[:aux_base_name]`. To create a new one,
+# we count the length of the associated vector
+# If aux_abs1 exists in the model, this will return aux_abs2
+function new_named_var(m::Model, base_symbol::Symbol)
+    aux_vars = get!(m.obj_dict, base_symbol, VariableRef[])
+    aux = @variable(m, base_name = string(base_symbol)*string(length(aux_vars)+1))
+    push!(aux_vars, aux)
+    aux
+end
+
 
 _model(a::Number) = nothing
 _model(a::VariableRef) = a.model
@@ -40,8 +52,9 @@ _model(as...) = something(_model.(as)..., missing)
 # we do sometimes end up with (0, 0). It shouldn't happen in any other case.
 symbolic_max(m::Missing, a, b) = (iszero(a) && iszero(b)) ? (return zero(promote_type(typeof(a), typeof(b)))) : ArgumentError("Cannot get model from ($a, $b)")
 
+
 function symbolic_max(m::Model, a, b)
-    aux = @variable(m, base_name = "aux_max")
+    aux = new_named_var(m, :aux_max)
     @constraint(m, aux >= a)
     @constraint(m, aux >= b)
     return aux
@@ -49,7 +62,7 @@ end
 symbolic_max(a, b) = symbolic_max(_model(a, b), a, b)
 
 function symbolic_max(m::Model, a...)
-    aux = @variable(m)
+    aux = new_named_var(m, :aux_max)
     for z in a
         @constraint(m, aux >= z)
     end
@@ -58,7 +71,7 @@ end
 symbolic_max(a...) = symbolic_max(_model(a...), a...)
 
 function symbolic_abs(m::Model, v)
-    aux = @variable(m, base_name = "aux_abs") #get an anonymous variable
+    aux = new_named_var(m, :aux_abs)
     @constraint(m, aux >= 0)
     @constraint(m, aux >= v)
     @constraint(m, aux >= -v)
@@ -68,7 +81,7 @@ symbolic_abs(v) = symbolic_abs(_model(v), v)
 
 
 function symbolic_infty_norm(m::Model, v::Array{<:GenericAffExpr})
-    aux = @variable(m, base_name = "aux_inf")
+    aux = new_named_var(m, :aux_inf)
     @constraint(m, aux >= 0)
     @constraint(m, aux .>= v)
     @constraint(m, aux .>= -v)
