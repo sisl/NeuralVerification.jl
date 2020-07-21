@@ -32,6 +32,7 @@ function solve(solver::Duality, problem::Problem)
     c, d = tosimplehrep(problem.output)
 
     @assert length(d) == 1 "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
+    d = d[1]
 
     λ = init_multipliers(model, problem.network, "λ")
     μ = init_multipliers(model, problem.network, "μ")
@@ -42,7 +43,7 @@ function solve(solver::Duality, problem::Problem)
     # Interpret result:
     if termination_status(model) != OPTIMAL
         return BasicResult(:unknown)
-    elseif value(o) - d[1] <= 0.0
+    elseif value(o) - d <= 0.0
         return BasicResult(:holds)
     else
         return BasicResult(:violated)
