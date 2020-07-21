@@ -65,14 +65,14 @@ function dual_value(solver::Duality,
     o = 0
     for i in 1:length(layers)
         Lᵢ, Bᵢ = layers[i], bounds[i]
-
-        # layer value
         W, b = Lᵢ.weights, Lᵢ.bias
         c, r = Bᵢ.center, Bᵢ.radius
-        o += λᵢ'*c - μᵢ'*(W*c + b) + sum(abs.(λᵢ .- W'*μᵢ) .* r)
+        B̂ᵢ₊₁ = approximate_affine_map(Lᵢ, Bᵢ)
+
+        # layer value
+        o += λ[i]'*c - μ[i]'*(W*c + b) + sum(abs.(λ[i] .- W'*μ[i]) .* r)
 
         # activation value
-        B̂ᵢ₊₁ = approximate_affine_map(Lᵢ, Bᵢ)
         o += activation_value(Lᵢ.activation, μ[i], λ[i+1], B̂ᵢ₊₁)
     end
 
