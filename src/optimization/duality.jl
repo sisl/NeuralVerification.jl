@@ -58,53 +58,44 @@ function dual_value(solver::Duality,
     bounds = get_bounds(problem)
     layers = problem.network.layers
 
-    # prepend an array of 0 to λ so the λᵢ
+    # prepend an array of 0s to λ so the λᵢ
     # term cancels in the input layer
     λ = [zeros(dim(bounds[1])), λ...]
 
     o = 0
     for i in 1:length(layers)
-        o += layer_value(layers[i], μ[i], λ[i], bounds[i])
-        o += activation_value(layers[i], μ[i], λ[i+1], bounds[i])
+        Lᵢ, Bᵢ = layers[i], bounds[i]
+
+        # layer value
+        W, b = Lᵢ.weights, Lᵢ.bias
+        c, r = Bᵢ.center, Bᵢ.radius
+        o += λᵢ'*c - μᵢ'*(W*c + b) + sum(abs.(λᵢ .- W'*μᵢ) .* r)
+
+        # activation value
+        B̂ᵢ₊₁ = approximate_affine_map(Lᵢ, Bᵢ)
+        o += activation_value(Lᵢ.activation, μ[i], λ[i+1], B̂ᵢ₊₁)
     end
 
     @objective(model, Min, o)
     return o
 end
 
-function activation_value(layer::Layer,
-                          μᵢ::Vector{VariableRef},
-                          λᵢ::Vector{VariableRef},
-                          bound::Hyperrectangle)
+function activation_value(σ::ReLU, μᵢ, λᵢ, pre_act_bound::Hyperrectangle)
+    l̂ᵢ, ûᵢ = low(pre_act_bound), high(pre_act_bound)
 
-    # Get the pre-activation bounds of the next layer
-    B = approximate_affine_map(layer, bound)
-    l̂ᵢ, ûᵢ = low(B), high(B)
+    gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
+    gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
 
-    σ = layer.activation
-    max = symbolic_max
-
-    if σ isa ReLU
-        gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
-        gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
-
-        o = sum(@. ifelse(l̂ᵢ < 0 < ûᵢ,
-                      max(gᵢl̂ᵢ, gᵢûᵢ, 0),
-                      max(gᵢl̂ᵢ, gᵢûᵢ)))
-
-    elseif σ == Id
-        o = sum(@. max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
-    else
-        o = sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ)))
-    end
-    return o
+    return sum(@. ifelse(l̂ᵢ < 0 < ûᵢ,
+                         max(gᵢl̂ᵢ, gᵢûᵢ, 0),
+                         max(gᵢl̂ᵢ, gᵢûᵢ)))
 end
 
+function activation_value(σ::Id, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
+    sum(@. symbolic_max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
+end
 
-function layer_value(layer::Layer, μᵢ, λᵢ, bound::Hyperrectangle)
-    W, b = layer.weights, layer.bias
-    c, r = bound.center, bound.radius
-    abs = symbolic_abs
-
-    return λᵢ'*c - μᵢ'*(W*c + b) + sum(abs.(λᵢ .- W'*μᵢ) .* r)
+function activation_value(σ::Any, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
+    max = symbolic_max
+    sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ))))
 end

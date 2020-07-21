@@ -28,10 +28,10 @@ function init_variables(model::Model, layers::Vector{Layer}; binary = false, inc
 end
 
 # For the aux_* variables, we want unique names counting up from 1.
-# E.g. aux_abs1 To this end, we store each type of aux variable in the
-# model in a vector accessible as `m[:aux_base_name]`. To create a new one,
-# we count the length of the associated vector
-# If aux_abs1 exists in the model, this will return aux_abs2
+# E.g. aux_abs1. To this end, we store each type of aux variable in the
+# model in a vector accessible as e.g. `m[:aux_abs]`. To create a new one,
+# we count the length of the associated vector and add 1.
+# I.e. if aux_abs1 exists in the model, this will return aux_abs2
 function new_named_var(m::Model, base_symbol::Symbol)
     aux_vars = get!(m.obj_dict, base_symbol, VariableRef[])
     aux = @variable(m, base_name = string(base_symbol)*string(length(aux_vars)+1))
