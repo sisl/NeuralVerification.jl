@@ -56,7 +56,7 @@ function dual_value(solver::Duality,
     bounds = get_bounds(problem)
     layers = problem.network.layers
     # input layer
-    o = input_layer_value(layers[1], μ[1], bounds[1])
+    o = layer_value(layers[1], μ[1], 0, bounds[1])
     o += activation_value(layers[1], μ[1], λ[1], bounds[1])
     # other layers
     for i in 2:length(layers)
@@ -71,44 +71,27 @@ function activation_value(layer::Layer,
                           μᵢ::Vector{VariableRef},
                           λᵢ::Vector{VariableRef},
                           bound::Hyperrectangle)
+    B = approximate_affine_map(layer, bound)
+    l̂, û = low(B), high(B)
     o = zero(eltype(μᵢ))
-    b_hat = approximate_affine_map(layer, bound)
-    l_hat, u_hat = low(b_hat), high(b_hat)
-    l, u = layer.activation(l_hat), layer.activation(u_hat)
-    for j in 1:length(l)
-        if layer.activation == ReLU()
-            s_max = symbolic_max(μᵢ[j] * l_hat[j] - λᵢ[j] * l[j], μᵢ[j] * u_hat[j] - λᵢ[j] * u[j])
-            l_hat[j] * u_hat[j] >= 0 || @constraint(μᵢ[j].model, s_max >= 0.0)
-        else # For general nonlinear activation
-            s_max = symbolic_max(μᵢ[j] * l_hat[j], μᵢ[j] * u_hat[j]) + symbolic_max(- λᵢ[j] * l[j], - λᵢ[j] * u[j])
+
+    for (μᵢⱼ, λᵢⱼ, l̂ᵢⱼ, ûᵢⱼ) in zip(μᵢ, λᵢ, l̂, û)
+
+        gᵢⱼ(ẑᵢⱼ) = μᵢⱼ*ẑᵢⱼ - λᵢⱼ*L.activation(ẑᵢⱼ)
+
+        if l̂ᵢⱼ < 0 < ûᵢⱼ && layer.activation isa ReLU
+            o += symbolic_max(gᵢⱼ(l̂ᵢⱼ), gᵢⱼ(ûᵢⱼ), 0)
+        else
+            o += symbolic_max(gᵢⱼ(l̂ᵢⱼ), gᵢⱼ(ûᵢⱼ))
         end
-        o += s_max
     end
-    return o
+    o
 end
 
-function layer_value(layer::Layer,
-                     μᵢ::Vector{VariableRef},
-                     λᵢ::Vector{VariableRef},
-                     bound::Hyperrectangle)
-    W = layer.weights
-    c = bound.center
-    r = bound.radius
 
-    o = λᵢ'*c - μᵢ'*affine_map(layer, c)
-    # instead of for-loop:
-    o += sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* r) # TODO check that this is equivalent to before
-    return o
-end
+function layer_value(layer::Layer, μᵢ, λᵢ, bound::Hyperrectangle)
+    W, b = layer.weights, layer.bias
+    c, r = bound.center, bound.radius
 
-function input_layer_value(layer::Layer,
-                           μᵢ::Vector{VariableRef},
-                           input::Hyperrectangle)
-    W = layer.weights
-    c = input.center
-    r = input.radius
-
-    o = -μᵢ' * affine_map(layer, c)
-    o += sum(symbolic_abs.(μᵢ'*W) .* r)   # TODO check that this is equivalent to before
-    return o
+    return λᵢ'c - μᵢ'(W*c + b) + sum(symbolic_abs.(λᵢ .- W'*μᵢ) .* r)
 end
