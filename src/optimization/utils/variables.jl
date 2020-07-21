@@ -39,7 +39,6 @@ _model(as...) = something(_model.(as)..., missing)
 # We don't have a way to get the model in that case. This is a problem since
 # we do sometimes end up with (0, 0). It shouldn't happen in any other case.
 symbolic_max(m::Missing, a, b) = (iszero(a) && iszero(b)) ? (return zero(promote_type(typeof(a), typeof(b)))) : ArgumentError("Cannot get model from ($a, $b)")
-symbolic_abs(m::Missing, a, b) = (iszero(a) && iszero(b)) ? (return zero(promote_type(typeof(a), typeof(b)))) : ArgumentError("Cannot get model from ($a, $b)")
 
 function symbolic_max(m::Model, a, b)
     aux = @variable(m, base_name = "aux_max")
