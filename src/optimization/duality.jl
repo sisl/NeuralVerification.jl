@@ -27,25 +27,26 @@ Sound but not complete.
     optimizer = GLPK.Optimizer
 end
 
-# can pass keyword args to optimizer
-# Duality(optimizer::DataType = GLPKSolverMIP; kwargs...) =  Duality(optimizer(kwargs...))
-
 function solve(solver::Duality, problem::Problem)
     model = Model(solver)
     c, d = tosimplehrep(problem.output)
+
+    @assert length(d) == 1 "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
+
     λ = init_multipliers(model, problem.network, "λ")
     μ = init_multipliers(model, problem.network, "μ")
     o = dual_value(solver, problem, model, λ, μ)
     @constraint(model, last(λ) .== -c)
     optimize!(model)
-    return interpret_result(solver, termination_status(model), o - d[1])
-end
 
-# False if o > 0, True if o <= 0
-function interpret_result(solver::Duality, status, o)
-    status != OPTIMAL && return BasicResult(:unknown)
-    value(o) <= 0.0 && return BasicResult(:holds)
-    return BasicResult(:violated) # This violation may not be true violation
+    # Interpret result:
+    if termination_status(model) != OPTIMAL
+        return BasicResult(:unknown)
+    elseif value(o) - d[1] <= 0.0
+        return BasicResult(:holds)
+    else
+        return BasicResult(:violated)
+    end
 end
 
 function dual_value(solver::Duality,
@@ -56,8 +57,8 @@ function dual_value(solver::Duality,
     bounds = get_bounds(problem)
     layers = problem.network.layers
 
-    # prepend an array of 0 to λ so the input layer
-    # behaves correctly
+    # prepend an array of 0 to λ so the λᵢ
+    # term cancels in the input layer
     λ = [zeros(dim(bounds[1])), λ...]
 
     o = 0
@@ -74,6 +75,8 @@ function activation_value(layer::Layer,
                           μᵢ::Vector{VariableRef},
                           λᵢ::Vector{VariableRef},
                           bound::Hyperrectangle)
+
+    # Get the pre-activation bounds of the next layer
     B = approximate_affine_map(layer, bound)
     l̂ᵢ, ûᵢ = low(B), high(B)
 
