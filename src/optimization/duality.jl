@@ -86,13 +86,15 @@ function activation_value(σ::ReLU, μᵢ, λᵢ, pre_act_bound::Hyperrectangle)
     gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
     gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
 
+    max = symbolic_max
     return sum(@. ifelse(l̂ᵢ < 0 < ûᵢ,
                          max(gᵢl̂ᵢ, gᵢûᵢ, 0),
                          max(gᵢl̂ᵢ, gᵢûᵢ)))
 end
 
 function activation_value(σ::Id, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
-    sum(@. symbolic_max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
+    max = symbolic_max
+    sum(@. max(μᵢ*l̂ᵢ - λᵢ*l̂ᵢ, μᵢ*ûᵢ - λᵢ*ûᵢ))
 end
 
 function activation_value(σ::Any, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
