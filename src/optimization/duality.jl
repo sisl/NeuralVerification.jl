@@ -70,18 +70,17 @@ function dual_value(solver::Duality,
         B̂ᵢ₊₁ = approximate_affine_map(Lᵢ, Bᵢ)
 
         # layer value
-        o += λ[i]'*c - μ[i]'*(W*c + b) + sum(abs.(λ[i] .- W'*μ[i]) .* r)
+        o += λ[i]'*c - μ[i]'*(W*c + b) + sum(symbolic_abs.(λ[i] .- W'*μ[i]) .* r)
 
         # activation value
-        o += activation_value(Lᵢ.activation, μ[i], λ[i+1], B̂ᵢ₊₁)
+        o += activation_value(Lᵢ.activation, μ[i], λ[i+1], low(B̂ᵢ₊₁), high(B̂ᵢ₊₁))
     end
 
     @objective(model, Min, o)
     return o
 end
 
-function activation_value(σ::ReLU, μᵢ, λᵢ, pre_act_bound::Hyperrectangle)
-    l̂ᵢ, ûᵢ = low(pre_act_bound), high(pre_act_bound)
+function activation_value(σ::ReLU, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
 
     gᵢl̂ᵢ = @. μᵢ*l̂ᵢ - λᵢ*σ(l̂ᵢ)
     gᵢûᵢ = @. μᵢ*ûᵢ - λᵢ*σ(ûᵢ)
@@ -99,5 +98,5 @@ end
 
 function activation_value(σ::Any, μᵢ, λᵢ, l̂ᵢ, ûᵢ)
     max = symbolic_max
-    sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ))))
+    sum(@. max(μᵢ*l̂ᵢ, μᵢ*ûᵢ) + max(-λᵢ*σ(l̂ᵢ), -λᵢ*σ(ûᵢ)))
 end
