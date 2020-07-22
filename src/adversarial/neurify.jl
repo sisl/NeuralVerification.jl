@@ -91,7 +91,7 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function check_inclusion(solver, reach::SymbolicInterval{HPolytope{N}}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::AbstractPolytope, nnet::Network) where N
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
     # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
@@ -249,11 +249,26 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
             up_low = lower_bound(input.sym.Up[i, :], input.sym.interval)
             low_up = upper_bound(input.sym.Low[i, :], input.sym.interval)
             low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
-            up_slop = up_up / (up_up - up_low)
-            low_slop = low_up / (low_up - low_low)
-            output_Low[i, :] =  low_slop * output_Low[i, :]
-            output_Up[i, end] -= up_low
-            output_Up[i, :] = up_slop * output_Up[i, :]
+            if abs(up_up - up_low) < 1e-6
+                up_slop = 0
+                output_Up[i, :] = zeros(n_input)
+                output_Up[i, end] -= up_low
+            else
+                up_slop = up_up / (up_up - up_low)
+                 # the order of the following two lines are important
+                output_Up[i, end] -= up_low
+                output_Up[i, :] = up_slop * output_Up[i, :]
+            end
+            
+            if abs(low_up - low_low) < 1e-6
+                low_slop = 0
+                output_Low[i, :] = zeros(n_input)
+                output_Low[i, end] -= low_low
+            else
+                low_slop = low_up / (low_up - low_low)
+                output_Low[i, :] =  low_slop * output_Low[i, :]
+            end
+            
             mask_lower[i], mask_upper[i] = low_slop, up_slop
             interval_width[i] = up_up - low_low
         end
