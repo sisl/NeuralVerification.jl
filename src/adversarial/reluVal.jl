@@ -75,7 +75,7 @@ function pick_out!(reach_list, tree_search)
     return reach
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{Hyperrectangle{N}}) where N
+function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle{N}}) where N
     n_output = size(reach.Low, 1)
     upper = zeros(n_output)
     lower = zeros(n_output)
@@ -86,7 +86,7 @@ function symbol_to_concrete(reach::SymbolicInterval{Hyperrectangle{N}}) where N
     return Hyperrectangle(low = lower, high = upper)
 end
 
-function check_inclusion(reach::SymbolicInterval{Hyperrectangle{N}}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle{N}}, output::AbstractPolytope, nnet::Network) where N
     reachable = symbol_to_concrete(reach)
     # println("reluval reachable")
     # println(reachable)

@@ -26,7 +26,7 @@ Sound but not complete.
 """
 
 @with_kw struct Neurify
-    max_iter::Int64     = 10
+    max_iter::Int64     = 15
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 
     # Becuase of over-approximation, a split may not bisect the input set. 
@@ -67,7 +67,7 @@ function solve(solver::Neurify, problem::Problem)
 
     n = size(reach_lc, 1)
     m = size(reach_lc[1].a, 1)
-    model = Model(Ipopt.Optimizer)
+    model = Model(with_optimizer(GLPK.Optimizer))
     @variable(model, x[1:m], base_name="x")
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
@@ -145,7 +145,7 @@ function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::A
     return BasicResult(:holds), nothing
 end
 
-function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::Vector{Float64})
+function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64})
     i, j, influence = get_nodewise_influence(solver, nnet, reach, max_violation_con)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
@@ -164,7 +164,7 @@ function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIn
     return intervals
 end
 
-function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::Vector{Float64})
+function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64})
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
     # We want to find the node with the largest influence
@@ -229,11 +229,13 @@ end
 
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
+    println("forward")
     n_node, n_input = size(input.sym.Up)
     output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
     mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
     interval_width = zeros(Float64, n_node)
     for i in 1:n_node
+        println(i)
         if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
             # Update to zero
             mask_lower[i], mask_upper[i] = 0, 0
