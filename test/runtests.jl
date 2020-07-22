@@ -7,3 +7,4 @@ end
 include("complements.jl")
 include("splitting.jl")
 include("mnist_1000.jl")
+include("write_nnet_test.jl")

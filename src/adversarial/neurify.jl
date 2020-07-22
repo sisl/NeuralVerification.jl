@@ -67,7 +67,7 @@ function solve(solver::Neurify, problem::Problem)
 
     n = size(reach_lc, 1)
     m = size(reach_lc[1].a, 1)
-    model = Model(with_optimizer(GLPK.Optimizer))
+    model = Model(Ipopt.Optimizer)
     @variable(model, x[1:m], base_name="x")
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
@@ -249,6 +249,7 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
             up_low = lower_bound(input.sym.Up[i, :], input.sym.interval)
             low_up = upper_bound(input.sym.Low[i, :], input.sym.interval)
             low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
+            
             if abs(up_up - up_low) < 1e-6
                 up_slop = 0
                 output_Up[i, :] = zeros(n_input)

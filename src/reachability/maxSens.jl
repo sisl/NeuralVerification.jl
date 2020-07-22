@@ -25,7 +25,7 @@ Sound but not complete.
 "Output Reachable Set Estimation and Verification for Multi-Layer Neural Networks,"
 *ArXiv Preprint ArXiv:1708.03322*, 2017.](https://arxiv.org/abs/1708.03322)
 """
-@with_kw struct MaxSens
+@with_kw struct MaxSens <: Solver
     resolution::Float64 = 1.0
     tight::Bool         = false
 end
@@ -40,52 +40,47 @@ end
 
 # This function is called by forward_network
 function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
-    (W, b, act) = (L.weights, L.bias, L.activation)
-    center = zeros(size(W, 1))
-    gamma  = zeros(size(W, 1))
-    for j in 1:size(W, 1)
-        node = Node(W[j,:], b[j], act)
-        center[j], gamma[j] = forward_node(solver, node, input)
-    end
-    return Hyperrectangle(center, gamma)
-end
+    output = approximate_affine_map(L,  input)
+    β    = L.activation.(output.center)
+    βmax = L.activation.(high(output))
+    βmin = L.activation.(low(output))
 
-function forward_node(solver::MaxSens, node::Node, input::Hyperrectangle)
-    output    = node.w' * input.center + node.b
-    deviation = sum(abs.(node.w) .* input.radius)
-    β    = node.act(output)  # TODO expert suggestion for variable name. beta? β? O? x?
-    βmax = node.act(output + deviation)
-    βmin = node.act(output - deviation)
     if solver.tight
-        return ((βmax + βmin)/2, (βmax - βmin)/2)
+        center = (βmax + βmin)/2
+        rad =  (βmax - βmin)/2
     else
-        return (β, max(abs(βmax - β), abs(βmin - β)))
+        center = β
+        rad = @. max(abs(βmax - β), abs(βmin - β))
     end
+    return Hyperrectangle(center, rad)
 end
 
-function partition(input::Hyperrectangle, delta::Float64)
-    n_dim = dim(input)
+
+function partition(input::Hyperrectangle, Δ)
+    # treat radius = 0 as a flag not to partition the input set at all.
+    Δ == 0 && return [input]
+
     lower, upper = low(input), high(input)
-    radius = fill(delta/2, n_dim)
 
-    hyperrectangle_list = [1; ceil.(Int, (upper - lower)/delta)]
-    n_hyperrectangle = prod(max.(hyperrectangle_list, 1))
+    # The number of sub-hyperrectangles that fit in each dimension, rounding up
+    n_hypers_per_dim = max.(ceil.(Int, (upper-lower) / Δ), 1)
 
-    hyperrectangles = Vector{Hyperrectangle}(undef, n_hyperrectangle)
-    for k in 1:n_hyperrectangle
-        n = k
-        center = Vector{Float64}(undef, n_dim)
-        for i in n_dim:-1:1
-            id = div(n-1, hyperrectangle_list[i])
-            n = mod(n-1, hyperrectangle_list[i])+1
-            lower_cell = lower[i] + min(delta, input.radius[i]*2) * id
-            radius[i] = min(delta, upper[i] - lower_cell) * 0.5
-            center[i] = lower_cell + radius[i];
-        end
-        hyperrectangles[k] = Hyperrectangle(center[:], radius[:])
+    # preallocate
+    hypers = Vector{typeof(input)}(undef, prod(n_hypers_per_dim))
+    local_lower, local_upper = similar(lower), similar(upper)
+    CI = CartesianIndices(Tuple(n_hypers_per_dim))
+
+    # iterate from the lower corner to the upper corner
+    for i in 1:length(CI)
+        I = collect(Tuple(CI[i])) .- 1
+        @. local_lower = min(lower + Δ*I,     upper)
+        @. local_upper = min(local_lower + Δ, upper)
+
+        hypers[i] = Hyperrectangle(low = local_lower, high = local_upper)
     end
-    return hyperrectangles
+    return hypers
 end
+
 
 function partition(input::HPolytope, delta::Float64)
     @info "MaxSens overapproximates HPolytope input sets as Hyperrectangles."

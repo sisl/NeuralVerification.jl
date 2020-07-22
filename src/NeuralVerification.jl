@@ -15,11 +15,11 @@ import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 using Requires
 
-# abstract type Solver end # no longer needed
+abstract type Solver end
 
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
-JuMP.Model(solver) = Model(with_optimizer(solver.optimizer))
+JuMP.Model(solver::Solver) = Model(solver.optimizer)
 JuMP.value(vars::Vector{VariableRef}) = value.(vars)
 
 include("utils/activation.jl")
@@ -50,6 +50,7 @@ export
     AdversarialResult,
     ReachabilityResult,
     read_nnet,
+    write_nnet,
     solve,
     forward_network,
     check_inclusion
@@ -89,5 +90,9 @@ include("adversarial/fastLin.jl")
 include("adversarial/fastLip.jl")
 include("adversarial/dlv.jl")
 export ReluVal, Neurify, FastLin, FastLip, DLV
+
+const TOL = Ref(sqrt(eps()))
+set_tolerance(x::Real) = (TOL[] = x)
+export set_tolerance
 
 end

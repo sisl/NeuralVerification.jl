@@ -26,7 +26,7 @@ V. Tjeng, K. Xiao, and R. Tedrake,
 
 [https://github.com/vtjeng/MIPVerify.jl](https://github.com/vtjeng/MIPVerify.jl)
 """
-@with_kw struct MIPVerify
+@with_kw struct MIPVerify <: Solver
     optimizer = GLPK.Optimizer
 end
 
@@ -34,6 +34,7 @@ function solve(solver::MIPVerify, problem::Problem)
     model = Model(solver)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
+    add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     bounds = get_bounds(problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
