@@ -25,7 +25,7 @@ Sound but not complete.
 "Output Reachable Set Estimation and Verification for Multi-Layer Neural Networks,"
 *ArXiv Preprint ArXiv:1708.03322*, 2017.](https://arxiv.org/abs/1708.03322)
 """
-@with_kw struct MaxSens
+@with_kw struct MaxSens <: Solver
     resolution::Float64 = 1.0
     tight::Bool         = false
 end

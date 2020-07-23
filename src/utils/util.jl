@@ -331,53 +331,41 @@ end
 
 """
     get_bounds(problem::Problem)
-    get_bounds(nnet::Network, input::Hyperrectangle)
+    get_bounds(nnet::Network, input::Hyperrectangle, [true])
 
-This function calls maxSens to compute node-wise bounds given a input set.
+Computes node-wise bounds given a input set. The optional last 
+argument determines whether the bounds are pre- or post-activation.
 
 Return:
-- `Vector{Hyperrectangle}`: bounds for all nodes **after** activation. `bounds[1]` is the input set.
+- `Vector{Hyperrectangle}`: bounds for all nodes. `bounds[1]` is the input set.
 """
 function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    if act
-        solver = MaxSens(0.0, true)
-        bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
-        bounds[1] = input
-        for (i, layer) in enumerate(nnet.layers)
-            bounds[i+1] = forward_layer(solver, layer, bounds[i])
+    bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
+    bounds[1] = input
+    b = input
+    for (i, layer) in enumerate(nnet.layers)
+        if act
+            b = approximate_affine_map(layer, bounds[i])
+            bounds[i+1] = approximate_act_map(layer, b)
+        else
+            bounds[i+1] = approximate_affine_map(layer, b)
+            b = approximate_act_map(layer, bounds[i+1])
         end
-        return bounds
-    else
-       error("before activation bounds not supported yet.")
     end
+    return bounds
 end
-get_bounds(problem::Problem) = get_bounds(problem.network, problem.input)
+get_bounds(problem::Problem, args...) = get_bounds(problem.network, problem.input, args...)
 
 """
-    affine_map(layer, input::AbstractPolytope)
+    affine_map(layer, x)
 
-Affine transformation of a set using the weights and bias of a layer.
-
-Inputs:
-- `layer`: Layer
-- `input`: input set (Hyperrectangle, HPolytope)
-Return:
-- `output`: set after transformation.
-
-
-    affine_map(layer, input)
-
-Inputs:
-- `layer`: Layer
-- `input`: Vector
-Return:
-- `output`: Vector after mapping
+Compute W*x ⊕ b for a vector or LazySet `x`
 """
-affine_map(layer::Layer, input) = layer.weights*input + layer.bias
-function affine_map(layer::Layer, input::AbstractPolytope)
-    W, b = layer.weights, layer.bias
-    return translate(b, linear_map(W, input))
+affine_map(layer::Layer, x) = layer.weights*x + layer.bias
+function affine_map(layer::Layer, x::LazySet)
+    LazySets.affine_map(layer.weights, x, layer.bias)
 end
+
 
 """
    approximate_affine_map(layer, input::Hyperrectangle)
@@ -390,14 +378,23 @@ function approximate_affine_map(layer::Layer, input::Hyperrectangle)
     return Hyperrectangle(c, r)
 end
 
-function translate(v::Vector, H::HPolytope)
-    # translate each halfpsace according to:
-    # a⋅(x-v) ≤ b  ⟶  a⋅x ≤ b+a⋅v
-    C, d = tosimplehrep(H)
-    return HPolytope(C, d+C*v)
+"""
+   approximate_act_map(layer, input::Hyperrectangle)
+
+Returns a Hyperrectangle overapproximation of the activation map of the input.
+`act`must be monotonic.
+"""
+function approximate_act_map(act::ActivationFunction, input::Hyperrectangle)
+    β    = act.(input.center)
+    βmax = act.(high(input))
+    βmin = act.(low(input))
+    c    = (βmax + βmin)/2
+    r    = (βmax - βmin)/2
+    return Hyperrectangle(c, r)
 end
-# translate(v::Vector, H::Hyperrectangle)   = Hyperrectangle(H.center .+ v, H.radius)
-translate(v::Vector, V::AbstractPolytope) = tohrep(VPolytope([x+v for x in vertices_list(V)]))
+
+approximate_act_map(layer::Layer, input::Hyperrectangle) = approximate_act_map(layer.activation, input)
+
 
 """
     split_interval(dom, i)
