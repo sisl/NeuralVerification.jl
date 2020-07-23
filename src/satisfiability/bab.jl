@@ -26,7 +26,7 @@ Sound and complete.
 "A Unified View of Piecewise Linear Neural Network Verification,"
 *ArXiv Preprint ArXiv:1711.00455*, 2017.](https://arxiv.org/abs/1711.00455)
 """
-@with_kw struct BaB
+@with_kw struct BaB <: Solver
     optimizer = GLPK.Optimizer
     ϵ::Float64 = 0.1
 end
@@ -39,13 +39,14 @@ function solve(solver::BaB, problem::Problem)
     return interpret_result(reach, bound, problem.output, x_l, x_u)
 end
 
+# This function is used by BaB and Sherlock
 function interpret_result(reach, bound, output, x_l, x_u)
     if high(reach) < high(output) && low(reach) > low(output)
         return ReachabilityResult(:holds, [reach])
     end
     high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
     low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
-    return ReachabilityResult(:unknown, reach)
+    return ReachabilityResult(:unknown, [reach])
 end
 
 function output_bound(solver::BaB, problem::Problem, type::Symbol)
@@ -55,7 +56,7 @@ function output_bound(solver::BaB, problem::Problem, type::Symbol)
     doms = Tuple{Float64, Hyperrectangle}[(global_approx, problem.input)]
     index = ifelse(type == :max, 1, -1)
     while index * (global_approx - global_concrete) > solver.ϵ
-        dom = pick_out(doms) # pick_out implements the search strategy
+        dom, doms = pick_out(doms) # pick_out implements the search strategy
         subdoms = split_dom(dom[2]) # split implements the branching rule
         for i in 1:length(subdoms)
             dom_concrete, x = concrete_bound(nnet, subdoms[i], type) # Sample
@@ -74,7 +75,7 @@ end
 
 # Always pick the first dom
 function pick_out(doms)
-    return doms[1]
+    return (doms[1], doms[2:end])
 end
 
 function add_domain!(doms::Vector{Tuple{Float64, Hyperrectangle}}, new::Tuple{Float64, Hyperrectangle}, type::Symbol)
@@ -109,7 +110,7 @@ end
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
     bounds = get_bounds(nnet, dom)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, dom, first(neurons))
     encode_network!(model, nnet, neurons, bounds, TriangularRelaxedLP())

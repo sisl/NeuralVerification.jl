@@ -25,7 +25,7 @@ in *International Symposium on Automated Technology for Verification and Analysi
 
 [https://github.com/progirep/planet](https://github.com/progirep/planet)
 """
-@with_kw struct Planet
+@with_kw struct Planet <: Solver
     optimizer = GLPK.Optimizer
     eager::Bool = false
 end
@@ -79,7 +79,7 @@ end
 
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
@@ -126,27 +126,31 @@ function max_slack(x::Vector{Vector{Float64}}, act)
     return (m, index)
 end
 
+# Only use tighten_bounds for feasibility check
 function tighten_bounds(problem::Problem, optimizer)
     bounds = get_bounds(problem)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
     encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
 
-    min_sum!(model, neurons)
-    optimize!(model)
-    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-    lower = value.(neurons)
-
-    max_sum!(model, neurons)
-    optimize!(model)
-    termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-    upper = value.(neurons)
-
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     for i in 1:length(neurons)
-        new_bounds[i] = Hyperrectangle(low = lower[i], high = upper[i])
+        lower = low(bounds[i])
+        upper = high(bounds[i])
+        for j in 1:length(neurons[i])
+            neuron = neurons[i][j]
+            @objective(model, Min, neuron)
+            optimize!(model)
+            termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
+            lower[j] = value(neuron)
+
+            @objective(model, Max, neuron)
+            optimize!(model)
+            upper[j] = value(neuron)
+        end
+        new_bounds[i] = Hyperrectangle(low = lower, high = upper)
     end
     return (OPTIMAL, new_bounds)
 end

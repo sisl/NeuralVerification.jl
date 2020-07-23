@@ -22,7 +22,7 @@ Sound and complete.
 "Reluplex: An Efficient SMT Solver for Verifying Deep Neural Networks," in
 *International Conference on Computer Aided Verification*, 2017.](https://arxiv.org/abs/1702.01135)
 """
-@with_kw struct Reluplex
+@with_kw struct Reluplex <: Solver
     optimizer = GLPK.Optimizer
 end
 
@@ -49,8 +49,9 @@ function find_relu_to_fix(ẑ, z)
     return (0, 0)
 end
 
-type_one_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ > 0.0)  && (zᵢⱼ != ẑᵢⱼ)  # TODO consider renaming to `inactive_broken` and `active_broken`
-type_two_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ == 0.0) && (ẑᵢⱼ > 0.0)
+ # TODO consider renaming to `inactive_broken` and `active_broken`
+type_one_broken(ẑᵢⱼ, zᵢⱼ) = (zᵢⱼ > 0.0 + TOL[])  && (!(-TOL[] < ẑᵢⱼ - zᵢⱼ < TOL[])) # (zᵢⱼ > 0) && (ẑᵢⱼ != zᵢⱼ)
+type_two_broken(ẑᵢⱼ, zᵢⱼ) = (-TOL[] < zᵢⱼ < TOL[]) && (ẑᵢⱼ > 0.0 + TOL[]) # (zᵢⱼ == 0) && (ẑᵢⱼ > 0)
 
 # Corresponds to a ReLU that shouldn't be active but is
 function type_one_repair!(model, ẑᵢⱼ, zᵢⱼ)
@@ -91,9 +92,12 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], ẑ[i])
+        add_set_constraint!(model, bounds[i], z[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
+    # Add the bounds on your output layer
+    add_set_constraint!(model, last(bounds), last(z))
+    # Add the complementary set defind as part of the problem
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
     return ẑ, z

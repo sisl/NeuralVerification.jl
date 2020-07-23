@@ -32,6 +32,7 @@ LazySets.tohrep(PC::PolytopeComplement) = PolytopeComplement(convert(HPolytope, 
 Base.in(pt, PC::PolytopeComplement) = pt ∉ PC.P
 complement(PC::PolytopeComplement)  = PC.P
 complement(P::LazySet) = PolytopeComplement(P)
+Base.:(==)(pc1::PolytopeComplement, pc2::PolytopeComplement) = pc1.P == pc2.P
 # etc.
 
 
