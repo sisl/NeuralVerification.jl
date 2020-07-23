@@ -1,45 +1,40 @@
 using LazySets, Test, LinearAlgebra, GLPKMathProgInterface
 using NeuralVerification
-using JLD2, FileIO
 
-# The following two test is based on a 4 layer network, node number of each layer:
-# 1, 6, 4, 3, 1.
-
+# The following two test is based on a 4 layer network.
 # We can consider this network is in the form of y=f(x), where x and y are 1d variables.
 # The graph of this function looks like \/\/\/\/
-
 # To get a precise rechable set, the verification algorithm needs to fully split
 # the input set to reduce all over-approximation.
 
-# Please make sure 'max_iter' of the solver is large enough to get a fully split.
+w_nnet = read_nnet("$(@__DIR__)/../examples/networks/spiky_nnet.nnet", last_layer_activation = NeuralVerification.Id())
 
-function test_holds(solver, eps)
-    @load "fully_split.jld2" x_min x_max y_min y_max w_nnet
-    inputSet = Hyperrectangle(low = [x_min], high = [x_max])
-    outputSet  = Hyperrectangle(low = [y_min - eps], high = [y_max + eps])
-    problem = Problem(w_nnet, inputSet, outputSet);
-    result = solve(solver, problem)
-    @test result.status == :holds
-end
+ϵ = 1e-1
 
-function test_violated(solver, eps)
-    @load "fully_split.jld2" x_min x_max y_min y_max w_nnet
-    inputSet = Hyperrectangle(low = [x_min], high = [x_max])
-    outputSet  = Hyperrectangle(low = [y_min + eps], high = [y_max - eps])
-    problem = Problem(w_nnet, inputSet, outputSet);
-    result = solve(solver, problem)
-    @test result.status == :violated
-end
+x_min = 1.0
+x_max = 100.0
+y_min = 42.51485148514851
+y_max = 100.0
 
+
+problem_holds = Problem(w_nnet,
+                           Hyperrectangle(low = [x_min], high = [x_max]),
+                           Hyperrectangle(low = [y_min - ϵ], high = [y_max + ϵ]));
+
+problem_violated = Problem(w_nnet,
+                           Hyperrectangle(low = [x_min], high = [x_max]),
+                           Hyperrectangle(low = [y_min + ϵ], high = [y_max - ϵ]));
+
+# NOTE: 'max_iter' of the solver must be large enough to fully split.
 @testset "Fully split, ReluVal" begin
-    eps = 1e-1
-    test_holds(ReluVal(max_iter=1000), eps)
-    test_violated(ReluVal(max_iter=1000), eps)
+    solver = ReluVal(max_iter = 1000)
+    @test solve(solver, problem_holds).status == :holds
+    @test solve(solver, problem_violated).status == :violated
 end
 
 @testset "Fully split, Neurify" begin
-    eps = 1e-1
-    test_holds(Neurify(max_iter=100), eps)
-    test_violated(Neurify(max_iter=100), eps)
+    solver = Neurify(max_iter = 1000)
+    @test solve(solver, problem_holds).status == :holds
+    @test solve(solver, problem_violated).status == :violated
 end
 
