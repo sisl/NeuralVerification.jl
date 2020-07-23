@@ -16,15 +16,14 @@ function test_solver(solver, test_selected)
         test_idx = 1:1000
     end
 
-    @load "MNIST_1000_data.jld2" train_x train_y
+    # @load "MNIST_1000_data.jld2" train_x train_y
+    # net_file = "$(@__DIR__)/../examples/networks/mnist_1000.nnet"
+    # mnist_net = read_nnet(net_file, last_layer_activation = Id())
+    # @save "MNIST_1000.jld2" train_x train_y mnist_net
 
-    net_file = "$(@__DIR__)/../examples/networks/mnist_1000.nnet"
-    mnist_net = read_nnet(net_file, last_layer_activation = Id())
+    @load "MNIST_1000.jld2" train_x train_y mnist_net
     
-    @save "MNIST_1000.jld2" train_x train_y mnist_net
-
     for i = test_idx
-        println(i)
         input_center = reshape(train_x[:,:,i], 28*28)
         label = train_y[i]
         A = zeros(Float64, 10, 10)
