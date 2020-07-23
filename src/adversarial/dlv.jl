@@ -31,7 +31,7 @@ in *International Conference on Computer Aided Verification*, 2017.](https://arx
 
 [https://github.com/VeriDeep/DLV](https://github.com/VeriDeep/DLV)
 """
-@with_kw struct DLV
+@with_kw struct DLV <: Solver
     optimizer = GLPK.Optimizer
     ϵ::Float64 = 1.0
 end

@@ -16,11 +16,11 @@ import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 using Requires
 using JSON2
 
-# abstract type Solver end # no longer needed
+abstract type Solver end
 
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
-JuMP.Model(solver) = Model(with_optimizer(solver.optimizer))
+JuMP.Model(solver::Solver) = Model(solver.optimizer)
 JuMP.value(vars::Vector{VariableRef}) = value.(vars)
 
 include("utils/activation.jl")

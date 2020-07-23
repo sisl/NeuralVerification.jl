@@ -26,7 +26,7 @@ Sound and complete.
 "A Unified View of Piecewise Linear Neural Network Verification,"
 *ArXiv Preprint ArXiv:1711.00455*, 2017.](https://arxiv.org/abs/1711.00455)
 """
-@with_kw struct BaB
+@with_kw struct BaB <: Solver
     optimizer = GLPK.Optimizer
     ϵ::Float64 = 0.1
 end
@@ -110,7 +110,7 @@ end
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
     bounds = get_bounds(nnet, dom)
-    model = Model(with_optimizer(optimizer))
+    model = Model(optimizer)
     neurons = init_neurons(model, nnet)
     add_set_constraint!(model, dom, first(neurons))
     encode_network!(model, nnet, neurons, bounds, TriangularRelaxedLP())
