@@ -21,7 +21,7 @@ function test_query_file(file_name::String)
                 for solver in solvers
                     println("Solving on: ", typeof(solver))
 
-                    # Workaround to have ConvDual and FastLip take in halfspace output sets as expected 
+                    # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
                     if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
                         println("output is: ", typeof(cur_problem.output))
                         cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
