@@ -18,7 +18,7 @@
         problem_holds    = Problem(small_nnet, in_hpoly, convert(HPolytope, out_superset))
         problem_violated = Problem(small_nnet, in_hpoly, convert(HPolytope, out_overlapping))
 
-        for solver in [MaxSens(resolution = 0.6), ExactReach(), Ai2()]
+        for solver in [MaxSens(resolution = 0.6), ExactReach(), Ai2(), Ai2z()]
             holds    = solve(solver, problem_holds)
             violated = solve(solver, problem_violated)
 

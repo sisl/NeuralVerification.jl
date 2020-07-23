@@ -108,7 +108,7 @@ Like `BasicResult`, but also returns the output reachable set given the input co
 """
 struct ReachabilityResult <: Result
 	status::Symbol
-	reachable::Vector{<:AbstractPolytope}
+	reachable::typejoin(Array{<:LazySet}, Tuple{<:LazySet})
     ReachabilityResult(s, r) = new(validate_status(s), r)
 end
 
