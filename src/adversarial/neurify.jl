@@ -55,7 +55,7 @@ function solve(solver::Neurify, problem::Problem)
 
     n = size(reach_lc, 1)
     m = size(reach_lc[1].a, 1)
-    model = Model(with_optimizer(GLPK.Optimizer))
+    model = Model(GLPK.Optimizer)
     @variable(model, x[1:m], base_name="x")
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     
@@ -98,7 +98,7 @@ function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::A
     output_lc = output.constraints
     n = size(reach_lc, 1)
     m = size(reach_lc[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
+    model =Model(GLPK.Optimizer)
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     max_violation = -1e9
@@ -154,11 +154,23 @@ function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIn
     u_sym = reach_new.sym.Up[[j], 1:end-1]
     u_off = reach_new.sym.Up[[j], end]
     intervals = Vector(undef, 3)
-    intervals[1] = HPolytope([C; l_sym; u_sym], [d; -l_off; -u_off])
-    intervals[2] = HPolytope([C; l_sym; -u_sym], [d; -l_off; u_off])
-    intervals[3] = HPolytope([C; -l_sym; -u_sym], [d; l_off; u_off])
+    # remove zero constraints and construct new intervals
+    intervals[1] = construct_interval([C; l_sym; u_sym], [d; -l_off; -u_off])
+    intervals[2] = construct_interval([C; l_sym; -u_sym], [d; -l_off; u_off])
+    intervals[3] = construct_interval([C; -l_sym; -u_sym], [d; l_off; u_off])
     # intervals[4] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off]) lower bound can not be greater than upper bound
     return intervals
+end
+
+function construct_interval(A::AbstractMatrix{N}, b::AbstractVector{N}) where {N<:Real}
+    m = size(A, 1)
+    zero_idx = []
+    for i in 1:m
+        iszero(A[i,:]) && push!(zero_idx, i)
+    end
+    A = A[setdiff(1:end, zero_idx), :]
+    b = b[setdiff(1:end, zero_idx)]
+    return HPolytope(A, b)
 end
 
 function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64}, splits::Vector)
@@ -178,7 +190,7 @@ function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicI
             for j in 1:size(layer.bias,1)
                 if (0 < reach.LΛ[i][j] < 1) || (0 < reach.UΛ[i][j] < 1)
                     max_gradient = max(abs(LG[j]), abs(UG[j]))
-                    influence = max_gradient * reach.r[i][j] * k
+                    influence = max_gradient * reach.r[i][j] * k # This k is different from original paper, but can improve the split efficiency.
                     if in((i,j, influence), splits) # To prevent infinity loop
                         continue
                     end
@@ -281,7 +293,7 @@ end
 function upper_bound(map::Vector{Float64}, input::HPolytope)
     n = size(input.constraints, 1)
     m = size(input.constraints[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
+    model =Model(GLPK.Optimizer)
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
     @objective(model, Max, map' * [x; [1]])
@@ -292,7 +304,7 @@ end
 function lower_bound(map::Vector{Float64}, input::HPolytope)
     n = size(input.constraints, 1)
     m = size(input.constraints[1].a, 1)
-    model =Model(with_optimizer(GLPK.Optimizer))
+    model =Model(GLPK.Optimizer)
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
     @objective(model, Min, map' * [x; [1]])
