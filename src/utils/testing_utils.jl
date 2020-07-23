@@ -1,6 +1,5 @@
 using Random
 using LinearAlgebra
-using Gurobi
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -49,6 +48,7 @@ end
                                 [max_weight = 1.0],
                                 [min_bias = -1.0],
                                 [max_bias = 1.0],
+                                network_files=[],
                                 [rng=MersenneTwister()])
 
 
@@ -62,9 +62,10 @@ NeuralVerification.make_random_query_file([3, 3], [[1, 3, 1], [2, 5, 2]], "test_
 
 Which will make 3 networks with shape [1, 3, 1] and 3 networks with shape [2, 5, 2].
 
-If network_files is non-empty, it should have sum(num_networks_for_size) network files
+If network_files is non-empty, it should have len(num_networks_for_size) network files
 with the corresponding shapes. Instead of generating random networks, we will use
-these networks as we make our queries.
+these networks as we make our queries. It will use the same network multiple times if
+an entry of num_networks_for_size is larger than 1.
 """
 function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 layer_sizes::Array{Array{Int, 1}},
@@ -76,13 +77,12 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 max_weight = 1.0,
                                 min_bias = -1.0,
                                 max_bias = 1.0,
-                                rng=MersenneTwister(),
-                                network_files=[])
+                                network_files=[],
+                                rng=MersenneTwister()
+                                )
 
-    for (num_networks, layer_sizes) in zip(num_networks_for_size, layer_sizes)
-        index = 0
+    for (shape_index, (num_networks, layer_sizes)) in enumerate(zip(num_networks_for_size, layer_sizes))
         for i = 1:num_networks
-            index = index + 1
             # Create a random network
             if (length(network_files)) == 0
                 network = make_random_network(layer_sizes, min_weight, max_weight, min_bias, max_bias, rng)
@@ -140,7 +140,7 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
             hr_hr_problem = Problem(network, hyperrectangle_input, hyperrectangle_output)
 
             problems = [hp_hp_problem_one, hp_hp_problem_two, hr_pc_problem_one, hr_pc_problem_two, hr_uniform_hs_problem, hr_hs_problem, hr_hr_problem]
-            identifier_string = replace(string(layer_sizes, "_", index), " "=>"") # remove all spaces
+            identifier_string = replace(string(layer_sizes, "_", i), " "=>"") # remove all spaces
 
             base_filenames = string.(["hp_hp_one_", "hp_hp_two_", "hr_pc_one_", "hr_pc_two_", "hr_uniform_hs", "hr_hs_", "hr_hr_"], identifier_string)
             network_filenames = joinpath.(network_dir, fill("rand_"*identifier_string*".nnet", length(problems))) # all use the same network
@@ -161,26 +161,40 @@ A function that generates the set of random query files to be used in testing.
 We generate three different test sets - small, medium, and large.
 """
 function make_random_test_sets()
-    NeuralVerification.make_random_query_file([3, 3],
-                                              [[1, 3, 1], [2, 5, 2]],
-                                              "test/test_sets/random/small/networks",
-                                              "test/test_sets/random/small/input_sets",
-                                              "test/test_sets/random/small/output_sets",
-                                              "test/test_sets/random/small/query_file_small.txt")
+    # NeuralVerification.make_random_query_file([3, 3],
+    #                                           [[1, 3, 1], [2, 5, 2]],
+    #                                           "test/test_sets/random/small/networks",
+    #                                           "test/test_sets/random/small/input_sets",
+    #                                           "test/test_sets/random/small/output_sets",
+    #                                           "test/test_sets/random/small/query_file_small.txt")
+    #
+    # NeuralVerification.make_random_query_file([5, 5, 5],
+    #                                           [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
+    #                                           "test/test_sets/random/medium/networks",
+    #                                           "test/test_sets/random/medium/input_sets",
+    #                                           "test/test_sets/random/medium/output_sets",
+    #                                           "test/test_sets/random/medium/query_file_medium.txt")
+    #
+    # NeuralVerification.make_random_query_file([5, 5, 5, 5, 5],
+    #                                           [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [10, 3, 2], [3, 4, 3], [6, 8, 1]],
+    #                                           "test/test_sets/random/large/networks",
+    #                                           "test/test_sets/random/large/input_sets",
+    #                                           "test/test_sets/random/large/output_sets",
+    #                                           "test/test_sets/random/large/query_file_large.txt")
 
-    NeuralVerification.make_random_query_file([5, 5, 5],
-                                              [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
-                                              "test/test_sets/random/medium/networks",
-                                              "test/test_sets/random/medium/input_sets",
-                                              "test/test_sets/random/medium/output_sets",
-                                              "test/test_sets/random/medium/query_file_medium.txt")
 
-    NeuralVerification.make_random_query_file([5, 5, 5, 5, 5],
-                                              [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [10, 3, 2], [3, 4, 3], [6, 8, 1]],
-                                              "test/test_sets/random/large/networks",
-                                              "test/test_sets/random/large/input_sets",
-                                              "test/test_sets/random/large/output_sets",
-                                              "test/test_sets/random/large/query_file_large.txt")
+   # Add example controller network tests
+   network_base = "$(@__DIR__)/../../examples/networks/"
+   network_files = network_base.*["car_smaller_controller.nnet", "car_smallest_controller.nnet", "controller_single_pendulum.nnet", "controller_double_pendulum_more_robust.nnet", "tora_smaller_controller.nnet", "tora_smallest_controller.nnet"]
+
+   NeuralVerification.make_random_query_file([1, 1, 1, 1, 1, 1],
+                                             [[4, 200, 2, 2], [4, 100, 2, 2], [2, 25, 25, 1], [4, 25, 25, 2], [4, 50, 50, 50, 1, 1], [4, 25, 25, 25, 1, 1]],
+                                             "test/test_sets/control_networks/networks",
+                                             "test/test_sets/control_networks/input_sets",
+                                             "test/test_sets/control_networks/output_sets",
+                                             "test/test_sets/control_networks/query_file_control_small.txt";
+                                             network_files = network_files)
+   
 
 end
 

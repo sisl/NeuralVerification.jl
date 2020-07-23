@@ -23,7 +23,6 @@ function test_query_file(file_name::String)
 
                     # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
                     if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
-                        println("output is: ", typeof(cur_problem.output))
                         cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                     end
 
@@ -32,14 +31,11 @@ function test_query_file(file_name::String)
                         push!(results, NeuralVerification.solve(solver, cur_problem))
                     catch e
                         if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob" && solver isa NeuralVerification.Sherlock
-                            solver = NeuralVerification.Sherlock(ϵ = solver.ϵ, optimizer = Gurobi.Optimizer)
-                            push!(results,  NeuralVerification.solve(solver, cur_problem))
+                            push!(results, CounterExampleResult(:unknown)) # Known issue with GLPK so ignore this error and just push an unknown result
                         else
                             throw(e)
                         end
                     end
-
-                    println("Result: ", results[end])
                 end
 
                 # Just sees if each pair agrees
@@ -78,8 +74,8 @@ file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.t
 file_name_medium = "$(@__DIR__)/../test/test_sets/random/medium/query_file_medium.txt"
 file_name_large = "$(@__DIR__)/../test/test_sets/random/large/query_file_large.txt"
 
-file_name_previous_problems = "$(@__DIR__)/../test/test_sets/previous_issues/query_file_previous_issues.txt"
-#file_name_real_networks = ""
+file_name_previous_issues = "$(@__DIR__)/../test/test_sets/previous_issues/query_file_previous_issues.txt"
+file_name_control_networks = "$(@__DIR__)/../test/test_sets/control_networks/query_file_control_small.txt"
 
 println("Starting tests on small random")
 #test_query_file(file_name_small)
@@ -88,6 +84,6 @@ println("Starting tests on medium random")
 println("Starting tests on large random")
 #test_query_file(file_name_large)
 println("Starting tests on previous issues")
-test_query_file(file_name_previous_problems)
-println("Starting tests on real networks")
-#test_query_file(file_name_real_networks)
+test_query_file(file_name_previous_issues)
+println("Starting tests on control networks")
+#test_query_file(file_name_control_networks)
