@@ -84,7 +84,6 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     μ = Vector{Vector{Vector{Float64}}}()
     input_ReLU = Vector{Vector{Float64}}()
 
-
     v1 = layers[1].weights'
     push!(γ, layers[1].bias)
     # Bounds for the first layer
@@ -105,7 +104,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         v1 = v1 * WD' # TODO CHECK
         map!(g -> WD*g,   γ, γ)
 
-        # Updating ν_j
+        # Updating ν_j for all previous layers
         for M in μ
             map!(m -> WD*m,   M, M)
         end
@@ -135,8 +134,7 @@ function all_neg_pos_sums(slopes, l, μ, n_output)
         for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
             if 0 < slopes[i][j] < 1              # if in the triangle region of relaxed ReLU
                 #posind = M .> 0
-                M = μ[i][j]
-                neg .+= ℓ[j] * min.(-M, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                neg .+= ℓ[j] * min.(M, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
                 pos .+= ℓ[j] * max.(M, 0) #M .* posind
             end
         end
