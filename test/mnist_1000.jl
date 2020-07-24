@@ -24,6 +24,7 @@ function test_solver(solver, test_selected)
     @load "MNIST_1000.jld2" train_x train_y mnist_net
     
     for i = test_idx
+        println(i)
         input_center = reshape(train_x[:,:,i], 28*28)
         label = train_y[i]
         A = zeros(Float64, 10, 10)
