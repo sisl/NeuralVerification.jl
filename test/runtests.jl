@@ -1,4 +1,4 @@
-using NeuralVerification, LazySets, GLPKMathProgInterface
+using NeuralVerification, LazySets, GLPKMathProgInterface, GLPK
 using Test
 
 import NeuralVerification: ReLU, Id
