@@ -33,6 +33,11 @@ function test_query_file(file_name::String)
                         if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob" && solver isa NeuralVerification.Sherlock
                             push!(results, CounterExampleResult(:unknown)) # Known issue with GLPK so ignore this error and just push an unknown result
                         else
+                            # Print the error and make sure we still get its stack
+                            for (exc, bt) in Base.catch_stack()
+                               showerror(stdout, exc, bt)
+                               println()
+                            end
                             throw(e)
                         end
                     end
@@ -85,5 +90,5 @@ println("Starting tests on large random")
 #test_query_file(file_name_large)
 println("Starting tests on previous issues")
 test_query_file(file_name_previous_issues)
-println("Starting tests on control networks")
+#println("Starting tests on control networks")
 #test_query_file(file_name_control_networks)
