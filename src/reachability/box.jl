@@ -1,16 +1,21 @@
 """
-    Box <: AbstractSolver
+    Box <: Solver
+
 Box performs over-approximated reachability analysis to compute the over-approximated output reachable set for a network.
+
 # Problem requirement
 1. Network: any depth, ReLU activation (more activations to be supported in the future)
 2. Input: Hyperrectangle
 3. Output: Hyperrectangle
+
 # Return
 `ReachabilityResult`
+
 # Method
 Reachability analysis using using boxes.
+
 # Property
-Sound but not complete?.
+Sound but not complete.
 """
 struct Box <: Solver end
 
