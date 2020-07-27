@@ -29,7 +29,7 @@ function check_inclusion(reach::P, output) where P<:LazySet
 end
 
 # return a vector so that append! is consistent with the relu forward_partition
-forward_partition(act::Id, input::HPolytope) = [input]
+forward_partition(act::Id, input::AbstractPolytope) = [input]
 
 forward_partition(act::Id, input::Zonotope) = input
 
@@ -61,4 +61,9 @@ end
 # forward_partition for Zonotopes
 function forward_partition(act::ReLU, input::Zonotope)
     return overapproximate(Rectification(input), Zonotope)
+end
+
+# for Hyperrectangles
+function forward_partition(act::ReLU, input::Hyperrectangle)
+    return rectify(input)
 end
