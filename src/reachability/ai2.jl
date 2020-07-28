@@ -22,26 +22,32 @@ T. Gehr, M. Mirman, D. Drashsler-Cohen, P. Tsankov, S. Chaudhuri, and M. Vechev,
 "Ai2: Safety and Robustness Certification of Neural Networks with Abstract Interpretation,"
 in *2018 IEEE Symposium on Security and Privacy (SP)*, 2018.
 """
-struct Ai2 <: Solver end
+struct Ai2{T<:Union{Hyperrectangle, Zonotope, HPolytope}} <: Solver end
+
+Ai2() = Ai2{HPolytope}()
+Ai2z() = Ai2{Zonotope}()
+Box() = Ai2{Hyperrectangle}()
 
 function solve(solver::Ai2, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
     return check_inclusion(reach, problem.output)
 end
 
-forward_layer(solver::Ai2, layer::Layer, inputs::Vector{<:AbstractPolytope}) = forward_layer.(solver, layer, inputs)
+forward_layer(solver::Ai2, L::Layer, inputs::Vector) = forward_layer.(solver, L, inputs)
 
-function forward_layer(solver::Ai2, layer::Layer, input::AbstractPolytope)
-    outlinear = affine_map(layer, input)
-    relued_subsets = forward_partition(layer.activation, outlinear) # defined in ExactReach
-    return convex_hull(relued_subsets)
+function forward_layer(solver::Ai2{HPolytope}, L::Layer, input::AbstractPolytope)
+    Ẑ = affine_map(L, input)
+    relued_subsets = forward_partition(L.activation, Ẑ) # defined in reachability.jl
+    return convex_hull(UnionSetArray(relued_subsets))
 end
 
-# extend lazysets convex_hull to a vector of polytopes
-function LazySets.convex_hull(sets::Vector{<:AbstractPolytope}; backend = CDDLib.Library())
-    hull = first(sets)
-    for P in sets
-        hull = convex_hull(hull, P, backend = backend)
-    end
-    return hull
+# method for Zonotope and Hyperrectangle, if the input set isn't a Zonotpe
+function forward_layer(solver::Ai2, L::Layer, input::AbstractPolytope)
+    X = overapproximate(input, Hyperrectangle)
+    return forward_layer(solver, L, X)
+end
+
+function forward_layer(solver::Ai2{T}, L::Layer, input::AbstractZonotope) where T
+    Ẑ = affine_map(L, input)
+    return overapproximate(Rectification(Ẑ), T)
 end

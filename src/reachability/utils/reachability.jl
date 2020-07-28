@@ -57,13 +57,3 @@ function getP(h::Int64, n::Int64)
     end
     return Diagonal(vec)
 end
-
-# forward_partition for Zonotopes
-function forward_partition(act::ReLU, input::Zonotope)
-    return overapproximate(Rectification(input), Zonotope)
-end
-
-# for Hyperrectangles
-function forward_partition(act::ReLU, input::Hyperrectangle)
-    return rectify(input)
-end
