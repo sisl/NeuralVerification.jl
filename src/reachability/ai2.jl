@@ -8,11 +8,14 @@ tradeoff). The original implementation (from [1]) uses Zonotopes, so we consider
 the "benchmark" case. The `HPolytope` case is more precise, but slower, and the opposite
 is true of the `Hyperrectangle` case.
 
-Note that the following shortcuts exist to initializing the `Ai2` solver:
+Note that initializing `Ai2()` defaults to `Ai2{Zonotope}`.
+The following aliases also exist for convenience:
 
-Ai2() = Ai2{HPolytope}()
-Ai2z() = Ai2{Zonotope}()
-Box() = Ai2{Hyperrectangle}()
+```julia
+const Ai2h = Ai2{HPolytope}
+const Ai2z = Ai2{Zonotope}
+const Box = Ai2{Hyperrectangle}
+```
 
 # Problem requirement
 1. Network: any depth, ReLU activation (more activations to be supported in the future)
@@ -34,16 +37,18 @@ Sound but not complete.
 in *2018 IEEE Symposium on Security and Privacy (SP)*, 2018.
 
 ## Note
-[2] Efficient over-approximation of intersections and unions involving zonotopes relies on Theorem 3.1 of
-Singh, G., Gehr, T., Mirman, M., Püschel, M., & Vechev, M. (2018). Fast
+Efficient over-approximation of intersections and unions involving zonotopes relies on Theorem 3.1 of
+
+[2] Singh, G., Gehr, T., Mirman, M., Püschel, M., & Vechev, M. (2018). Fast
 and effective robustness certification. In Advances in Neural Information
 Processing Systems (pp. 10802-10813).
 """
 struct Ai2{T<:Union{Hyperrectangle, Zonotope, HPolytope}} <: Solver end
 
-Ai2() = Ai2{HPolytope}()
-Ai2z() = Ai2{Zonotope}()
-Box() = Ai2{Hyperrectangle}()
+Ai2() = Ai2{Zonotope}()
+const Ai2h = Ai2{HPolytope}
+const Ai2z = Ai2{Zonotope}
+const Box = Ai2{Hyperrectangle}
 
 function solve(solver::Ai2, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
@@ -52,7 +57,7 @@ end
 
 forward_layer(solver::Ai2, L::Layer, inputs::Vector) = forward_layer.(solver, L, inputs)
 
-function forward_layer(solver::Ai2{HPolytope}, L::Layer, input::AbstractPolytope)
+function forward_layer(solver::Ai2h, L::Layer, input::AbstractPolytope)
     Ẑ = affine_map(L, input)
     relued_subsets = forward_partition(L.activation, Ẑ) # defined in reachability.jl
     return convex_hull(relued_subsets)
