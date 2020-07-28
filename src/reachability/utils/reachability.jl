@@ -18,20 +18,15 @@ function check_inclusion(reach::Vector{<:LazySet}, output)
     for poly in reach
         issubset(poly, output) || return ReachabilityResult(:violated, reach)
     end
-    return ReachabilityResult(:holds, similar(reach, 0))
+    return ReachabilityResult(:holds, reach)
 end
 
 function check_inclusion(reach::P, output) where P<:LazySet
-    if issubset(reach, output)
-        return ReachabilityResult(:holds, P[])
-    end
-    return ReachabilityResult(:violated, [reach])
+    return ReachabilityResult(issubset(reach, output) ? :holds : :violated, [reach])
 end
 
 # return a vector so that append! is consistent with the relu forward_partition
-forward_partition(act::Id, input::AbstractPolytope) = [input]
-
-forward_partition(act::Id, input::Zonotope) = input
+forward_partition(act::Id, input) = [input]
 
 function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
