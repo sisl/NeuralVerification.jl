@@ -56,8 +56,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = MIPVerify()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -65,8 +64,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = ILP()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -118,9 +116,9 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
+#=
 optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+solver = MIPVerify()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -129,14 +127,14 @@ println(timed_result[1])
 println("")
 
 optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = ILP()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 
 
 problem_mnist2 = Problem(mnist2, inputSet, outputSet)
@@ -160,9 +158,8 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+#=
+solver = MIPVerify()
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -170,15 +167,14 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = ILP()
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 
 problem_mnist3 = Problem(mnist3, inputSet, outputSet)
 ## MNIST1 ##
@@ -201,9 +197,8 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-
-optimizer = GLPKSolverMIP()
-solver = MIPVerify(optimizer)
+#=
+solver = MIPVerify()
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -211,15 +206,14 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+solver = ILP()
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 problem_mnist4 = Problem(mnist4, inputSet, outputSet)
 ## MNIST1 ##
 print("\n\n\n")
@@ -252,16 +246,16 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
-optimizer = GLPKSolverMIP()
-solver = ILP(optimizer, 1)
+
+
+solver = ILP()
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 
 # ACAS
 print("\n\n\n")
@@ -344,7 +338,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 optimizer = GLPKSolverMIP()
 solver = ILP(optimizer, 1)
 println("$(typeof(solver)) - acas")
@@ -353,3 +347,4 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+=#

@@ -40,15 +40,15 @@ in_hpoly  = convert(HPolytope, in_hyper)
 
 problem_holds    = Problem(small_nnet, in_hyper, HPolytope([HalfSpace([1.], 100.)]))  
 
-optimizer = GLPKSolverMIP()
-solver = Planet(optimizer)
+#optimizer = GLPKSolverMIP()
+solver = Planet()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-#=
+
 solver=Reluplex()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
@@ -57,7 +57,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-solver = ReluVal(max_iter = 2)
+solver = ReluVal()
 println("$(typeof(solver)) - small_nnet")
 timed_result =@timed solve(solver, problem_holds)
 println(" - Time: " * string(timed_result[2]) * " s")
@@ -65,7 +65,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-=#
+
 
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -98,16 +98,14 @@ println("###### Network: mnist1                                  ######")
 print("\n\n\n")
 
 
-
-optimizer = GLPKSolverMIP()
-solver = Planet(optimizer)
+solver = Planet()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-#=
+
 solver = Reluplex()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
@@ -116,7 +114,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-solver = ReluVal(max_iter = 2)
+solver = ReluVal()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
 print(" - Time: " * string(timed_result[2]) * " s")
@@ -124,7 +122,7 @@ print(" - Output: ")
 print(timed_result[1])
 println("")
 
-=#
+
 problem_mnist2 = Problem(mnist2, inputSet, outputSet)
 ## MNIST1 ##
 print("\n\n\n")
@@ -132,9 +130,7 @@ println("###### Network: mnist2                                  ######")
 print("\n\n\n")
 
 
-
-optimizer = GLPKSolverMIP()
-solver = Planet(optimizer)
+solver = Planet()
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
@@ -142,7 +138,6 @@ print(" - Output: ")
 print(timed_result[1])
 println("")
 
-#=
 solver = Reluplex()
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
@@ -151,14 +146,14 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-solver = ReluVal(max_iter = 2)
+solver = ReluVal()
 println("$(typeof(solver)) - mnist2")
 timed_result =@timed solve(solver, problem_mnist2)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-=#
+
 problem_mnist3 = Problem(mnist3, inputSet, outputSet)
 ## MNIST3 ##
 print("\n\n\n")
@@ -166,15 +161,14 @@ println("###### Network: mnist3                                  ######")
 print("\n\n\n")
 
 
-
-optimizer = GLPKSolverMIP()
-solver = Planet(optimizer)
+solver = Planet()
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
+
 #=
 solver = Reluplex()
 println("$(typeof(solver)) - mnist3")
@@ -183,15 +177,15 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
-solver = ReluVal(max_iter = 2)
+=#
+solver = ReluVal()
 println("$(typeof(solver)) - mnist3")
 timed_result =@timed solve(solver, problem_mnist3)
 print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-=#
+
 problem_mnist4 = Problem(mnist4, inputSet, outputSet)
 ## MNIST4 ##
 print("\n\n\n")
@@ -215,7 +209,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-
+=#
 solver = ReluVal(max_iter = 2)
 println("$(typeof(solver)) - mnist4")
 timed_result =@timed solve(solver, problem_mnist4)
@@ -223,7 +217,7 @@ print(" - Time: " * string(timed_result[2]) * " s")
 print(" - Output: ")
 print(timed_result[1])
 println("")
-=#
+
 # ACAS
 print("\n\n\n")
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
@@ -277,7 +271,7 @@ problem_polytope_polytope_acas = Problem(acas_nnet, in_hyper, outputSet)
 print("\n\n\n")
 println("###### Network: acas                                  ######")
 print("\n\n\n")
-
+#=
 
 optimizer = GLPKSolverMIP()
 solver = Planet(optimizer)
@@ -288,7 +282,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-#=
+=#
 
 solver = ReluVal(max_iter = 20)
 println("$(typeof(solver)) - acas")
@@ -306,4 +300,3 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#

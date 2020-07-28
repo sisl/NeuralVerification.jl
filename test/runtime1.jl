@@ -29,7 +29,7 @@ mnist2 = read_nnet(mnist2_file, last_layer_activation = Id())
 mnist3 = read_nnet(mnist3_file, last_layer_activation = Id())
 mnist4 = read_nnet(mnist4_file, last_layer_activation = Id())
 
-
+#=
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
 println("###### Network: small_nnet, problem: holds              ######")
@@ -63,11 +63,9 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
+=#
 
 println("###### Problem type - input:HPolytope, output:HPolytope ######")
-
-
-
 # entry 23 in MNIST datset
 input_center = [0.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,121,254,136,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,230,253,248,99,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,118,253,253,225,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,61,253,253,253,74,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,206,253,253,186,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,211,253,253,239,69,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,254,253,253,133,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,142,255,253,186,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,149,229,254,207,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,54,229,253,254,105,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,152,254,254,213,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,112,251,253,253,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,212,253,250,149,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,36,214,253,253,137,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,75,253,253,253,59,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,253,253,189,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,224,253,253,84,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43,235,253,126,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,99,248,253,119,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,225,235,49,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 output_center = [-1311.1257826380004,4633.767704436501,-654.0718535670002,-1325.349417307,1175.2361184373997,-1897.8607293569007,-470.3405972940001,830.8337987382,-377.7467076115001,572.3674015264198]
@@ -91,20 +89,21 @@ print("\n\n\n")
 println("###### Network: mnist1                                  ######")
 print("\n\n\n")
 # TIMES OUT
-#solver = ExactReach()
-#print("ExactReach - mnist1")
-#timed_result =@timed solve(solver, problem_mnist)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
-
+#=
+solver = ExactReach()
+print("ExactReach - mnist1")
+timed_result =@timed solve(solver, problem_mnist)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+=#
 # TIMES OUT 
-#solver = Ai2()
-#print("Ai2 - mnist1")
-#timed_result =@timed solve(solver, problem_mnist)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = Ai2()
+print("Ai2 - mnist1")
+timed_result =@timed solve(solver, problem_mnist)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist1")
@@ -121,20 +120,20 @@ print("\n\n\n")
 println("###### Network: mnist2                                  ######")
 print("\n\n\n")
 # TIMES OUT
-#solver = ExactReach()
-#print("ExactReach - mnist1")
-#timed_result =@timed solve(solver, problem_mnist2)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = ExactReach()
+print("ExactReach - mnist1")
+timed_result =@timed solve(solver, problem_mnist2)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # TIMES OUT 
-#solver = Ai2()
-#print("Ai2 - mnist1")
-#timed_result =@timed solve(solver, problem_mnist2)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = Ai2()
+print("Ai2 - mnist1")
+timed_result =@timed solve(solver, problem_mnist2)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist2")
@@ -150,20 +149,20 @@ print("\n\n\n")
 println("###### Network: mnist3                                  ######")
 print("\n\n\n")
 # TIMES OUT
-#solver = ExactReach()
-#print("ExactReach - mnist1")
-#timed_result =@timed solve(solver, problem_mnist3)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = ExactReach()
+print("ExactReach - mnist1")
+timed_result =@timed solve(solver, problem_mnist3)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # TIMES OUT 
-#solver = Ai2()
-#print("Ai2 - mnist1")
-#timed_result =@timed solve(solver, problem_mnist3)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = Ai2()
+print("Ai2 - mnist1")
+timed_result =@timed solve(solver, problem_mnist3)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist3")
@@ -181,21 +180,21 @@ print("\n\n\n")
 
 # TIMES OUT
 
-#solver = ExactReach()
-#print("ExactReach - mnist1")
-#timed_result =@timed solve(solver, problem_mnist4)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = ExactReach()
+print("ExactReach - mnist1")
+timed_result =@timed solve(solver, problem_mnist4)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 # TIMES OUT 
 
-#solver = Ai2()
-#print("Ai2 - mnist1")
-#timed_result =@timed solve(solver, problem_mnist4)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
+solver = Ai2()
+print("Ai2 - mnist1")
+timed_result =@timed solve(solver, problem_mnist4)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
 
 solver = MaxSens(resolution = 0.6)
 print("MaxSens - mnist4")
@@ -254,23 +253,23 @@ problem_polytope_polytope_acas = Problem(acas_nnet, inputSet, outputSet)
 
 # TIMES OUT
 
-#solver = ExactReach()
-#print("\nExactReach - ACAS")
-#timed_result = @timed solve(solver, problem_polytope_polytope_acas)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
-#println("")
+solver = ExactReach()
+print("\nExactReach - ACAS")
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+println("")
 
 # TIMES OUT
 
-#solver = Ai2()
-#print("\nAi2 - ACAS")
-#timed_result = @timed solve(solver, problem_polytope_polytope_acas)
-#print(" - Time: " * string(timed_result[2]) * " s")
-#print(" - Output: ")
-#print(timed_result[1])
-#println("")
+solver = Ai2()
+print("\nAi2 - ACAS")
+timed_result = @timed solve(solver, problem_polytope_polytope_acas)
+print(" - Time: " * string(timed_result[2]) * " s")
+print(" - Output: ")
+print(timed_result[1])
+println("")
 
 solver = MaxSens(1.0, false)
 println("MaxSens - ACAS")
