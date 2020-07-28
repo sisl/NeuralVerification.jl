@@ -194,7 +194,7 @@ function make_random_test_sets()
                                              "test/test_sets/control_networks/output_sets",
                                              "test/test_sets/control_networks/query_file_control_small.txt";
                                              network_files = network_files)
-   
+
 
 end
 
@@ -327,7 +327,7 @@ function read_set(filename::String)
 end
 
 """
-function query_line_to_problem(line::String)
+function query_line_to_problem(line::String; [base_dir=""])
 
 Take in a line from a query file and read in then return the corresponding problem.
 This line will be in the format:
@@ -341,15 +341,25 @@ function query_line_to_problem(line::String; base_dir="")
 end
 
 """
-    get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test())
+    get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test(); [solver_types_allowed = []], [solver_types_to_remove = []])
 
 Return a list of valid instantitated solvers for a particular problem. This will depend
 on compatibility with the input set, output set, and network.
 
 If a list of solvers is given, it filters that list. Otherwise, it gets a default list
 from get_all_solvers_to_test() and uses that list of solvers.
+
+solver_types_allowed and solver_types_to_remove filters the list of solvers further
 """
-function get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test())
+function get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test(); solver_types_allowed=[], solver_types_to_remove=[])
+    # Filter the solvers if types allowed or removed are given (versus default)
+    if (length(solver_types_allowed) >= 1)
+        filter!(solver->solver isa Union{solver_types_allowed...}, solvers)
+    end
+    if (length(solver_types_to_remove) >= 1)
+        filter!(solver->!(solver isa Union{solver_types_to_remove...}, solvers)
+    end
+
     # Get all solvers, then filter out those that don't work
     # with the input set, output set, or network
     return filter(solver->solver_works_with_input_set(solver, problem.input)
@@ -452,6 +462,7 @@ function get_all_solvers_to_test()
             ExactReach(),
             Ai2(),
             MaxSens(resolution = 0.6),
+            MaxSens(resolution = 0.3),
             NSVerify(),
             MIPVerify(),
             ILP(),
@@ -461,8 +472,10 @@ function get_all_solvers_to_test()
             FastLin(),
             FastLip(),
             ReluVal(max_iter = 10),
+            ReluVal(max_iter = 20)
             DLV(),
             Sherlock(ϵ = 0.5),
+            Sherlock(ϵ = 0.1),
             BaB(),
             Planet(),
             Reluplex()
