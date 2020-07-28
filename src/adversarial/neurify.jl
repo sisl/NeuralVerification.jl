@@ -190,7 +190,8 @@ function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicI
             for j in 1:size(layer.bias,1)
                 if (0 < reach.LΛ[i][j] < 1) || (0 < reach.UΛ[i][j] < 1)
                     max_gradient = max(abs(LG[j]), abs(UG[j]))
-                    influence = max_gradient * reach.r[i][j] * k # This k is different from original paper, but can improve the split efficiency.
+                    # influence = max_gradient * reach.r[i][j] * k # This k is different from original paper, but can improve the split efficiency.
+                    influence = max_gradient * reach.r[i][j]
                     if in((i,j, influence), splits) # To prevent infinity loop
                         continue
                     end
@@ -238,7 +239,11 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ, input.r)
 end
-
+function calc_slop(up::Float64, low::Float64)
+    (up <= 0) && return 0
+    (low >= 0) && return 1
+    return up / (up - low)
+end
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
@@ -248,31 +253,22 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     for i in 1:n_node
         # Symbolic linear relaxation
         # This is different from ReluVal
+        mask_lower[i]
         up_up = upper_bound(input.sym.Up[i, :], input.sym.interval)
         up_low = lower_bound(input.sym.Up[i, :], input.sym.interval)
         low_up = upper_bound(input.sym.Low[i, :], input.sym.interval)
         low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
         interval_width[i] = up_up - low_low
-        if up_up <= 0.0
-            # Update to zero
-            mask_lower[i], mask_upper[i] = 0, 0
-            output_Up[i, :] = zeros(n_input)
-            output_Low[i, :] = zeros(n_input)
-        elseif low_low >= 0
-            # Keep dependency
-            mask_lower[i], mask_upper[i] = 1, 1
-        else
-            # up_up must be greater than 0, if up_up-up_low < 1e-6. The slope should be 1.
-            up_slop = (abs(up_up - up_low) > 1e-6) ? ((up_up - max(up_low, 0)) / (up_up - up_low)) : 1
-            output_Up[i, :] = up_slop * output_Up[i, :]
-            output_Up[i, end] += up_slop * max(-up_low, 0)
-            
-            # low_low must be less than 0, if low_up - low_low < 1e-6, the slope should be 0.
-            low_slop = (abs(low_up - low_low) > 1e-6) ? (max(low_up, 0) / (low_up - low_low)) : 0
-            output_Low[i, :] = low_slop * output_Low[i, :]
 
-            mask_lower[i], mask_upper[i] = low_slop, up_slop
-        end
+        up_slop = calc_slop(up_up, up_low)
+        low_slop = calc_slop(low_up, low_low)
+
+        output_Up[i, :] = up_slop * output_Up[i, :]
+        output_Up[i, end] += up_slop * max(-up_low, 0)
+
+        output_Low[i, :] = low_slop * output_Low[i, :]
+
+        mask_lower[i], mask_upper[i] = low_slop, up_slop
     end
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     LΛ = push!(input.LΛ, mask_lower)

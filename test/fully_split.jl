@@ -26,15 +26,15 @@ problem_violated = Problem(w_nnet,
                            Hyperrectangle(low = [y_min + ϵ], high = [y_max - ϵ]));
 
 # NOTE: 'max_iter' of the solver must be large enough to fully split.
-# @testset "Fully split, ReluVal" begin
-#     solver = ReluVal(max_iter = 1000)
-#     @test solve(solver, problem_holds).status == :holds
-#     @test solve(solver, problem_violated).status == :violated
-# end
+@testset "Fully split, ReluVal" begin
+    solver = ReluVal(max_iter = 1000)
+    @test solve(solver, problem_holds).status == :holds
+    @test solve(solver, problem_violated).status == :violated
+end
 
 @testset "Fully split, Neurify" begin
     solver = Neurify(max_iter = 1000)
     @test solve(solver, problem_holds).status == :holds
-    # @test solve(solver, problem_violated).status == :violated
+    @test solve(solver, problem_violated).status == :violated
 end
 
