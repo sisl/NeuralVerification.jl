@@ -31,7 +31,7 @@ end
 
 forward_layer(solver::ExactReach, layer::Layer, input) = forward_layer(solver, layer, convert(HPolytope, input))
 
-function forward_layer(solver::ExactReach, layer::Layer, input::Vector{HPolytope})
+function forward_layer(solver::ExactReach, layer::Layer, input::Vector{<:HPolytope})
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
         input[i] = affine_map(layer, input[i])
