@@ -60,13 +60,12 @@ forward_layer(solver::Ai2, L::Layer, inputs::Vector) = forward_layer.(solver, L,
 function forward_layer(solver::Ai2h, L::Layer{ReLU}, input::AbstractPolytope)
     Ẑ = affine_map(L, input)
     relued_subsets = forward_partition(L.activation, Ẑ) # defined in reachability.jl
-    return convex_hull(relued_subsets)
+    return convex_hull(UnionSetArray(relued_subsets))
 end
 
 # method for Zonotope and Hyperrectangle, if the input set isn't a Zonotope
-function forward_layer(solver::Ai2, L::Layer{ReLU}, input::AbstractPolytope)
-    X = overapproximate(input, Hyperrectangle)
-    return forward_layer(solver, L, X)
+function forward_layer(solver::Union{Ai2z, Box}, L::Layer{ReLU}, input::AbstractPolytope)
+    return forward_layer(solver, L, overapproximate(input, Hyperrectangle))
 end
 
 function forward_layer(solver::Ai2z, L::Layer{ReLU}, input::AbstractZonotope)
@@ -84,11 +83,7 @@ function forward_layer(solver::Ai2, L::Layer{Id}, input)
     return affine_map(L, input)
 end
 
-# extend lazysets convex_hull to a vector of polytopes
-function LazySets.convex_hull(sets::Vector{<:AbstractPolytope}; backend = CDDLib.Library())
-    hull = first(sets)
-    for P in sets
-        hull = convex_hull(hull, P, backend = backend)
-    end
-    return hull
+
+function convex_hull(U::UnionSetArray{<:Any, <:HPolytope})
+    tohrep(VPolytope(LazySets.convex_hull(U)))
 end
