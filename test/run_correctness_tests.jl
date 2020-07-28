@@ -1,11 +1,15 @@
 """
-test_query_file(file_name::String)
+test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], [solver_types_to_remove =[]])
 
     Run a set of benchmarks on a query file given by file_name.
     Compares results for consistency, but has no ground truth to compare against.
 
+    Will filter the set of available solvers by type using solver_types_allowed ans solver_types_to_remove.
+    Will use a default list unless a solvers list is given
+
 """
-function test_query_file(file_name::String)
+
+function test_query_file(file_name::String; solvers = [], solver_types_allowed=[], solver_types_to_remove=[])
     path, file = splitdir(file_name)
     @testset "Correctness Tests on $(file)" begin
         queries = readlines(file_name)
@@ -13,11 +17,10 @@ function test_query_file(file_name::String)
             println("Testing on line: ", line)
             @testset "Test on line: $index" begin
                 cur_problem = NeuralVerification.query_line_to_problem(line; base_dir="$(@__DIR__)/../")
-                solvers = NeuralVerification.get_valid_solvers(cur_problem)
+                solvers = NeuralVerification.get_valid_solvers(cur_problem; solvers=solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
 
                 # Solve the problem with each solver that applies for the problem, then compare the results
                 results = []
-                println(cur_problem)
                 for solver in solvers
                     println("Solving on: ", typeof(solver))
 
@@ -31,7 +34,7 @@ function test_query_file(file_name::String)
                         push!(results, NeuralVerification.solve(solver, cur_problem))
                     catch e
                         if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob" && solver isa NeuralVerification.Sherlock
-                            push!(results, CounterExampleResult(:unknown)) # Known issue with GLPK so ignore this error and just push an unknown result
+                            push!(results, NeuralVerification.CounterExampleResult(:unknown)) # Known issue with GLPK so ignore this error and just push an unknown result
                         else
                             # Print the error and make sure we still get its stack
                             for (exc, bt) in Base.catch_stack()
@@ -83,7 +86,7 @@ file_name_previous_issues = "$(@__DIR__)/../test/test_sets/previous_issues/query
 file_name_control_networks = "$(@__DIR__)/../test/test_sets/control_networks/query_file_control_small.txt"
 
 println("Starting tests on small random")
-#test_query_file(file_name_small)
+test_query_file(file_name_small; solver_types_to_remove=[NeuralVerification.ExactReach])
 println("Starting tests on medium random")
 #test_query_file(file_name_medium)
 println("Starting tests on large random")

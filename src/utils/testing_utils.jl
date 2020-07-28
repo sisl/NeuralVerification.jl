@@ -351,17 +351,14 @@ from get_all_solvers_to_test() and uses that list of solvers.
 
 solver_types_allowed and solver_types_to_remove filters the list of solvers further
 """
-function get_valid_solvers(problem::Problem, solvers = get_all_solvers_to_test(); solver_types_allowed=[], solver_types_to_remove=[])
-    # Filter the solvers if types allowed or removed are given (versus default)
-    if (length(solver_types_allowed) >= 1)
-        filter!(solver->solver isa Union{solver_types_allowed...}, solvers)
+function get_valid_solvers(problem::Problem; solvers = [], solver_types_allowed=[], solver_types_to_remove=[])
+    # Fill the list of solvers if it isn't given, then filter based on solver_types_allowed and solver_types_to_remove
+    if (length(solvers) == 0)
+        solvers = get_all_solvers_to_test()
     end
-    if (length(solver_types_to_remove) >= 1)
-        filter!(solver->!(solver isa Union{solver_types_to_remove...}, solvers)
-    end
+    solvers = allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to_remove)
 
-    # Get all solvers, then filter out those that don't work
-    # with the input set, output set, or network
+    # Filter out solvers that don't work with the input set, output set, or network
     return filter(solver->solver_works_with_input_set(solver, problem.input)
             && solver_works_with_output_set(solver, problem.output)
             && solver_works_with_network(solver, problem.network), solvers)
@@ -398,8 +395,7 @@ function solver_works_with_input_set(solver, input_set)
     elseif input_set isa Zonotope
         return solver isa zonotope_solver_types
     else
-        println("Unsupported input set")
-        @assert false
+        @assert false "Unsupported input set"
     end
 end
 
@@ -433,8 +429,7 @@ function solver_works_with_output_set(solver, output_set)
     elseif output_set isa Zonotope
         return solver isa zonotope_solver_types
     else
-        println("Unsupported output set")
-        @assert false
+        @assert false "Unsupported output set"
     end
 end
 
@@ -472,7 +467,7 @@ function get_all_solvers_to_test()
             FastLin(),
             FastLip(),
             ReluVal(max_iter = 10),
-            ReluVal(max_iter = 20)
+            ReluVal(max_iter = 20),
             DLV(),
             Sherlock(ϵ = 0.5),
             Sherlock(ϵ = 0.1),
@@ -480,6 +475,25 @@ function get_all_solvers_to_test()
             Planet(),
             Reluplex()
             ]
+end
+
+"""
+    allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to_remove)
+
+Takes a list of solvers. If solver_types_allowed is non-empty then it only allows those types.
+If solver_types_to_remove is non-empty then it filters the list of solvers and removes all
+types in solver_types_to_remove.
+"""
+function allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to_remove)
+    filtered_list = deepcopy(solvers)
+    # Filter the solvers if types allowed or removed are given (versus default)
+    if (length(solver_types_allowed) >= 1)
+        filtered_list = filter(solver->solver isa Union{solver_types_allowed...}, filtered_list)
+    end
+    if (length(solver_types_to_remove) >= 1)
+        filtered_list = filter(solver->!(solver isa Union{solver_types_to_remove...}), filtered_list)
+    end
+    return filtered_list
 end
 
 """
