@@ -35,7 +35,7 @@ forward_partition(act::Id, input::Zonotope) = input
 
 function forward_partition(act::ReLU, input::HPolytope)
     n = dim(input)
-    output = Vector{HPolytope}(undef, 0)
+    output = Vector{HPolytope{Float64}}(undef, 0)
     C, d = tosimplehrep(input)
     dh = [d; zeros(n)]
     for h in 0:(2^n)-1
