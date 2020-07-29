@@ -34,7 +34,7 @@ function forward_partition(act::ReLU, input)
 
     output = HPolytope{Float64}[]
 
-    for h in 1:(big"2"^N)-1
+    for h in 0:(big"2"^N)-1
         P = Diagonal(1.0.*digits(h, base = 2, pad = N))
         orthant = HPolytope(Matrix(I - 2.0P), zeros(N))
         S = intersection(input, orthant)
