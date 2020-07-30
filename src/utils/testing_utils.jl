@@ -374,7 +374,7 @@ Return false otherwise.
 function solver_works_with_input_set(solver, input_set)
     # Define which solvers work with which input sets
     half_space_solver_types = Union{}
-    hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex}
+    hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex, ExactReach, Ai2, MaxSens}
     hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
     polytope_complement_solver_types = Union{}
     zonotope_solver_types = Union{}
@@ -408,7 +408,7 @@ Return false otherwise.
 """
 function solver_works_with_output_set(solver, output_set)
     half_space_solver_types = Union{Duality, ConvDual, Certify, FastLin, FastLip, NSVerify, MIPVerify, ILP, Planet, Reluplex}
-    hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB}
+    hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB, ExactReach, Ai2, MaxSens}
     hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
     polytope_complement_solver_types = Union{NSVerify, MIPVerify, ILP, Planet, Reluplex}
     zonotope_solver_types = Union{}
@@ -432,6 +432,27 @@ function solver_works_with_output_set(solver, output_set)
     else
         @assert false "Unsupported output set"
     end
+end
+
+"""
+    needs_polytope_input(solver)
+
+    Returns true if the solver requires a polytope.
+    For example, Ai2 can handle hyperrectangle input
+    only if it is converted to a hyperpolytope first.
+"""
+function needs_polytope_input(solver)
+    return solver isa Union{Ai2, MaxSens}
+end
+"""
+    needs_polytope_output(solver)
+
+    Returns true if the solver requires a polytope.
+    For example, Ai2 can handle hyperrectangle output
+    only if it is converted to a hyperpolytope first.
+"""
+function needs_polytope_output(solver)
+    return solver isa Union{Ai2, MaxSens}
 end
 
 """
