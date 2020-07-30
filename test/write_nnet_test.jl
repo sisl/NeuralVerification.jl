@@ -1,5 +1,11 @@
 # Test by creating a network, writing it, then reading it back in and make sure that all weights and biases match
+<<<<<<< HEAD
 @testset "Write and Read nnet test" begin
+=======
+import NeuralVerification: Layer, ReLU, Id
+
+@testset "Write + Read nnet test" begin
+>>>>>>> master
 
     # 3 --> 3 --> 2 --> 5
     l1 = NeuralVerification.Layer([3.0 2.0 1.0; 5.0 6.0 7.0; 8.0 9.0 10.0], [0.8; 1.0; 1.2], NeuralVerification.ReLU())
@@ -14,7 +20,7 @@
     write_nnet(network_file, nnet; header_text="test_header")
 
     # Read back in the network
-    new_nnet = NeuralVerification.read_nnet(network_file)
+    new_nnet = read_nnet(network_file)
 
     # Test that all weights, biases, and activations are the same
     @test new_nnet.layers[1].weights == l1.weights;
