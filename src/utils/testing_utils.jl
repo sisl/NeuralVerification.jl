@@ -1,5 +1,6 @@
 using Random
 using LinearAlgebra
+using Cbc
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -406,7 +407,7 @@ Return true if the solver can handle the output given by output_set.
 Return false otherwise.
 """
 function solver_works_with_output_set(solver, output_set)
-    half_space_solver_types = Union{Duality, ConvDual, Certify, FastLin, FastLip}
+    half_space_solver_types = Union{Duality, ConvDual, Certify, FastLin, FastLip, NSVerify, MIPVerify, ILP, Planet, Reluplex}
     hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB}
     hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
     polytope_complement_solver_types = Union{NSVerify, MIPVerify, ILP, Planet, Reluplex}
@@ -447,6 +448,17 @@ function solver_works_with_network(solver, network)
     end
 end
 
+
+"""
+    is_complete(solver)
+
+Return whether a solver is complete or not.
+"""
+function is_complete(solver)
+    complete_solvers = Union{ExactReach, NSVerify, MIPVerify, ReluVal, DLV, Planet, Reluplex}
+    return solver isa complete_solvers
+end
+
 """
     get_all_solvers_to_test()
 
@@ -458,22 +470,22 @@ function get_all_solvers_to_test()
             Ai2(),
             MaxSens(resolution = 0.6),
             MaxSens(resolution = 0.3),
-            NSVerify(),
-            MIPVerify(),
-            ILP(),
-            Duality(),
+            NSVerify(optimizer=Cbc.Optimizer),
+            MIPVerify(optimizer=Cbc.Optimizer),
+            ILP(optimizer=Cbc.Optimizer),
+            Duality(optimizer=Cbc.Optimizer),
             ConvDual(),
             Certify(),
             FastLin(),
             FastLip(),
             ReluVal(max_iter = 10),
             ReluVal(max_iter = 20),
-            DLV(),
-            Sherlock(ϵ = 0.5),
-            Sherlock(ϵ = 0.1),
-            BaB(),
-            Planet(),
-            Reluplex()
+            DLV(optimizer=Cbc.Optimizer),
+            Sherlock(ϵ = 0.5, optimizer=Cbc.Optimizer),
+            Sherlock(ϵ = 0.1, optimizer=Cbc.Optimizer),
+            BaB(optimizer=Cbc.Optimizer),
+            Planet(optimizer=Cbc.Optimizer),
+            Reluplex(optimizer=Cbc.Optimizer)
             ]
 end
 
@@ -494,14 +506,4 @@ function allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to
         filtered_list = filter(solver->!(solver isa Union{solver_types_to_remove...}), filtered_list)
     end
     return filtered_list
-end
-
-"""
-    is_complete(solver)
-
-Return whether a solver is complete or not.
-"""
-function is_complete(solver)
-    complete_solvers = Union{ExactReach, NSVerify, MIPVerify, ReluVal, DLV, Planet, Reluplex}
-    return solver isa complete_solvers
 end
