@@ -245,11 +245,7 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ, input.r)
 end
-function calc_slop(up::Float64, low::Float64)
-    (up <= 0) && return 0
-    (low >= 0) && return 1
-    return up / (up - low)
-end
+
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
@@ -265,8 +261,8 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
 
         interval_width[i] = up_up - low_low
 
-        up_slop = calc_slop(up_up, up_low)
-        low_slop = calc_slop(low_up, low_low)
+        up_slop = act_gradient(up_low, up_up)
+        low_slop = act_gradient(low_low, low_up)
 
         output_Up[i, :] = up_slop * output_Up[i, :]
         output_Up[i, end] += up_slop * max(-up_low, 0)
