@@ -317,15 +317,21 @@ end
 
 Simple linear mapping on intervals
 Inputs:
-- `W::Matrix{N}`: linear mapping
+- `W::Matrix{N}`: linear mapping (left)
 - `l::Vector{N}`: lower bound
 - `u::Vector{N}`: upper bound
 Outputs:
 - `(lbound, ubound)` (after the mapping)
 """
-function interval_map(W::Matrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
+function interval_map(W::AbstractMatrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
     l_new = max.(W, zero(N)) * l + min.(W, zero(N)) * u
     u_new = max.(W, zero(N)) * u + min.(W, zero(N)) * l
+    return (l_new, u_new)
+end
+
+function interval_map_right(W::AbstractMatrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
+    l_new = l * max.(W, zero(N)) + u * min.(W, zero(N))
+    u_new = u * max.(W, zero(N)) + l * min.(W, zero(N))
     return (l_new, u_new)
 end
 
