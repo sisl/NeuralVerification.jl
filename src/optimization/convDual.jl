@@ -63,7 +63,7 @@ modifies v and returns o
 function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
     o = 0.0
     for j in 1:length(v)
-        val = relaxed_ReLU(l[j], u[j])
+        val = act_gradient(l[j], u[j])
         if val < 1.0 # if val is 1, it means ReLU result is identity so do not update (NOTE is that the right reasoning?)
             v[j] = v[j] * val
             o += v[j] * l[j]
@@ -94,7 +94,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         n_input  = length(layers[i-1].bias)
         n_output = length(layers[i].bias)
 
-        last_input_ReLU = relaxed_ReLU.(last(l), last(u))
+        last_input_ReLU = act_gradient.(last(l), last(u))
         push!(input_ReLU, last_input_ReLU)
         D = Diagonal(last_input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
 
@@ -160,10 +160,4 @@ function new_μ(n_input, n_output, input_ReLU, WD)
         end
     end
     return sub_μ
-end
-
-function relaxed_ReLU(l::Float64, u::Float64)
-    u <= 0.0 && return 0.0
-    l >= 0.0 && return 1.0
-    return u / (u - l)
 end
