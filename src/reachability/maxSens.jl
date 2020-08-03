@@ -64,9 +64,13 @@ function partition(input::Hyperrectangle, Δ)
 
     # The number of sub-hyperrectangles that fit in each dimension, rounding up
     n_hypers_per_dim = max.(ceil.(Int, (upper-lower) / Δ), 1)
+    N = prod(big, n_hypers_per_dim)
+
+    N > typemax(Int64) && throw(ArgumentError("Cannot partition the given input. The operation would require $N sets."))
+    N > 10^5 && @warn "Propagating $N partitions may be time consuming or impossible."
 
     # preallocate
-    hypers = Vector{typeof(input)}(undef, prod(n_hypers_per_dim))
+    hypers = Vector{typeof(input)}(undef, N)
     local_lower, local_upper = similar(lower), similar(upper)
     CI = CartesianIndices(Tuple(n_hypers_per_dim))
 
