@@ -162,29 +162,29 @@ A function that generates the set of random query files to be used in testing.
 We generate three different test sets - small, medium, and large.
 """
 function make_random_test_sets()
-    # NeuralVerification.make_random_query_file([3, 3],
-    #                                           [[1, 3, 1], [2, 5, 2]],
-    #                                           "test/test_sets/random/small/networks",
-    #                                           "test/test_sets/random/small/input_sets",
-    #                                           "test/test_sets/random/small/output_sets",
-    #                                           "test/test_sets/random/small/query_file_small.txt")
-    #
-    # NeuralVerification.make_random_query_file([5, 5, 5],
-    #                                           [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
-    #                                           "test/test_sets/random/medium/networks",
-    #                                           "test/test_sets/random/medium/input_sets",
-    #                                           "test/test_sets/random/medium/output_sets",
-    #                                           "test/test_sets/random/medium/query_file_medium.txt")
-    #
-    # NeuralVerification.make_random_query_file([5, 5, 5, 5, 5],
-    #                                           [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [10, 3, 2], [3, 4, 3], [6, 8, 1]],
-    #                                           "test/test_sets/random/large/networks",
-    #                                           "test/test_sets/random/large/input_sets",
-    #                                           "test/test_sets/random/large/output_sets",
-    #                                           "test/test_sets/random/large/query_file_large.txt")
+    NeuralVerification.make_random_query_file([3, 3],
+                                              [[1, 3, 1], [2, 5, 2]],
+                                              "test/test_sets/random/small/networks",
+                                              "test/test_sets/random/small/input_sets",
+                                              "test/test_sets/random/small/output_sets",
+                                              "test/test_sets/random/small/query_file_small.txt")
+
+    NeuralVerification.make_random_query_file([5, 5, 5],
+                                              [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
+                                              "test/test_sets/random/medium/networks",
+                                              "test/test_sets/random/medium/input_sets",
+                                              "test/test_sets/random/medium/output_sets",
+                                              "test/test_sets/random/medium/query_file_medium.txt")
+
+    NeuralVerification.make_random_query_file([6, 6, 6, 6, 6],
+                                              [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [4, 3, 2], [3, 4, 3], [5, 8, 1]],
+                                              "test/test_sets/random/large/networks",
+                                              "test/test_sets/random/large/input_sets",
+                                              "test/test_sets/random/large/output_sets",
+                                              "test/test_sets/random/large/query_file_large.txt")
 
 
-   # Add example controller network tests
+   Add example controller network tests
    network_base = "$(@__DIR__)/../../examples/networks/"
    network_files = network_base.*["car_smaller_controller.nnet", "car_smallest_controller.nnet", "controller_single_pendulum.nnet", "controller_double_pendulum_more_robust.nnet", "tora_smaller_controller.nnet", "tora_smallest_controller.nnet"]
 
@@ -488,7 +488,8 @@ Return all solver configurations that we'd like to test
 function get_all_solvers_to_test()
     return [
             ExactReach(),
-            Ai2(),
+            Ai2h(),
+            Box(),
             MaxSens(resolution = 0.6),
             MaxSens(resolution = 0.3),
             NSVerify(optimizer=Cbc.Optimizer),
