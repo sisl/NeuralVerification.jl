@@ -99,21 +99,37 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
     end
 end
 
-file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.txt"
-file_name_medium = "$(@__DIR__)/../test/test_sets/random/medium/query_file_medium.txt"
-file_name_large = "$(@__DIR__)/../test/test_sets/random/large/query_file_large.txt"
+@testset "Full Correctness Test Set" begin
+    file_name_tiny = "$(@__DIR__)/../test/test_sets/random/tiny/query_file_tiny.txt"
+    file_name_small = "$(@__DIR__)/../test/test_sets/random/small/query_file_small.txt"
+    file_name_medium = "$(@__DIR__)/../test/test_sets/random/medium/query_file_medium.txt"
+    file_name_large = "$(@__DIR__)/../test/test_sets/random/large/query_file_large.txt"
 
-file_name_previous_issues = "$(@__DIR__)/../test/test_sets/previous_issues/query_file_previous_issues.txt"
-file_name_control_networks = "$(@__DIR__)/../test/test_sets/control_networks/query_file_control_small.txt"
+    file_name_previous_issues = "$(@__DIR__)/../test/test_sets/previous_issues/query_file_previous_issues.txt"
+    file_name_control_networks = "$(@__DIR__)/../test/test_sets/control_networks/query_file_control_small.txt"
 
-solver_types_to_remove = solver_types_to_remove=[NeuralVerification.ExactReach]
-println("Starting tests on small random")
-test_query_file(file_name_small; solver_types_to_remove=solver_types_to_remove)
-println("Starting tests on medium random")
-#test_query_file(file_name_medium; solver_types_to_remove=solver_types_to_remove)
-#println("Starting tests on large random")
-#test_query_file(file_name_large; solver_types_to_remove=solver_types_to_remove)
-#println("Starting tests on previous issues")
-test_query_file(file_name_previous_issues; solver_types_to_remove=solver_types_to_remove)
-#println("Starting tests on control networks")
-#test_query_file(file_name_control_networks)
+    solver_types_to_remove = solver_types_to_remove=[NeuralVerification.ExactReach]
+
+
+    println("Starting tests on tiny")
+    tiny_solvers = NeuralVerification.get_all_solvers_to_test()
+    append!(tiny_solvers, [Ai2h()])
+    test_query_file(file_name_tiny; all_solvers=tiny_solvers, solver_types_to_remove=solver_types_to_remove)
+
+    println("Starting tests on small random")
+    test_query_file(file_name_small; solver_types_to_remove=solver_types_to_remove)
+
+    println("Starting tests on medium random")
+    test_query_file(file_name_medium; solver_types_to_remove=solver_types_to_remove)
+
+    println("Starting tests on large random")
+    test_query_file(file_name_large; solver_types_to_remove=solver_types_to_remove)
+
+    println("Starting tests on previous issues")
+    test_query_file(file_name_previous_issues; solver_types_to_remove=solver_types_to_remove)
+    #println("Starting tests on control networks")
+    #test_query_file(file_name_control_networks)
+
+end
+
+print("End correctness tests")
