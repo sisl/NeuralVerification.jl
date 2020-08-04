@@ -48,28 +48,25 @@ end
 
 function solve(solver::Neurify, problem::Problem)
 
+    # TODO get rid of
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
 
-    reach_lc = problem.input.constraints
-    output_lc = problem.output.constraints
-
-    n = size(reach_lc, 1)
-    m = size(reach_lc[1].a, 1)
+    A, b = tosimplehrep(problem.input)
     model = Model(GLPK.Optimizer)
-    @variable(model, x[1:m], base_name="x")
-    @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
-    
-    reach = forward_network(solver, problem.network, problem.input)    
+
+    @variable(model, x[1:dim(input)], A*x .<= b)
+
+    reach = forward_network(solver, problem.network, problem.input)
     result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
     result.status == :unknown || return result
 
-    reach_list=Array{Any,1}()
+    reach_list = []
     push!(reach_list, (reach, max_violation_con, Vector()))
 
-    # Becuase of over-approximation, a split may not bisect the input set. 
+    # Becuase of over-approximation, a split may not bisect the input set.
     # Therefore, the gradient remains unchanged (since input didn't change).
     # And this node will be chosen to split forever.
-    # To prevent this, we split each node only once if the gradient of this node hasn't change. 
+    # To prevent this, we split each node only once if the gradient of this node hasn't change.
     # Each element in splits is a tuple (gradient_of_the_node, layer_index, node_index).
     splits = Set() # To prevent infinity loop.
 
@@ -91,8 +88,8 @@ end
 function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::AbstractPolytope, nnet::Network) where N
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
-    # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1) 
-    
+    # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1)
+
     # return a result and the most violated constraint.
     reach_lc = reach.interval.constraints
     output_lc = output.constraints
@@ -136,7 +133,7 @@ function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::A
             println("No solution, please check the problem definition.")
             exit()
         end
-        
+
     end
     max_violation > 0 && return BasicResult(:unknown), max_violation_con
     return BasicResult(:holds), nothing
@@ -162,6 +159,7 @@ function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIn
     return intervals
 end
 
+# NOTE: What effect do 0-intervals have?
 function construct_interval(A::AbstractMatrix{N}, b::AbstractVector{N}) where {N<:Real}
     m = size(A, 1)
     zero_idx = []
@@ -176,35 +174,38 @@ end
 function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64}, splits::Vector)
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
+
+    LΛ, UΛ = reach.LΛ, reach.UΛ
     # We want to find the node with the largest influence
     # Influence is defined as gradient * interval width
     # The gradient is with respect to a loss defined by the most violated constraint.
-    LG = transpose(copy(max_violation_con))
-    UG = transpose(copy(max_violation_con))
+    LG = copy(transpose(max_violation_con))
+    UG = copy(transpose(max_violation_con))
     max_tuple = (0, 0, -1e9)
     for (k, layer) in enumerate(reverse(nnet.layers))
-        i = n_length - k + 1
-        if layer.activation != Id() 
-            # Only split Relu nodes
-            # A split over id node may not reduce over-approximation (the input set may not bisected).
-            for j in 1:size(layer.bias,1)
-                if (0 < reach.LΛ[i][j] < 1) || (0 < reach.UΛ[i][j] < 1)
+        # Only split Relu nodes
+        if layer.activation isa ReLU
+            i = n_length - k + 1
+            for j in 1:n_nodes(layer)
+                if (0 < LΛ[i][j] < 1) || (0 < UΛ[i][j] < 1)
                     max_gradient = max(abs(LG[j]), abs(UG[j]))
                     # influence = max_gradient * reach.r[i][j] * k # This k is different from original paper, but can improve the split efficiency.
                     influence = max_gradient * reach.r[i][j]
-                    if in((i,j, influence), splits) # To prevent infinity loop
+                    if (i,j, influence) in splits # To prevent infinity loop
                         continue
                     end
                     # If we use > here, in the case that largest gradient is 0, this function will return (0, 0 ,0)
-                    if influence >= max_tuple[3] 
+                    if influence >= max_tuple[3]
                         max_tuple = (i, j, influence)
                     end
                 end
             end
         end
-        i >= 1 || break
-        LG_hat = max.(LG, 0.0) * Diagonal(reach.LΛ[i]) + min.(LG, 0.0) * Diagonal(reach.UΛ[i])
-        UG_hat = min.(UG, 0.0) * Diagonal(reach.LΛ[i]) + max.(UG, 0.0) * Diagonal(reach.UΛ[i])
+        # i >= 1 || break    # NOTE doesn't do anything?
+
+        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
+        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
+
         LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
     end
     if max_tuple[1] == 0 && max_tuple[2] == 0
@@ -247,17 +248,16 @@ end
 # Symbolic forward_act
 function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
     n_node, n_input = size(input.sym.Up)
-    output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
+    output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
     mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
     interval_width = zeros(Float64, n_node)
     for i in 1:n_node
         # Symbolic linear relaxation
         # This is different from ReluVal
-        mask_lower[i]
-        up_up = upper_bound(input.sym.Up[i, :], input.sym.interval)
-        up_low = lower_bound(input.sym.Up[i, :], input.sym.interval)
-        low_up = upper_bound(input.sym.Low[i, :], input.sym.interval)
-        low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
+
+        up_low, up_up = bounds(input.sym.Up[i, :], input.sym.interval)
+        low_low, low_up = bounds(input.sym.Low[i, :], input.sym.interval)
+
         interval_width[i] = up_up - low_low
 
         up_slop = calc_slop(up_up, up_low)
@@ -286,24 +286,45 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
     return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
-function upper_bound(map::Vector{Float64}, input::HPolytope)
-    n = size(input.constraints, 1)
-    m = size(input.constraints[1].a, 1)
-    model =Model(GLPK.Optimizer)
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-    @objective(model, Max, map' * [x; [1]])
+function bounds(a, input)
+    A, b = tosimplehrep(input)
+
+    model = Model(GLPK.Optimizer)
+    x = @variable(model, [1:dim(input)])
+    @constraint(model, A * x .<= b)
+
+    obj = a' * [x; 1]
+
+    @objective(model, Max, obj)
     optimize!(model)
-    return objective_value(model)
+    upper_bound = objective_value(model)
+
+    @objective(model, Min, obj)
+    optimize!(model)
+    lower_bound = objective_value(model)
+
+    return (lower_bound, upper_bound)
 end
 
-function lower_bound(map::Vector{Float64}, input::HPolytope)
-    n = size(input.constraints, 1)
-    m = size(input.constraints[1].a, 1)
-    model =Model(GLPK.Optimizer)
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-    @objective(model, Min, map' * [x; [1]])
-    optimize!(model)
-    return objective_value(model)
-end
+
+# function upper_bound(map::Vector{Float64}, input::HPolytope)
+#     n = size(input.constraints, 1)
+#     m = size(input.constraints[1].a, 1)
+#     model =Model(GLPK.Optimizer)
+#     @variable(model, x[1:m])
+#     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+#     @objective(model, Max, map' * [x; [1]])
+#     optimize!(model)
+#     return objective_value(model)
+# end
+
+# function lower_bound(map::Vector{Float64}, input::HPolytope)
+#     n = size(input.constraints, 1)
+#     m = size(input.constraints[1].a, 1)
+#     model =Model(GLPK.Optimizer)
+#     @variable(model, x[1:m])
+#     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
+#     @objective(model, Min, map' * [x; [1]])
+#     optimize!(model)
+#     return objective_value(model)
+# end
