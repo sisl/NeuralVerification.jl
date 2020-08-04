@@ -428,8 +428,8 @@ Base.showerror(io::IO, e::UnboundedInputError) = print(io, msg)
 
 function isbounded(input)
     if input isa HPolytope
-        return LazySets.isbounded(problem.input, false)
+        return LazySets.isbounded(input, false)
     else
-        return LazySets.isbounded(problem.input)
+        return LazySets.isbounded(input)
     end
 end
