@@ -33,6 +33,8 @@ Sound but not complete.
 end
 
 function solve(solver::Sherlock, problem::Problem)
+    check_boundedness(problem.input) || UnboundedInputError("Temprarily, Sherlock")
+
     (x_u, u) = output_bound(solver, problem, :max)
     (x_l, l) = output_bound(solver, problem, :min)
     println("bounds: [", l, ", ", u, "]")
