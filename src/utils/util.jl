@@ -419,3 +419,17 @@ function split_interval(dom::Hyperrectangle, i::Int64)
     input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
     return (input_split_left, input_split_right)
 end
+
+
+struct UnboundedInputError <: Exception
+    alg::String
+end
+Base.showerror(io::IO, e::UnboundedInputError) = print(io, "$(e.alg) can only accept bounded input sets.")
+
+function check_boundedness(input)
+    if input isa HPolytope
+        return isbounded(problem.input, false)
+    else
+        return isbounded(problem.input)
+    end
+end
