@@ -32,7 +32,7 @@ end
 
 function solve(solver::Planet, problem::Problem)
     @assert ~solver.eager "Eager implementation not supported yet"
-    check_boundedness(problem.input) || UnboundedInputError("Planet")
+    isbounded(problem.input) || UnboundedInputError("Planet does not accept unbounded input sets.")
     # Refine bounds. The bounds are values after activation
     status, bounds = tighten_bounds(problem, solver.optimizer)
     status == OPTIMAL || return CounterExampleResult(:holds)

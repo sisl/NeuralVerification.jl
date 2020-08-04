@@ -422,14 +422,14 @@ end
 
 
 struct UnboundedInputError <: Exception
-    alg::String
+    msg::String
 end
-Base.showerror(io::IO, e::UnboundedInputError) = print(io, "$(e.alg) can only accept bounded input sets.")
+Base.showerror(io::IO, e::UnboundedInputError) = print(io, msg)
 
-function check_boundedness(input)
+function isbounded(input)
     if input isa HPolytope
-        return isbounded(problem.input, false)
+        return LazySets.isbounded(problem.input, false)
     else
-        return isbounded(problem.input)
+        return LazySets.isbounded(problem.input)
     end
 end
