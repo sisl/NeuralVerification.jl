@@ -74,8 +74,7 @@ include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
 include("reachability/ai2.jl")
-include("reachability/ai2z.jl")
-export ExactReach, MaxSens, Ai2, Ai2z
+export ExactReach, MaxSens, Ai2, Ai2h, Ai2z, Box
 
 include("satisfiability/bab.jl")
 include("satisfiability/sherlock.jl")
