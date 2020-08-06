@@ -230,7 +230,7 @@ act_gradient(act::ReLU, z_hat::Vector) = z_hat .>= 0.0
 act_gradient(act::Id,   z_hat::Vector) = trues(length(z_hat))
 
 """
-    act_gradient(act::ReLU, l::Float64, u::Float64)
+    relaxed_relu_gradient(l::Float64, u::Float64)
 
 Returns the slope of a ReLU activation based on its lower and upper bounds
 
@@ -240,13 +240,11 @@ Inputs:
 Return:
 - `slop::Float64`: 0 if u<0; 1 if l>0; u/(u-l) otherwise
 """
-function act_gradient(act::ReLU, l::Float64, u::Float64)
+function relaxed_relu_gradient(l::Float64, u::Float64)
     u <= 0.0 && return 0.0
     l >= 0.0 && return 1.0
     return u / (u - l)
 end
-
-act_gradient(l::Float64, u::Float64) = act_gradient(ReLU(), l, u)
 
 """
     get_gradient(nnet::Network, input::AbstractPolytope)

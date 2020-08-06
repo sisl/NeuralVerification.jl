@@ -256,8 +256,8 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{ReLU})
         low_low = lower_bound(input.sym.Low[i, :], input.sym.interval)
         interval_width[i] = up_up - low_low
 
-        up_slop = act_gradient(up_low, up_up)
-        low_slop = act_gradient(low_low, low_up)
+        up_slop = relaxed_relu_gradient(up_low, up_up)
+        low_slop = relaxed_relu_gradient(low_low, low_up)
 
         output_Up[i, :] = up_slop * output_Up[i, :]
         output_Up[i, end] += up_slop * max(-up_low, 0)
