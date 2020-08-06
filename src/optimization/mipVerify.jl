@@ -43,9 +43,5 @@ function solve(solver::MIPVerify, problem::Problem)
     if termination_status(model) == INFEASIBLE
         return AdversarialResult(:holds)
     end
-    if value(o) >= maximum(problem.input.radius)
-        return AdversarialResult(:holds)
-    else
-        return AdversarialResult(:violated, value(o))
-    end
+    return AdversarialResult(:violated, value(o))
 end
