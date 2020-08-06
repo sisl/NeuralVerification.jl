@@ -329,17 +329,11 @@ function interval_map(W::AbstractMatrix{N}, l::AbstractVecOrMat, u::AbstractVecO
     return (l_new, u_new)
 end
 
-function interval_map_right(W::AbstractMatrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
-    l_new = l * max.(W, zero(N)) + u * min.(W, zero(N))
-    u_new = u * max.(W, zero(N)) + l * min.(W, zero(N))
-    return (l_new, u_new)
-end
-
 """
     get_bounds(problem::Problem)
     get_bounds(nnet::Network, input::Hyperrectangle, [true])
 
-Computes node-wise bounds given a input set. The optional last 
+Computes node-wise bounds given a input set. The optional last
 argument determines whether the bounds are pre- or post-activation.
 
 Return:

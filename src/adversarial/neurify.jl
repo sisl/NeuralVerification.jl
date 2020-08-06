@@ -95,7 +95,7 @@ function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::A
     output_lc = output.constraints
     n = size(reach_lc, 1)
     m = size(reach_lc[1].a, 1)
-    model =Model(GLPK.Optimizer)
+    model = Model(GLPK.Optimizer)
     @variable(model, x[1:m])
     @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
     max_violation = -1e9
@@ -139,39 +139,66 @@ function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::A
     return BasicResult(:holds), nothing
 end
 
-function constraint_refinement(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64}, splits::Vector)
+function constraint_refinement(solver::Neurify,
+                               nnet::Network,
+                               reach::SymbolicIntervalGradient,
+                               max_violation_con::AbstractVector{Float64},
+                               splits::Vector)
+
     i, j, influence = get_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-    nnet_new = Network(nnet.layers[1:i])
-    reach_new = forward_network(solver, nnet_new, reach.sym.interval)
-    C, d = tosimplehrep(reach.sym.interval)
-    l_sym = reach_new.sym.Low[[j], 1:end-1]
-    l_off = reach_new.sym.Low[[j], end]
-    u_sym = reach_new.sym.Up[[j], 1:end-1]
-    u_off = reach_new.sym.Up[[j], end]
-    intervals = Vector(undef, 3)
-    # remove zero constraints and construct new intervals
-    intervals[1] = construct_interval([C; l_sym; u_sym], [d; -l_off; -u_off])
-    intervals[2] = construct_interval([C; l_sym; -u_sym], [d; -l_off; u_off])
-    intervals[3] = construct_interval([C; -l_sym; -u_sym], [d; l_off; u_off])
+    reach_new = forward_network(solver, Network(nnet.layers[1:i]), reach.sym.interval)
+
+    inter = reach.sym.interval
+    L = reach_new.sym.Low
+    U = reach_new.sym.Up
+
+    # maybe filter rows of L and U that are all zeros first.
+    # NOTE: but j determines the row, so how can it ever be 0?
+
+    WL, bL = L[j, 1:end-1], L[j, end]
+    WU, bU = U[j, 1:end-1], U[j, end]
+
+    I1 = inter ∩ HPolyhedron(WL, -bL) ∩ HPolyhedron(WU, -bU)
+    I2 = inter ∩ HPolyhedron(WL, -bL) ∩ HPolyhedron(-WU, bU)
+    I3 = inter ∩ HPolyhedron(-WL, bL) ∩ HPolyhedron(-WU, bU)
+
+    intervals = [I1, I2, I3]
+
+
+    # C, d = tosimplehrep(reach.sym.interval)
+    # l_sym = reach_new.sym.Low[[j], 1:end-1]
+    # l_off = reach_new.sym.Low[[j], end]
+    # u_sym = reach_new.sym.Up[[j], 1:end-1]
+    # u_off = reach_new.sym.Up[[j], end]
+    # intervals = Vector(undef, 3)
+    # # remove zero constraints and construct new intervals
+    # intervals[1] = construct_interval([C; l_sym; u_sym], [d; -l_off; -u_off])
+    # intervals[2] = construct_interval([C; l_sym; -u_sym], [d; -l_off; u_off])
+    # intervals[3] = construct_interval([C; -l_sym; -u_sym], [d; l_off; u_off])
     # intervals[4] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off]) lower bound can not be greater than upper bound
     return intervals
 end
 
-# NOTE: What effect do 0-intervals have?
-function construct_interval(A::AbstractMatrix{N}, b::AbstractVector{N}) where {N<:Real}
-    m = size(A, 1)
-    zero_idx = []
-    for i in 1:m
-        iszero(A[i,:]) && push!(zero_idx, i)
-    end
-    A = A[setdiff(1:end, zero_idx), :]
-    b = b[setdiff(1:end, zero_idx)]
-    return HPolytope(A, b)
-end
+# # NOTE: What effect do 0-intervals have?
+# function construct_interval(A::AbstractMatrix{N}, b::AbstractVector{N}) where {N<:Real}
+#     m = size(A, 1)
+#     zero_idx = []
+#     for i in 1:m
+#         iszero(A[i,:]) && push!(zero_idx, i)
+#     end
+#     A = A[setdiff(1:end, zero_idx), :]
+#     b = b[setdiff(1:end, zero_idx)]
+#     return HPolytope(A, b)
+# end
 
-function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicIntervalGradient, max_violation_con::AbstractVector{Float64}, splits::Vector)
+function get_nodewise_influence(solver::Neurify,
+                                nnet::Network,
+                                reach::SymbolicIntervalGradient,
+                                max_violation_con::AbstractVector{Float64},
+                                splits::Vector)
+
     n_output = size(nnet.layers[end].weights, 1)
     n_length = length(nnet.layers)
 
@@ -179,8 +206,8 @@ function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicI
     # We want to find the node with the largest influence
     # Influence is defined as gradient * interval width
     # The gradient is with respect to a loss defined by the most violated constraint.
-    LG = copy(transpose(max_violation_con))
-    UG = copy(transpose(max_violation_con))
+    LG = copy(max_violation_con)
+    UG = copy(max_violation_con)
     max_tuple = (0, 0, -1e9)
     for (k, layer) in enumerate(reverse(nnet.layers))
         # Only split Relu nodes
@@ -203,10 +230,10 @@ function get_nodewise_influence(solver::Neurify, nnet::Network, reach::SymbolicI
         end
         # i >= 1 || break    # NOTE doesn't do anything?
 
-        LG_hat = max.(LG, 0.0) * Diagonal(LΛ[i]) + min.(LG, 0.0) * Diagonal(UΛ[i])
-        UG_hat = min.(UG, 0.0) * Diagonal(LΛ[i]) + max.(UG, 0.0) * Diagonal(UΛ[i])
+        LG_hat = max.(LG, 0.0) .* LΛ[i] .+ min.(LG, 0.0) .* UΛ[i]
+        UG_hat = min.(UG, 0.0) .* LΛ[i] .+ max.(UG, 0.0) .* UΛ[i]
 
-        LG, UG = interval_map_right(layer.weights, LG_hat, UG_hat)
+        LG, UG = interval_map(layer.weights', LG_hat, UG_hat)
     end
     if max_tuple[1] == 0 && max_tuple[2] == 0
         println("Can not find valid node to split")
