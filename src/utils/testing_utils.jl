@@ -163,7 +163,6 @@ A function that generates the set of random query files to be used in testing.
 We generate three different test sets - small, medium, and large.
 """
 function make_random_test_sets()
-
     # Tiny test set for Ai2h
     NeuralVerification.make_random_query_file([3, 3],
                                                 [[1, 2, 1], [1, 3, 2, 1]],
@@ -187,28 +186,6 @@ function make_random_test_sets()
                                               "test/test_sets/random/medium/input_sets",
                                               "test/test_sets/random/medium/output_sets",
                                               "test/test_sets/random/medium/query_file_medium.txt")
-
-    NeuralVerification.make_random_query_file([6, 6, 6, 6, 6],
-                                              [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [4, 3, 2], [3, 4, 3], [5, 8, 1]],
-                                              "test/test_sets/random/large/networks",
-                                              "test/test_sets/random/large/input_sets",
-                                              "test/test_sets/random/large/output_sets",
-                                              "test/test_sets/random/large/query_file_large.txt")
-
-
-   # Add example controller network tests. These will be intractable for many.
-   network_base = "$(@__DIR__)/../../examples/networks/"
-   network_files = network_base.*["car_smaller_controller.nnet", "car_smallest_controller.nnet", "controller_single_pendulum.nnet", "controller_double_pendulum_more_robust.nnet", "tora_smaller_controller.nnet", "tora_smallest_controller.nnet"]
-
-   NeuralVerification.make_random_query_file([1, 1, 1, 1, 1, 1],
-                                             [[4, 200, 2, 2], [4, 100, 2, 2], [2, 25, 25, 1], [4, 25, 25, 2], [4, 50, 50, 50, 1, 1], [4, 25, 25, 25, 1, 1]],
-                                             "test/test_sets/control/networks",
-                                             "test/test_sets/control/input_sets",
-                                             "test/test_sets/control/output_sets",
-                                             "test/test_sets/control/query_file_control_small.txt";
-                                             network_files = network_files)
-
-
 end
 
 function write_to_query_file(network_file::String, input_file::String, output_file::String, query_file::String)
