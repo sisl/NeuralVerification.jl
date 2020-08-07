@@ -12,3 +12,4 @@ test/test_sets/previous_issues/networks/issue_138_network.nnet test/test_sets/pr
 test/test_sets/previous_issues/networks/issue_142_network.nnet test/test_sets/previous_issues/input_sets/issue_142_input_set.json test/test_sets/previous_issues/output_sets/issue_142_output_set.json
 test/test_sets/previous_issues/networks/issue_143_network.nnet test/test_sets/previous_issues/input_sets/issue_143_input_set.json test/test_sets/previous_issues/output_sets/issue_143_output_set.json
 test/test_sets/previous_issues/networks/issue_144_network.nnet test/test_sets/previous_issues/input_sets/issue_144_input_set.json test/test_sets/previous_issues/output_sets/issue_144_output_set.json
+test/test_sets/previous_issues/networks/issue_148_network.nnet test/test_sets/previous_issues/input_sets/issue_148_input_set.json test/test_sets/previous_issues/output_sets/issue_148_output_set.json
