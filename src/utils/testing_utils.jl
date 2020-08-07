@@ -21,9 +21,9 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
         next_size = layer_sizes[index+1]
         # Use Id activation for the last layer - otherwise use ReLU activation
         if index == (length(layer_sizes)-1)
-            cur_activation = NeuralVerification.Id()
+            cur_activation = Id()
         else
-            cur_activation = NeuralVerification.ReLU()
+            cur_activation = ReLU()
         end
 
         # Dimension: num_out x num_in
@@ -32,7 +32,7 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
 
         # Dimension: num_out x 1
         cur_bias = min_bias .+ (max_bias - min_bias) * rand(rng, Float64, (next_size))
-        push!(layers, NeuralVerification.Layer(cur_weights, cur_bias, cur_activation))
+        push!(layers, Layer(cur_weights, cur_bias, cur_activation))
     end
 
     return Network(layers)
@@ -164,28 +164,28 @@ We generate three different test sets - small, medium, and large.
 """
 function make_random_test_sets()
     # Tiny test set for Ai2h
-    NeuralVerification.make_random_query_file([3, 3],
-                                                [[1, 2, 1], [1, 3, 2, 1]],
-                                                "test/test_sets/random/tiny/networks",
-                                                "test/test_sets/random/tiny/input_sets",
-                                                "test/test_sets/random/tiny/output_sets",
-                                                "test/test_sets/random/tiny/query_file_tiny.txt")
+    make_random_query_file( [3, 3],
+                            [[1, 2, 1], [1, 3, 2, 1]],
+                            "test/test_sets/random/tiny/networks",
+                            "test/test_sets/random/tiny/input_sets",
+                            "test/test_sets/random/tiny/output_sets",
+                            "test/test_sets/random/tiny/query_file_tiny.txt")
 
 
     # Small, medium, and large should be tractable for all solvers except Ai2h
-    NeuralVerification.make_random_query_file([3, 3],
-                                              [[1, 3, 1], [2, 5, 2]],
-                                              "test/test_sets/random/small/networks",
-                                              "test/test_sets/random/small/input_sets",
-                                              "test/test_sets/random/small/output_sets",
-                                              "test/test_sets/random/small/query_file_small.txt")
+    make_random_query_file([3, 3],
+                          [[1, 3, 1], [2, 5, 2]],
+                          "test/test_sets/random/small/networks",
+                          "test/test_sets/random/small/input_sets",
+                          "test/test_sets/random/small/output_sets",
+                          "test/test_sets/random/small/query_file_small.txt")
 
-    NeuralVerification.make_random_query_file([5, 5, 5],
-                                              [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
-                                              "test/test_sets/random/medium/networks",
-                                              "test/test_sets/random/medium/input_sets",
-                                              "test/test_sets/random/medium/output_sets",
-                                              "test/test_sets/random/medium/query_file_medium.txt")
+    make_random_query_file([5, 5, 5],
+                          [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
+                          "test/test_sets/random/medium/networks",
+                          "test/test_sets/random/medium/input_sets",
+                          "test/test_sets/random/medium/output_sets",
+                          "test/test_sets/random/medium/query_file_medium.txt")
 end
 
 function write_to_query_file(network_file::String, input_file::String, output_file::String, query_file::String)
@@ -544,8 +544,8 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
         for (index, line) in enumerate(queries)
             println("Testing on line $(index): ", line)
             @testset "Test on line: $index" begin
-                problem = NeuralVerification.query_line_to_problem(line; base_dir="$(@__DIR__)/../../")
-                solvers = NeuralVerification.get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
+                problem = query_line_to_problem(line; base_dir="$(@__DIR__)/../../")
+                solvers = get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
                 if (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
                     @warn "Skipping line because no solver in solvers_to_report will be used"
                     continue # If none of the solvers we're interested in are going to be run, then skip solving on this line
@@ -555,16 +555,16 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 for (solver_index, solver) in enumerate(solvers)
                     cur_problem = deepcopy(problem)
                     # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
-                    if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
-                        cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
+                    if ((solver isa ConvDual || solver isa FastLip)) && cur_problem.output isa HalfSpace
+                        cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                     end
 
                     # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
-                    if (NeuralVerification.needs_polytope_input(solver) && cur_problem.input isa NeuralVerification.Hyperrectangle)
-                        cur_problem = NeuralVerification.Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
+                    if (needs_polytope_input(solver) && cur_problem.input isa Hyperrectangle)
+                        cur_problem = Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
                     end
-                    if (NeuralVerification.needs_polytope_output(solver) && cur_problem.output isa NeuralVerification.Hyperrectangle)
-                        cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
+                    if (needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle)
+                        cur_problem = Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
                     end
 
                     # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
@@ -573,7 +573,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                     catch e
                         if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob"
                             @warn "Caught GLPK error on $(typeof(solver))"
-                            results[solver_index] = NeuralVerification.CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
+                            results[solver_index] = CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
                         else
                             # Print the error and make sure we still get its stack
                             for (exc, bt) in Base.catch_stack()
@@ -592,8 +592,8 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
                     if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
                         @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
-                            solver_one_complete = NeuralVerification.is_complete(solvers[i])
-                            solver_two_complete = NeuralVerification.is_complete(solvers[j])
+                            solver_one_complete = is_complete(solvers[i])
+                            solver_two_complete = is_complete(solvers[j])
                             # Both complete
                             if (solver_one_complete && solver_two_complete)
                                 tested_line = true
