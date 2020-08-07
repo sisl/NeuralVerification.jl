@@ -1,6 +1,7 @@
 using Random
 using LinearAlgebra
 using Cbc
+using Test
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -538,4 +539,147 @@ function allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to
         filtered_list = filter(solver->!(solver isa Union{solver_types_to_remove...}), filtered_list)
     end
     return filtered_list
+end
+
+
+
+#=
+    Utils for running the tests themselves
+=#
+
+"""
+test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], [solver_types_to_remove =[]], [solver_types_to_report=[]])
+
+    Run a set of benchmarks on a query file given by file_name.
+    Compares results for consistency, but has no ground truth to compare against.
+
+    Will filter the set of available solvers by type using solver_types_allowed ans solver_types_to_remove.
+    Will use a default list unless a solvers list is given
+    Solver types to report tells which tests to report back for easier interpretation of the results if you're
+    just debugginig a certain solver
+
+"""
+
+function test_query_file(file_name::String; all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
+    path, file = splitdir(file_name)
+    @testset "Correctness Tests on $(file)" begin
+        queries = readlines(file_name)
+        for (index, line) in enumerate(queries)
+            println("Testing on line $(index): ", line)
+            @testset "Test on line: $index" begin
+                problem = NeuralVerification.query_line_to_problem(line; base_dir="$(@__DIR__)/../../")
+                solvers = NeuralVerification.get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
+                if (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
+                    @warn "Skipping line because no solver in solvers_to_report will be used"
+                    continue # If none of the solvers we're interested in are going to be run, then skip solving on this line
+                end
+                # Solve the problem with each solver that applies for the problem, then compare the results
+                results = Vector(undef, length(solvers))
+                for (solver_index, solver) in enumerate(solvers)
+                    cur_problem = deepcopy(problem)
+                    # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
+                    if ((solver isa NeuralVerification.ConvDual || solver isa NeuralVerification.FastLip)) && cur_problem.output isa NeuralVerification.HalfSpace
+                        cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, NeuralVerification.HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
+                    end
+
+                    # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
+                    if (NeuralVerification.needs_polytope_input(solver) && cur_problem.input isa NeuralVerification.Hyperrectangle)
+                        cur_problem = NeuralVerification.Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
+                    end
+                    if (NeuralVerification.needs_polytope_output(solver) && cur_problem.output isa NeuralVerification.Hyperrectangle)
+                        cur_problem = NeuralVerification.Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
+                    end
+
+                    # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
+                    try
+                        results[solver_index] = NeuralVerification.solve(solver, cur_problem)
+                    catch e
+                        if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob"
+                            @warn "Caught GLPK error on $(typeof(solver))"
+                            results[solver_index] = NeuralVerification.CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
+                        else
+                            # Print the error and make sure we still get its stack
+                            for (exc, bt) in Base.catch_stack()
+                               showerror(stdout, exc, bt)
+                               println()
+                            end
+                            throw(e)
+                        end
+                    end
+                end
+
+                # Just sees if each pair agrees
+                # if one or both return unknown then we can't make a comparison
+                tested_line = false
+
+                for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
+                    if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
+                        @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
+                            solver_one_complete = NeuralVerification.is_complete(solvers[i])
+                            solver_two_complete = NeuralVerification.is_complete(solvers[j])
+                            # Both complete
+                            if (solver_one_complete && solver_two_complete)
+                                tested_line = true
+                                # Results match
+                                @test results[i].status == results[j].status
+                            # Solver one complete, solver two incomplete
+                            elseif (solver_one_complete && !solver_two_complete)
+                                tested_line = true
+                                # Results match or solver two unknown or solver one holds solver two violated (bc incomplete)
+                                @test ((results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated))
+                            # Solver one incomplete, solver two complete
+                            elseif (!solver_one_complete && solver_two_complete)
+                                tested_line = true
+                                # Results match or solver one unknown or solver two holds solver one violated (bc incomplete)
+                                @test ((results[i].status == results[j].status) || (results[i].status == :unknown) || ((results[i].status == :violated) && (results[j].status == :holds)))
+                            # Neither are complete
+                            else
+                                if (results[i].status != results[j].status)
+                                    @warn "Neither solver complete but results disagree: $(typeof(solvers[i])) vs. $(typeof(solvers[j])) is $(results[i].status) vs. $(results[j].status)"
+                                end
+                                # Results match or solver one unknown or solver two unknown or
+                                # no test since any mix of outcomes could be justified with two incomplete ones
+                            end
+                        end
+                    end
+                end
+                if (!tested_line)
+                    @warn "Didn't test line $(index): $(line)"
+                end
+            end
+        end
+    end
+end
+
+
+"""
+test_solvers(; solver_types=[], test_set="small", solvers=[])
+
+    A wrapper around test_query_file that makes it easier to specify the test set.
+    test_set can be: "tiny", "small", "medium", or "previous_issues". Typical usage looks like:
+
+    test_solvers(solver_types_to_report=[ExactReach, ReluVal], test_set="small")
+    or
+    test_solvers(test_set="small")
+    or if you'd like to not run a solver at all you can specify this as follows:
+    test_solvers(test_set="small", solver_types_to_remove=[ExactReach, Reluplex])
+
+
+    test_set: tiny, small, medium, or previous_issues. Describes which set of tests to run.
+    all _solvers: An optional list of the solver instances that you'd like to use. This can be used to have control
+        over the hyperparameters that each solver is instantiated with.
+    solver_types_allowed: A list of solver types. If empty, all are allowed. This will filter the solvers that tests are run on to only include solvers whose type is in this list.
+    solver_types_to_remove: A List of solver types. If empty, none are removed. This will filter the solvers that the tests are run on to not include any solvers whose type is in thsi list.
+        Helpful if you are trying to run queries where a certain solver would be slow, or give frequent errors and you want to ignore those.
+    solver_types_to_report: A list of solver types to report test results on. This can be helpful to have a smaller list of results to look through.
+"""
+function test_correctness(;test_set="small", all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
+    test_set_to_file_name= Dict("tiny" => "$(@__DIR__)/../../test/test_sets/random/tiny/query_file_tiny.txt",
+                                "small" => "$(@__DIR__)/../../test/test_sets/random/small/query_file_small.txt",
+                                "medium" => "$(@__DIR__)/../../test/test_sets/random/medium/query_file_medium.txt",
+                                "previous_issues" => "$(@__DIR__)/../../test/test_sets/previous_issues/query_file_previous_issues.txt")
+    @assert test_set in keys(test_set_to_file_name) "Unsupported test_set. tiny, small, medium, and previous_issues are supported"
+    query_file_name = test_set_to_file_name[test_set]
+    test_query_file(query_file_name; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report)
+    println("Finished testing")
 end

@@ -20,7 +20,8 @@ abstract type Solver end
 
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
-JuMP.Model(solver::Solver) = Model(solver.optimizer)
+using Cbc
+JuMP.Model(solver::Solver) = Model(solver.optimizer);
 JuMP.value(vars::Vector{VariableRef}) = value.(vars)
 
 include("utils/activation.jl")
@@ -60,7 +61,8 @@ export
     read_problem,
     write_set,
     read_set,
-    is_complete
+    is_complete,
+    test_correctness
 
 solve(m::Model; kwargs...) = JuMP.solve(m; kwargs...)
 export solve

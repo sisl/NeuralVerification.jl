@@ -1,7 +1,7 @@
 using NeuralVerification, LazySets, GLPKMathProgInterface, GLPK
 using Test
 
-import NeuralVerification: ReLU, Id
+import NeuralVerification: ReLU, Id, HalfSpace
 
 macro no_error(ex)
     quote
