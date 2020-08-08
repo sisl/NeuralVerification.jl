@@ -32,33 +32,30 @@ end
 
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
+    # @assert all(iszero.(problem.input.radius .- problem.input.radius[1])) "input.radius must be uniform. Got $(problem.input.radius)"
     model = Model(solver)
-    c, d = tosimplehrep(problem.output)
-    v = c * problem.network.layers[2].weights
+    if typeof(problem.output) <: LazySets.HalfSpace 
+        out = problem.output
+    elseif typeof(problem.output) <: LazySets.HPolytope 
+        out = problem.output.constraints[1]
+    else
+        error("Certify only take halfspace output constraint")
+    end
+    c, d = out.a, out.b
+    v = c' * problem.network.layers[2].weights
     W = problem.network.layers[1].weights
     M = get_M(v[1, :], W)
     n = size(M, 1)
     P = @variable(model, [1:n, 1:n], PSD)
     # Compute value
-    output = c * compute_output(problem.network, problem.input.center) .- d[1]
-    epsilon = problem.input.radius[1]
-    o = output .+ epsilon/4 * tr(M*P)
+    output = c' * compute_output(problem.network, problem.input.center) - d
+    epsilon = maximum(problem.input.radius)
+    o = output + epsilon/4 * tr(M*P)
     # Specify problem
     @constraint(model, diag(P) .<= ones(n))
-    @objective(model, Max, first(o))
+    @objective(model, Max, o)
     optimize!(model)
-    return interpret_result(solver, termination_status(model), first(o))
-end
-
-# True if o < 0
-# Undertermined if otherwise
-function interpret_result(solver::Certify, status, o)
-    # println("Upper bound: ", value(o[1]))
-    if value(o) <= 0
-        return BasicResult(:holds)
-    else
-        return BasicResult(:violated)
-    end
+    return ifelse(value(o) <= 0, BasicResult(:holds), BasicResult(:violated))
 end
 
 # M is used in the semidefinite program
