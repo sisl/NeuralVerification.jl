@@ -30,13 +30,12 @@ Sound but not complete.
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
+# Why can "interval" be an AbstractPolytope?
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
     Up::Matrix{Float64}
     interval::F
 end
-
-SymbolicInterval(x::Matrix{Float64}, y::Matrix{Float64}) = SymbolicInterval(x, y, Hyperrectangle([0],[0]))
 
 # Data to be passed during forward_layer
 struct SymbolicIntervalGradient
@@ -51,10 +50,10 @@ function solve(solver::Neurify, problem::Problem)
     # TODO get rid of
     problem = Problem(problem.network, convert(HPolytope, problem.input), convert(HPolytope, problem.output))
 
-    A, b = tosimplehrep(problem.input)
-    model = Model(GLPK.Optimizer)
 
-    @variable(model, x[1:dim(input)], A*x .<= b)
+    model = Model(GLPK.Optimizer)
+    x = @variable(model, [1:dim(problem.input)])
+    add_set_constraint!(model, problem.input, x)
 
     reach = forward_network(solver, problem.network, problem.input)
     result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
@@ -71,72 +70,77 @@ function solve(solver::Neurify, problem::Problem)
     splits = Set() # To prevent infinity loop.
 
     for i in 2:solver.max_iter
-        length(reach_list) > 0 || return BasicResult(:holds)
+        isempty(reach_list) && return BasicResult(:holds)
+
         reach, max_violation_con, splits = pick_out!(reach_list, solver.tree_search)
+
         intervals = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
+
         for interval in intervals
-            isempty(interval) && continue
             reach = forward_network(solver, problem.network, interval)
             result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
-            result.status == :violated && return result
-            result.status == :holds || (push!(reach_list, (reach, max_violation_con, copy(splits))))
+            if result.status == :violated
+                return result
+            elseif result.status == :unknown
+                push!(reach_list, (reach, max_violation_con, copy(splits)))
+            end
         end
     end
     return BasicResult(:unknown)
 end
 
-function check_inclusion(solver, reach::SymbolicInterval{<:HPolytope}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(solver::Neurify, reach::SymbolicInterval{<:HPolytope},
+                         output::AbstractPolytope, nnet::Network)
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
     # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1)
 
-    # return a result and the most violated constraint.
-    reach_lc = reach.interval.constraints
-    output_lc = output.constraints
-    n = size(reach_lc, 1)
-    m = size(reach_lc[1].a, 1)
     model = Model(GLPK.Optimizer)
-    @variable(model, x[1:m])
-    @constraint(model, [i in 1:n], reach_lc[i].a' * x <= reach_lc[i].b)
-    max_violation = -1e9
-    max_violation_con = nothing
-    for i in 1:size(output_lc, 1)
-        obj = zeros(size(reach.Low, 2))
-        for j in 1:size(reach.Low, 1)
-            if output_lc[i].a[j] > 0
-                obj += output_lc[i].a[j] * reach.Up[j,:]
-            else
-                obj += output_lc[i].a[j] * reach.Low[j,:]
-            end
-        end
-        obj = transpose(obj)
-        @objective(model, Max, obj * [x; [1]])
+    x = @variable(model, [1:dim(reach.interval)])
+    add_set_constraint!(model, reach.interval, x)
+
+    output_constraints = constraints_list(output)
+
+    max_violation = 0.0
+    max_con_ind = 0
+    # max_violation_con = nothing
+    for (i, cons) in enumerate(output_constraints)
+        # NOTE can be taken out of the loop, but maybe there's no advantage
+        # NOTE max.(M, 0) * U  + ... is a common operation, and maybe should get a name. It's also an "interval map".
+        a, b = cons.a, cons.b
+        obj = max.(a, 0)'*reach.Up + min.(a, 0)'*reach.Low
+
+        @objective(model, Max, obj * [x; 1] - b)
         optimize!(model)
-        if termination_status(model) == MOI.OPTIMAL
-            y = compute_output(nnet, value(x))
-            if !∈(y, output)
+
+        if termination_status(model) == OPTIMAL
+            if compute_output(nnet, value(x)) ∉ output
                 return CounterExampleResult(:violated, value(x)), nothing
             end
-            if objective_value(model) > output_lc[i].b
-                if objective_value(model) - output_lc[i].b > max_violation
-                    max_violation = objective_value(model) - output_lc[i].b
-                    max_violation_con = output_lc[i].a
-                end
+
+            viol = objective_value(model)
+            if viol > max_violation
+                max_violation = viol
+                max_con_ind = i
             end
         else
-            if ∈(value(x), reach.interval)
-                println("Not OPTIMAL, but x in the input set")
-                println("This is usually caused by open input set.")
-                println("Please check your input constraints.")
-                exit()
+            # NOTE Is this even valid if the problem isn't solved optimally?
+            if value(x) ∈ reach.interval
+                error("Not OPTIMAL, but x in the input set.\n
+                This is usually caused by open input set.\n
+                Please check your input constraints.")
             end
-            println("No solution, please check the problem definition.")
-            exit()
+            # TODO can we be more descriptive?
+            error("No solution, please check the problem definition.")
         end
 
     end
-    max_violation > 0 && return BasicResult(:unknown), max_violation_con
-    return BasicResult(:holds), nothing
+
+    if max_violation > 0.0
+        return CounterExampleResult(:unknown), output_constraints[max_con_ind].a
+    else
+        return CounterExampleResult(:holds),   nothing
+    end
 end
 
 function constraint_refinement(solver::Neurify,
@@ -145,102 +149,76 @@ function constraint_refinement(solver::Neurify,
                                max_violation_con::AbstractVector{Float64},
                                splits::Vector)
 
-    i, j, influence = get_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
+    i, j, influence = get_max_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
     reach_new = forward_network(solver, Network(nnet.layers[1:i]), reach.sym.interval)
 
-    inter = reach.sym.interval
-    L = reach_new.sym.Low
-    U = reach_new.sym.Up
+    aL, bL = reach_new.sym.Low[j, 1:end-1], reach_new.sym.Low[j, end]
+    aU, bU = reach_new.sym.Up[j, 1:end-1], reach_new.sym.Up[j, end]
 
-    # maybe filter rows of L and U that are all zeros first.
-    # NOTE: but j determines the row, so how can it ever be 0?
+    ∩ = LazySets.intersection
 
-    WL, bL = L[j, 1:end-1], L[j, end]
-    WU, bU = U[j, 1:end-1], U[j, end]
+    intervals = [reach.sym.interval]
 
-    I1 = inter ∩ HPolyhedron(WL, -bL) ∩ HPolyhedron(WU, -bU)
-    I2 = inter ∩ HPolyhedron(WL, -bL) ∩ HPolyhedron(-WU, bU)
-    I3 = inter ∩ HPolyhedron(-WL, bL) ∩ HPolyhedron(-WU, bU)
-
-    intervals = [I1, I2, I3]
-
-
-    # C, d = tosimplehrep(reach.sym.interval)
-    # l_sym = reach_new.sym.Low[[j], 1:end-1]
-    # l_off = reach_new.sym.Low[[j], end]
-    # u_sym = reach_new.sym.Up[[j], 1:end-1]
-    # u_off = reach_new.sym.Up[[j], end]
-    # intervals = Vector(undef, 3)
-    # # remove zero constraints and construct new intervals
-    # intervals[1] = construct_interval([C; l_sym; u_sym], [d; -l_off; -u_off])
-    # intervals[2] = construct_interval([C; l_sym; -u_sym], [d; -l_off; u_off])
-    # intervals[3] = construct_interval([C; -l_sym; -u_sym], [d; l_off; u_off])
-    # intervals[4] = HPolytope([C; -l_sym; u_sym], [d; l_off; -u_off]) lower bound can not be greater than upper bound
-    return intervals
+    # If either of the normal vectors is the 0-vector, we must skip it.
+    # It cannot be used to create a halfspace constraint.
+    # NOTE: how can this come about, and does it mean anything?
+    if !iszero(aL)
+        intervals = intervals .∩ [HalfSpace(aL, -bL), HalfSpace(aL, -bL), HalfSpace(-aL, bL)]
+    end
+    if !iszero(aU)
+        intervals = intervals .∩ [HalfSpace(aU, -bL), HalfSpace(aU, -bL), HalfSpace(-aU, bL)]
+    end
+    return filter(!isempty, intervals)
 end
 
-# # NOTE: What effect do 0-intervals have?
-# function construct_interval(A::AbstractMatrix{N}, b::AbstractVector{N}) where {N<:Real}
-#     m = size(A, 1)
-#     zero_idx = []
-#     for i in 1:m
-#         iszero(A[i,:]) && push!(zero_idx, i)
-#     end
-#     A = A[setdiff(1:end, zero_idx), :]
-#     b = b[setdiff(1:end, zero_idx)]
-#     return HPolytope(A, b)
-# end
 
-function get_nodewise_influence(solver::Neurify,
-                                nnet::Network,
-                                reach::SymbolicIntervalGradient,
-                                max_violation_con::AbstractVector{Float64},
-                                splits::Vector)
+function get_max_nodewise_influence(solver::Neurify,
+                                    nnet::Network,
+                                    reach::SymbolicIntervalGradient,
+                                    max_violation_con::AbstractVector{Float64},
+                                    splits::Vector)
 
-    n_output = size(nnet.layers[end].weights, 1)
-    n_length = length(nnet.layers)
+    LΛ, UΛ, radii = reach.LΛ, reach.UΛ, reach.r
+    is_ambiguous_activation(i, j) = (0 < LΛ[i][j] < 1) || (0 < UΛ[i][j] < 1)
 
-    LΛ, UΛ = reach.LΛ, reach.UΛ
     # We want to find the node with the largest influence
     # Influence is defined as gradient * interval width
     # The gradient is with respect to a loss defined by the most violated constraint.
     LG = copy(max_violation_con)
     UG = copy(max_violation_con)
-    max_tuple = (0, 0, -1e9)
-    for (k, layer) in enumerate(reverse(nnet.layers))
-        # Only split Relu nodes
+
+    i_max, j_max, influence_max = 0, 0, -Inf
+
+    for i in reverse(1:length(nnet.layers))
+        layer = nnet.layers[i]
         if layer.activation isa ReLU
-            i = n_length - k + 1
             for j in 1:n_nodes(layer)
-                if (0 < LΛ[i][j] < 1) || (0 < UΛ[i][j] < 1)
-                    max_gradient = max(abs(LG[j]), abs(UG[j]))
-                    # influence = max_gradient * reach.r[i][j] * k # This k is different from original paper, but can improve the split efficiency.
-                    influence = max_gradient * reach.r[i][j]
-                    if (i,j, influence) in splits # To prevent infinity loop
-                        continue
-                    end
-                    # If we use > here, in the case that largest gradient is 0, this function will return (0, 0 ,0)
-                    if influence >= max_tuple[3]
-                        max_tuple = (i, j, influence)
+                if is_ambiguous_activation(i, j)
+                    # taking `influence = max_gradient * reach.r[i][j]*k` would be
+                    # different from original paper, but can improve the split efficiency.
+                    # where `k = n-i+1`, i.e. counts up from 1 as you go back in layers.
+                    influence = max(abs(LG[j]), abs(UG[j])) * radii[i][j]
+                    if influence >= influence_max && (i, j, influence) ∉ splits
+                        i_max, j_max, influence_max = i, j, influence
                     end
                 end
             end
         end
-        # i >= 1 || break    # NOTE doesn't do anything?
 
         LG_hat = max.(LG, 0.0) .* LΛ[i] .+ min.(LG, 0.0) .* UΛ[i]
         UG_hat = min.(UG, 0.0) .* LΛ[i] .+ max.(UG, 0.0) .* UΛ[i]
 
         LG, UG = interval_map(layer.weights', LG_hat, UG_hat)
     end
-    if max_tuple[1] == 0 && max_tuple[2] == 0
-        println("Can not find valid node to split")
-        exit()
-    end
-    push!(splits, max_tuple)
-    return max_tuple
+
+    # NOTE can omit this line in the paper version
+    i_max == 0 || j_max == 0 && error("Can not find valid node to split")
+
+    push!(splits, (i_max, j_max, influence_max))
+
+    return (i_max, j_max, influence_max)
 end
 
 function forward_layer(solver::Neurify, layer::Layer, input)
@@ -313,14 +291,12 @@ function forward_act(input::SymbolicIntervalGradient, layer::Layer{Id})
     return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
-function bounds(a, input)
-    A, b = tosimplehrep(input)
-
+function bounds(v, input)
     model = Model(GLPK.Optimizer)
     x = @variable(model, [1:dim(input)])
-    @constraint(model, A * x .<= b)
+    add_set_constraint!(model, input, x)
 
-    obj = a' * [x; 1]
+    obj = v' * [x; 1]
 
     @objective(model, Max, obj)
     optimize!(model)
@@ -332,26 +308,3 @@ function bounds(a, input)
 
     return (lower_bound, upper_bound)
 end
-
-
-# function upper_bound(map::Vector{Float64}, input::HPolytope)
-#     n = size(input.constraints, 1)
-#     m = size(input.constraints[1].a, 1)
-#     model =Model(GLPK.Optimizer)
-#     @variable(model, x[1:m])
-#     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-#     @objective(model, Max, map' * [x; [1]])
-#     optimize!(model)
-#     return objective_value(model)
-# end
-
-# function lower_bound(map::Vector{Float64}, input::HPolytope)
-#     n = size(input.constraints, 1)
-#     m = size(input.constraints[1].a, 1)
-#     model =Model(GLPK.Optimizer)
-#     @variable(model, x[1:m])
-#     @constraint(model, [i in 1:n], input.constraints[i].a' * x <= input.constraints[i].b)
-#     @objective(model, Min, map' * [x; [1]])
-#     optimize!(model)
-#     return objective_value(model)
-# end
