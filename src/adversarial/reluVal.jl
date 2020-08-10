@@ -65,38 +65,29 @@ end
 
 function pick_out!(reach_list, tree_search)
     if tree_search == :BFS
-        reach = reach_list[1]
-        deleteat!(reach_list, 1)
+        reach = popfirst!(reach_list)
     else
-        n = length(reach_list)
-        reach = reach_list[n]
-        deleteat!(reach_list, n)
+        reach = pop!(reach_list)
     end
     return reach
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle{N}}) where N
-    n_output = size(reach.Low, 1)
-    upper = zeros(n_output)
-    lower = zeros(n_output)
-    for i in 1:n_output
-        lower[i] = lower_bound(reach.Low[i, :], reach.interval)
-        upper[i] = upper_bound(reach.Up[i, :], reach.interval)
-    end
+function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle})
+    lower = [lower_bound(l, reach.interval) for l in eachrow(reach.Low)]
+    upper = [upper_bound(u, reach.interval) for u in eachrow(reach.Up)]
+
     return Hyperrectangle(low = lower, high = upper)
 end
 
-function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle{N}}, output::AbstractPolytope, nnet::Network) where N
+function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output::AbstractPolytope, nnet::Network)
     reachable = symbol_to_concrete(reach)
-    # println("reluval reachable")
-    # println(reachable)
+
     issubset(reachable, output) && return BasicResult(:holds)
-    # is_intersection_empty(reachable, output) && return BasicResult(:violated)
 
     # Sample the middle point
-    middle_point = (high(reach.interval) + low(reach.interval))./2
+    middle_point = center(reach.interval)
     y = compute_output(nnet, middle_point)
-    ∈(y, output) || return CounterExampleResult(:violated, middle_point)
+    y ∈ output || return CounterExampleResult(:violated, middle_point)
 
     return BasicResult(:unknown)
 end
@@ -180,27 +171,23 @@ function get_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::M
     return feature, monotone
 end
 
-# Get upper bound in concretization
-function upper_bound(map::Vector{Float64}, input::Hyperrectangle)
-    bound = map[dim(input)+1]
-    input_upper = high(input)
-    input_lower = low(input)
-    for i in 1:dim(input)
-        bound += ifelse( map[i]>0, map[i]*input_upper[i], map[i]*input_lower[i])
+function _bound(map::AbstractVector, input::Hyperrectangle, which_bound::Symbol)
+    a, b = map[1:end-1], map[end]
+
+    if which_bound === :lower
+        bound = max.(a, 0)' * low(input) +
+                min.(a, 0)' * high(input) + b
+    elseif which_bound === :upper
+        bound = max.(a, 0)' * high(input) +
+                min.(a, 0)' * low(input) + b
     end
+
     return bound
 end
 
-# Get lower bound in concretization
-function lower_bound(map::Vector{Float64}, input::Hyperrectangle)
-    bound = map[dim(input)+1]
-    input_upper = high(input)
-    input_lower = low(input)
-    for i in 1:dim(input)
-        bound += ifelse(map[i]>0, map[i]*input_lower[i], map[i]*input_upper[i])
-    end
-    return bound
-end
+upper_bound(map, input) = _bound(map, input, :upper)
+lower_bound(map, input) = _bound(map, input, :lower)
+
 
 # Concrete forward_linear
 # function forward_linear_concrete(input::Hyperrectangle, W::Matrix{Float64}, b::Vector{Float64})
