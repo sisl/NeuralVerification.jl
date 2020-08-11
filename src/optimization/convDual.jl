@@ -94,6 +94,7 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         n_input  = length(layers[i-1].bias)
         n_output = length(layers[i].bias)
 
+
         last_input_ReLU = act_gradient.(last(l), last(u))
         push!(input_ReLU, last_input_ReLU)
         D = Diagonal(last_input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)

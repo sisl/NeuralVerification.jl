@@ -14,44 +14,33 @@ end
 # Checks whether the reachable set belongs to the output constraint
 # It is called by all solvers under reachability
 # Note vertices_list is not defined for HPolytope: to be defined
-function check_inclusion(reach::Vector{<:AbstractPolytope}, output)
+function check_inclusion(reach::Vector{<:LazySet}, output)
     for poly in reach
         issubset(poly, output) || return ReachabilityResult(:violated, reach)
     end
-    return ReachabilityResult(:holds, similar(reach, 0))
+    return ReachabilityResult(:holds, reach)
 end
 
-function check_inclusion(reach::P, output) where P<:AbstractPolytope
-    if issubset(reach, output)
-        return ReachabilityResult(:holds, P[])
-    end
-    return ReachabilityResult(:violated, [reach])
+function check_inclusion(reach::P, output) where P<:LazySet
+    return ReachabilityResult(issubset(reach, output) ? :holds : :violated, [reach])
 end
 
 # return a vector so that append! is consistent with the relu forward_partition
-forward_partition(act::Id, input::HPolytope) = [input]
+forward_partition(act::Id, input) = [input]
 
-function forward_partition(act::ReLU, input::HPolytope)
-    n = dim(input)
-    output = Vector{HPolytope}(undef, 0)
-    C, d = tosimplehrep(input)
-    dh = [d; zeros(n)]
-    for h in 0:(2^n)-1
-        P = getP(h, n)
-        Ch = [C; I - 2P]
-        input_h = HPolytope(Ch, dh)
-        if !isempty(input_h)
-            push!(output, linear_map(Matrix{Float64}(P), input_h))
+function forward_partition(act::ReLU, input)
+    N = dim(input)
+    N > 30 && @warn "Got dim(X) == $N in `forward_partition`. Expecting 2ᴺ = $(2^big(N)) output sets."
+
+    output = HPolytope{Float64}[]
+
+    for h in 0:(big"2"^N)-1
+        P = Diagonal(1.0.*digits(h, base = 2, pad = N))
+        orthant = HPolytope(Matrix(I - 2.0P), zeros(N))
+        S = intersection(input, orthant)
+        if !isempty(S)
+            push!(output, linear_map(P, S))
         end
     end
     return output
-end
-
-function getP(h::Int64, n::Int64)
-    str = string(h, pad = n, base = 2)
-    vec = Vector{Int64}(undef, n)
-    for i in 1:n
-        vec[i] = ifelse(str[i] == '1', 1, 0)
-    end
-    return Diagonal(vec)
 end

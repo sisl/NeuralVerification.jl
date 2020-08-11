@@ -358,7 +358,8 @@ argument determines whether the bounds are pre- or post-activation.
 Return:
 - `Vector{Hyperrectangle}`: bounds for all nodes. `bounds[1]` is the input set.
 """
-function get_bounds(nnet::Network, input::Hyperrectangle, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
+function get_bounds(nnet::Network, input, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
+    input = overapproximate(input)
     bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
     bounds[1] = input
     b = input
@@ -436,4 +437,18 @@ function split_interval(dom::Hyperrectangle, i::Int64)
     input_upper[i] = dom.center[i] + dom.radius[i]
     input_split_right = Hyperrectangle(low = input_lower, high = input_upper)
     return (input_split_left, input_split_right)
+end
+
+
+struct UnboundedInputError <: Exception
+    msg::String
+end
+Base.showerror(io::IO, e::UnboundedInputError) = print(io, msg)
+
+function isbounded(input)
+    if input isa HPolytope
+        return LazySets.isbounded(input, false)
+    else
+        return LazySets.isbounded(input)
+    end
 end
