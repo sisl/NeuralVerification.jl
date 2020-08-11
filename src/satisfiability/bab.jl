@@ -68,6 +68,7 @@ function output_bound(solver::BaB, problem::Problem, type::Symbol)
                 add_domain!(doms, (dom_approx, subdoms[i]), type)
             end
         end
+        length(doms) == 0 && return (global_approx, global_concrete, x_star)
         global_approx = doms[1][1]
     end
     return (global_approx, global_concrete, x_star)
