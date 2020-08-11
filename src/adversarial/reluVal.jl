@@ -59,7 +59,7 @@ end
 
 function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient(nnet, reach.LΛ, reach.UΛ)
-    feature, monotone = get_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
+    feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
     return split_interval(reach.sym.interval, feature)
 end
 
@@ -156,19 +156,14 @@ function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
 end
 
 # Return the splited intervals
-function get_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
-    largest_smear = - Inf
-    feature = 0
-    r = input.radius
-    for i in 1:dim(input)
-        smear = sum(max.(abs.(UG[:, i]), abs.(LG[:, i]))) * r[i]
-        if smear > largest_smear
-            largest_smear = smear
-            feature = i
-        end
-    end
-    monotone = all((LG[:, feature] .* UG[:, feature]) .> 0)
-    return feature, monotone
+function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
+
+    smear(lg, ug, r) = sum(max.(abs.(lg), abs.(ug))) * r
+
+    ind = argmax(smear.(eachcol(LG), eachcol(UG), input.radius))
+    monotone = all(>(0), LG[:, ind] .* UG[:, ind]) # NOTE should it be >= 0 instead?
+
+    return ind, monotone
 end
 
 function _bound(map::AbstractVector, input::Hyperrectangle, which_bound::Symbol)
