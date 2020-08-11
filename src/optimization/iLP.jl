@@ -63,10 +63,12 @@ function solve(solver::ILP, problem::Problem)
 end
 
 function interpret_result(solver::ILP, x, input)
-    if prod(abs.(x - input.center) .>= input.radius)
-        return AdversarialResult(:holds, minimum(abs.(x - input.center)))
+    radius = abs.(x .- center(input))
+
+    if all(radius .>= radius_hyperrectangle(input))
+        return AdversarialResult(:holds, minimum(radius))
     else
-        return AdversarialResult(:violated, minimum(abs.(x - input.center)))
+        return AdversarialResult(:violated, minimum(radius))
     end
 end
 
