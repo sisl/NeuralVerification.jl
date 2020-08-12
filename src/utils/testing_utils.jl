@@ -71,9 +71,7 @@ an entry of num_networks_for_size is larger than 1.
 """
 function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 layer_sizes::Array{Array{Int, 1}},
-                                network_dir,
-                                input_set_dir,
-                                output_set_dir,
+                                test_set_dir,
                                 query_file
                                 ; min_weight = -1.0,
                                 max_weight = 1.0,
@@ -82,6 +80,9 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
                                 network_files=[],
                                 rng=MersenneTwister()
                                 )
+    network_dir = joinpath(test_set_dir, "networks")
+    input_set_dir = joinpath(test_set_dir, "input_sets")
+    output_set_dir = joinpath(test_set_dir, "output_sets")
 
     for (shape_index, (num_networks, layer_sizes)) in enumerate(zip(num_networks_for_size, layer_sizes))
         for i = 1:num_networks
@@ -151,41 +152,76 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
 
             write_problem.(network_filenames, input_filenames, output_filenames, problems; query_file=query_file)
         end
-
     end
 end
 
 
 """
-    function make_random_test_set()
+    function make_random_test_sets(; [sets::Vector{String}=["tiny", "small", "medium", "large"]], [base_dir::String="test/test_sets/random/"])
 
 A function that generates the set of random query files to be used in testing.
-We generate three different test sets - small, medium, and large.
-"""
-function make_random_test_sets()
-    # Tiny test set for Ai2h
-    make_random_query_file( [3, 3],
-                            [[1, 2, 1], [1, 3, 2, 1]],
-                            "test/test_sets/random/tiny/networks",
-                            "test/test_sets/random/tiny/input_sets",
-                            "test/test_sets/random/tiny/output_sets",
-                            "test/test_sets/random/tiny/query_file_tiny.txt")
+We can generate four different test sets - tiny, small, medium, and large.
 
+The vector sets can be used to describe which sets you'd like to create.
+base_dir tells the directory to create the test_set in. For example, if base_dir="example_dir/"
+then it creates the following structure:
+
+example_dir
+    networks
+        net1.nnet
+        net2.nnet
+    input_sets
+        input_set1.nnet
+        input_set2.nnet
+    output_sets/
+        output_set1.nnet
+        output_set2.nnet
+    queries.txt
+
+Returns the query files it created
+"""
+function make_random_test_sets(; sets::Vector{String}=["tiny", "small", "medium", "large"], base_dir::String="test/test_sets/random/")
+    @assert all([set in ["tiny", "small", "medium", "large"] for set in sets]) "Unsupported test set. Only tiny, small, medium, and large are supported."
+
+    query_files = []
+    # Tiny test set for Ai2h
+    if ("tiny" in sets)
+        query_file = joinpath(base_dir, "tiny/queries.txt")
+        make_random_query_file([3, 3],
+                               [[1, 2, 1], [1, 3, 2, 1]],
+                               joinpath(base_dir, "tiny"),
+                               query_file)
+        push!(query_files, query_file)
+    end
 
     # Small, medium, and large should be tractable for all solvers except Ai2h
-    make_random_query_file([3, 3],
-                          [[1, 3, 1], [2, 5, 2]],
-                          "test/test_sets/random/small/networks",
-                          "test/test_sets/random/small/input_sets",
-                          "test/test_sets/random/small/output_sets",
-                          "test/test_sets/random/small/query_file_small.txt")
+    if ("small" in sets)
+        query_file = joinpath(base_dir, "small/queries.txt")
+        make_random_query_file([3, 3],
+                              [[1, 3, 1], [2, 5, 2]],
+                              joinpath(base_dir, "small"),
+                              query_file)
+        push!(query_files, query_file)
+    end
 
-    make_random_query_file([5, 5, 5],
-                          [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
-                          "test/test_sets/random/medium/networks",
-                          "test/test_sets/random/medium/input_sets",
-                          "test/test_sets/random/medium/output_sets",
-                          "test/test_sets/random/medium/query_file_medium.txt")
+    if ("medium" in sets)
+        query_file = joinpath(base_dir, "medium/queries.txt")
+        make_random_query_file([5, 5, 5],
+                              [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
+                              joinpath(base_dir, "medium"),
+                              query_file)
+        push!(query_files, query_file)
+    end
+
+    if ("large" in sets)
+        query_file = joinpath(base_dir, "large/queries.txt")
+        make_random_query_file([6, 6, 6, 6, 6],
+                              [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [4, 3, 2], [3, 4, 3], [5, 8, 1]],
+                              joinpath(base_dir, "large"),
+                              query_file)
+        push!(query_files, query_file)
+    end
+    return query_files
 end
 
 function write_to_query_file(network_file::String, input_file::String, output_file::String, query_file::String)
@@ -546,7 +582,9 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
             @testset "Test on line: $index" begin
                 problem = query_line_to_problem(line; base_dir="$(@__DIR__)/../../")
                 solvers = get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
-                if (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
+                # Skip the line if you won't report it - assume no solvers to report
+                # corresponds to reporting all solvers
+                if (!(length(solver_types_to_report) == 0)) && (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
                     @warn "Skipping line because no solver in solvers_to_report will be used"
                     continue # If none of the solvers we're interested in are going to be run, then skip solving on this line
                 end
@@ -554,6 +592,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 results = Vector(undef, length(solvers))
                 for (solver_index, solver) in enumerate(solvers)
                     cur_problem = deepcopy(problem)
+                    println("Solving with: ", typeof(solver))
                     # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
                     if ((solver isa ConvDual || solver isa FastLip)) && cur_problem.output isa HalfSpace
                         cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
@@ -592,8 +631,10 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
                     if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
                         @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
+                            println("Comparing: ", typeof(solvers[i]), " with ", typeof(solvers[j]))
                             solver_one_complete = is_complete(solvers[i])
                             solver_two_complete = is_complete(solvers[j])
+                            println("Completeness: ", (solver_one_complete, solver_two_complete))
                             # Both complete
                             if (solver_one_complete && solver_two_complete)
                                 tested_line = true
@@ -641,7 +682,6 @@ test_solvers(; solver_types=[], test_set="small", solvers=[])
     or if you'd like to not run a solver at all you can specify this as follows:
     test_solvers(test_set="small", solver_types_to_remove=[ExactReach, Reluplex])
 
-
     test_set: tiny, small, medium, or previous_issues. Describes which set of tests to run.
     all _solvers: An optional list of the solver instances that you'd like to use. This can be used to have control
         over the hyperparameters that each solver is instantiated with.
@@ -651,12 +691,8 @@ test_solvers(; solver_types=[], test_set="small", solvers=[])
     solver_types_to_report: A list of solver types to report test results on. This can be helpful to have a smaller list of results to look through.
 """
 function test_correctness(;test_set="small", all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
-    test_set_to_file_name= Dict("tiny" => "$(@__DIR__)/../../test/test_sets/random/tiny/query_file_tiny.txt",
-                                "small" => "$(@__DIR__)/../../test/test_sets/random/small/query_file_small.txt",
-                                "medium" => "$(@__DIR__)/../../test/test_sets/random/medium/query_file_medium.txt",
-                                "previous_issues" => "$(@__DIR__)/../../test/test_sets/previous_issues/query_file_previous_issues.txt")
-    @assert test_set in keys(test_set_to_file_name) "Unsupported test_set. tiny, small, medium, and previous_issues are supported"
-    query_file_name = test_set_to_file_name[test_set]
-    test_query_file(query_file_name; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report)
-    println("Finished testing")
+        test_set_dir = tempname()
+        query_file = make_random_test_sets(sets=[test_set], base_dir=test_set_dir)[1] # it returns the list of query files, take the first (and only) one
+        results = test_query_file(query_file; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report)
+        rm(test_set_dir, recursive=true)
 end
