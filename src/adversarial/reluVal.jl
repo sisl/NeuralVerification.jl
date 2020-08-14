@@ -58,7 +58,7 @@ function solve(solver::ReluVal, problem::Problem)
 end
 
 function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
-    LG, UG = get_gradient(nnet, reach.LΛ, reach.UΛ)
+    LG, UG = get_gradient_bounds(nnet, reach.LΛ, reach.UΛ)
     feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
     return split_interval(reach.sym.interval, feature)
 end

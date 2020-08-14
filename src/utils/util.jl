@@ -287,7 +287,7 @@ function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
 end
 
 """
-    get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
+    get_gradient_bounds(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
 
 Get lower and upper bounds on network gradient for given gradient bounds on activations
 Inputs:
@@ -297,7 +297,7 @@ Return:
 - `LG::Vector{Matrix}`: lower bounds
 - `UG::Vector{Matrix}`: upper bounds
 """
-function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
+function get_gradient_bounds(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
     n_input = size(nnet.layers[1].weights, 2)
     LG = Matrix(1.0I, n_input, n_input)
     UG = Matrix(1.0I, n_input, n_input)
@@ -310,7 +310,7 @@ function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
 end
 
 """
-    get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+    get_gradient_bounds(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
 
 Get lower and upper bounds on network gradient for given gradient bounds on activations
 Inputs:
@@ -319,7 +319,7 @@ Inputs:
 Return:
 - `(LG, UG)` lower and upper bounds
 """
-function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+function get_gradient_bounds(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
     n_input = size(nnet.layers[1].weights, 2)
     LG = Matrix(1.0I, n_input, n_input)
     UG = Matrix(1.0I, n_input, n_input)
