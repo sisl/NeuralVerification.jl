@@ -238,7 +238,7 @@ Inputs:
 - `l::Float64`: lower bound
 - `u::Float64`: upper bound
 Return:
-- `slop::Float64`: 0 if u<0; 1 if l>0; u/(u-l) otherwise
+- 0 if u<0; 1 if l>0; u/(u-l) otherwise
 """
 function act_gradient(act::ReLU, l::Float64, u::Float64)
     u <= 0.0 && return 0.0
@@ -249,17 +249,19 @@ end
 act_gradient(l::Float64, u::Float64) = act_gradient(ReLU(), l, u)
 
 """
-    get_gradient(nnet::Network, input::AbstractPolytope)
+    get_gradient_bounds(nnet::Network, input::AbstractPolytope)
 
 Get lower and upper bounds on network gradient for a given input set.
 Return:
 - `LG::Vector{Matrix}`: lower bounds
 - `UG::Vector{Matrix}`: upper bounds
 """
-function get_gradient(nnet::Network, input::AbstractPolytope)
+function get_gradient_bounds(nnet::Network, input::AbstractPolytope)
     LΛ, UΛ = act_gradient_bounds(nnet, input)
-    return get_gradient(nnet, LΛ, UΛ)
+    return get_gradient_bounds(nnet, LΛ, UΛ)
 end
+get_gradient_bounds(problem::Problem, args...) = get_gradient_bounds(problem.network, problem.input, args...)
+
 
 """
     act_gradient_bounds(nnet::Network, input::AbstractPolytope)
@@ -271,46 +273,23 @@ Return:
 - `UΛ::Vector{Matrix}`: upper bounds
 """
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
-    bounds = get_bounds(nnet, input)
-    LΛ = Vector{Matrix}(undef, 0)
-    UΛ = Vector{Matrix}(undef, 0)
+    # get the pre-activation bounds, and get rid of the input set
+    bounds = get_bounds(nnet, input, false)
+    popfirst!(bounds)
+
+    LΛ = Vector{BitVector}(undef, 0)
+    UΛ = Vector{BitVector}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = approximate_affine_map(layer, bounds[i])
-        lower = low(before_act_bound)
-        upper = high(before_act_bound)
-        l = act_gradient(layer.activation, lower)
-        u = act_gradient(layer.activation, upper)
-        push!(LΛ, Diagonal(l))
-        push!(UΛ, Diagonal(u))
+        l = act_gradient(layer.activation, low(bounds[i]))
+        u = act_gradient(layer.activation, high(bounds[i]))
+        push!(LΛ, l)
+        push!(UΛ, u)
     end
     return (LΛ, UΛ)
 end
 
 """
-    get_gradient_bounds(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
-
-Get lower and upper bounds on network gradient for given gradient bounds on activations
-Inputs:
-- `LΛ::Vector{Matrix}`: lower bounds on activation gradients
-- `UΛ::Vector{Matrix}`: upper bounds on activation gradients
-Return:
-- `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds
-"""
-function get_gradient_bounds(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
-    n_input = size(nnet.layers[1].weights, 2)
-    LG = Matrix(1.0I, n_input, n_input)
-    UG = Matrix(1.0I, n_input, n_input)
-    for (i, layer) in enumerate(nnet.layers)
-        LG_hat, UG_hat = interval_map(layer.weights, LG, UG)
-        LG = LΛ[i] * max.(LG_hat, 0) + UΛ[i] * min.(LG_hat, 0)
-        UG = LΛ[i] * min.(UG_hat, 0) + UΛ[i] * max.(UG_hat, 0)
-    end
-    return (LG, UG)
-end
-
-"""
-    get_gradient_bounds(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+    get_gradient_bounds(nnet::Network, LΛ::Vector{AbstractVector}, UΛ::Vector{AbstractVector})
 
 Get lower and upper bounds on network gradient for given gradient bounds on activations
 Inputs:
@@ -319,7 +298,7 @@ Inputs:
 Return:
 - `(LG, UG)` lower and upper bounds
 """
-function get_gradient_bounds(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+function get_gradient_bounds(nnet::Network, LΛ::Vector{<:AbstractVector}, UΛ::Vector{<:AbstractVector})
     n_input = size(nnet.layers[1].weights, 2)
     LG = Matrix(1.0I, n_input, n_input)
     UG = Matrix(1.0I, n_input, n_input)
@@ -332,13 +311,11 @@ function get_gradient_bounds(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{
 end
 
 """
-    interval_map(W::Matrix, l, u)
+    interval_map(W::Matrix, l::AbstractVecOrMat, u::AbstractVecOrMat)
 
-Simple linear mapping on intervals
-Inputs:
-- `W::Matrix{N}`: linear mapping (left)
-- `l::Vector{N}`: lower bound
-- `u::Vector{N}`: upper bound
+Simple linear mapping on intervals.
+`L, U := ([W]₊*l + [W]₋*u), ([W]₊*u + [W]₋*l)`
+
 Outputs:
 - `(lbound, ubound)` (after the mapping)
 """
