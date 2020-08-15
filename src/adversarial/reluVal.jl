@@ -34,40 +34,63 @@ end
 # Data to be passed during forward_layer
 struct SymbolicIntervalMask
     sym::SymbolicInterval
-    LΛ::Vector{Vector{Int64}}
-    UΛ::Vector{Vector{Int64}}
+    LΛ::Vector{Vector{Bool}}
+    UΛ::Vector{Vector{Bool}}
+end
+
+function init_symbolic_mask(interval)
+    n = dim(interval)
+    I = Matrix{Float64}(LinearAlgebra.I(n))
+    Z = zeros(n)
+    symbolic_input = SymbolicInterval([I Z], [I Z], interval)
+    symbolic_mask = SymbolicIntervalMask(symbolic_input,
+                                         Vector{Vector{Bool}}(),
+                                         Vector{Vector{Bool}}())
 end
 
 function solve(solver::ReluVal, problem::Problem)
-    reach = forward_network(solver, problem.network, problem.input)
+
+    reach = forward_network(solver, problem.network, init_symbolic_mask(problem.input))
     result = check_inclusion(reach.sym, problem.output, problem.network)
-    result.status == :unknown || return result
-    reach_list = SymbolicIntervalMask[reach]
+    result.status === :unknown || return result
+
+    reach_list = [reach]
+
     for i in 2:solver.max_iter
-        length(reach_list) > 0 || return BasicResult(:holds)
-        reach = pick_out!(reach_list, solver.tree_search)
-        intervals = interval_refinement(problem.network, reach)
+
+        isempty(reach_list) && return BasicResult(:holds)
+
+        reach = select!(reach_list, solver.tree_search)
+
+        intervals = bisect_interval_by_max_smear(problem.network, reach)
+
         for interval in intervals
-            reach = forward_network(solver, problem.network, interval)
+            reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
             result = check_inclusion(reach.sym, problem.output, problem.network)
-            result.status == :violated && return result
-            result.status == :holds || (push!(reach_list, reach))
+
+            if result === :violated
+                return result
+            elseif result === :unknown
+                push!(reach_list, reach)
+            end
         end
     end
     return BasicResult(:unknown)
 end
 
-function interval_refinement(nnet::Network, reach::SymbolicIntervalMask)
+function bisect_interval_by_max_smear(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient_bounds(nnet, reach.LΛ, reach.UΛ)
     feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
     return split_interval(reach.sym.interval, feature)
 end
 
-function pick_out!(reach_list, tree_search)
+function select!(reach_list, tree_search)
     if tree_search == :BFS
         reach = popfirst!(reach_list)
-    else
+    elseif tree_search == :DFS
         reach = pop!(reach_list)
+    else
+        throw(ArgumentError(":$tree_search is not a valid tree search strategy"))
     end
     return reach
 end
@@ -75,11 +98,10 @@ end
 function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle})
     lower = [lower_bound(l, reach.interval) for l in eachrow(reach.Low)]
     upper = [upper_bound(u, reach.interval) for u in eachrow(reach.Up)]
-
     return Hyperrectangle(low = lower, high = upper)
 end
 
-function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output::AbstractPolytope, nnet::Network)
+function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet::Network)
     reachable = symbol_to_concrete(reach)
 
     issubset(reachable, output) && return BasicResult(:holds)
@@ -93,23 +115,13 @@ function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output::Abst
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input)
-    return forward_act(forward_linear(input, layer), layer)
-end
-
-# Symbolic forward_linear for the first layer
-function forward_linear(input::Hyperrectangle, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
-    LΛ = Vector{Vector{Int64}}(undef, 0)
-    UΛ = Vector{Vector{Int64}}(undef, 0)
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return forward_act(solver, forward_linear(input, layer), layer)
 end
 
 # Symbolic forward_linear
 function forward_linear(input::SymbolicIntervalMask, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
-    output_Up = max.(W, 0) * input.sym.Up + min.(W, 0) * input.sym.Low
-    output_Low = max.(W, 0) * input.sym.Low + min.(W, 0) * input.sym.Up
+    output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
     output_Up[:, end] += b
     output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
@@ -117,45 +129,58 @@ function forward_linear(input::SymbolicIntervalMask, layer::Layer)
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalMask, layer::Layer{ReLU})
-    n_node, n_input = size(input.sym.Up)
-    output_Low, output_Up = input.sym.Low[:, :], input.sym.Up[:, :]
-    mask_lower, mask_upper = zeros(Int, n_node), ones(Int, n_node)
-    for i in 1:n_node
-        if upper_bound(input.sym.Up[i, :], input.sym.interval) <= 0.0
-            # Update to zero
-            mask_lower[i], mask_upper[i] = 0, 0
-            output_Up[i, :] = zeros(n_input)
-            output_Low[i, :] = zeros(n_input)
-        elseif lower_bound(input.sym.Low[i, :], input.sym.interval) >= 0
-            # Keep dependency
-            mask_lower[i], mask_upper[i] = 1, 1
+function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
+
+    interval = input.sym.interval
+    Low, Up = input.sym.Low, input.sym.Up
+
+    n_node, n_input = size(Up)
+    output_Low, output_Up = copy(Low), copy(Up)
+    LΛᵢ, UΛᵢ = falses(n_node), trues(n_node)
+
+    for j in 1:n_node
+        # Loop-local variable bindings for notational convenience.
+        # These are direct views into the rows of the parent arrays.
+        lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
+
+        # If the upper bound is negative, set the gradient mask to 0
+        # and zero out future layer dependency
+        if upper_bound(upᵢⱼ, interval) <= 0
+            LΛᵢ[j], UΛᵢ[j] = 0, 0
+            out_lowᵢⱼ .= 0
+            out_upᵢⱼ .= 0
+
+        # If the lower bound is positive, the gradient mask should be 1
+        elseif lower_bound(lowᵢⱼ, interval) >= 0
+            LΛᵢ[j], UΛᵢ[j] = 1, 1
+
+        # if the activation bounds overlap 0, concretize by setting
+        # the generators to 0, except the bias term.
         else
-            # Concretization
-            mask_lower[i], mask_upper[i] = 0, 1
-            output_Low[i, :] = zeros(n_input)
-            if lower_bound(input.sym.Up[i, :], input.sym.interval) < 0
-                output_Up[i, :] = zeros(n_input)
-                output_Up[i, end] = upper_bound(input.sym.Up[i, :], input.sym.interval)
+            LΛᵢ[j], UΛᵢ[j] = 0, 1
+            out_lowᵢⱼ .= 0
+            if lower_bound(upᵢⱼ, interval) < 0
+                out_upᵢⱼ .= 0
+                out_upᵢⱼ[end] = upper_bound(upᵢⱼ, interval)
             end
         end
     end
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    LΛ = push!(input.LΛ, mask_lower)
-    UΛ = push!(input.UΛ, mask_upper)
+
+    sym = SymbolicInterval(output_Low, output_Up, interval)
+    LΛ = push!(copy(input.LΛ), LΛᵢ)
+    UΛ = push!(copy(input.UΛ), UΛᵢ)
     return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
 # Symbolic forward_act
-function forward_act(input::SymbolicIntervalMask, layer::Layer{Id})
+function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{Id})
     sym = input.sym
     n_node = size(input.sym.Up, 1)
-    LΛ = push!(input.LΛ, ones(Int, n_node))
-    UΛ = push!(input.UΛ, ones(Int, n_node))
+    LΛ = push!(input.LΛ, trues(n_node))
+    UΛ = push!(input.UΛ, trues(n_node))
     return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
-# Return the splited intervals
 function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
 
     smear(lg, ug, r) = sum(max.(abs.(lg), abs.(ug))) * r
