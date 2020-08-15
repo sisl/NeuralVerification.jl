@@ -33,7 +33,7 @@ end
 function solve(solver::Certify, problem::Problem)
     @assert length(problem.network.layers) == 2 "Certify only handles Networks that have one hidden layer. Got $(length(problem.network.layers)) total layers"
     # @assert all(iszero.(problem.input.radius .- problem.input.radius[1])) "input.radius must be uniform. Got $(problem.input.radius)"
-    model = Model(solver)
+    model = Model(solver); set_silent(model)
     c, d = tosimplehrep(problem.output)
     c, d = c[1, :], d[1]
     v = c' * problem.network.layers[2].weights
