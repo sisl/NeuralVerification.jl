@@ -21,8 +21,16 @@ abstract type Solver end
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
 using Cbc
-JuMP.Model(solver::Solver) = Model(solver.optimizer);
+JuMP.Model(solver::Solver) = model_suppress(solver) # Model(solver.optimizer);
 JuMP.value(vars::Vector{VariableRef}) = value.(vars)
+
+function model_suppress(solver::Solver)
+    model = Model(solver.optimizer)
+    if (solver.optimizer == Cbc.Optimizer)
+        set_optimizer_attribute(model, "logLevel", 0)
+    end
+    return model
+end
 
 include("utils/activation.jl")
 include("utils/network.jl")
