@@ -586,83 +586,83 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 # corresponds to reporting all solvers
                 if (!(length(solver_types_to_report) == 0)) && (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
                     @warn "Skipping line because no solver in solvers_to_report will be used"
-                    continue # If none of the solvers we're interested in are going to be run, then skip solving on this line
-                end
-                # Solve the problem with each solver that applies for the problem, then compare the results
-                results = Vector(undef, length(solvers))
-                for (solver_index, solver) in enumerate(solvers)
-                    cur_problem = deepcopy(problem)
-                    println("Solving with: ", typeof(solver))
-                    # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
-                    if ((solver isa ConvDual || solver isa FastLip)) && cur_problem.output isa HalfSpace
-                        cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
-                    end
-
-                    # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
-                    if (needs_polytope_input(solver) && cur_problem.input isa Hyperrectangle)
-                        cur_problem = Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
-                    end
-                    if (needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle)
-                        cur_problem = Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
-                    end
-
-                    # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
-                    try
-                        results[solver_index] = NeuralVerification.solve(solver, cur_problem)
-                    catch e
-                        if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob"
-                            @warn "Caught GLPK error on $(typeof(solver))"
-                            results[solver_index] = CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
-                        else
-                            # Print the error and make sure we still get its stack
-                            for (exc, bt) in Base.catch_stack()
-                               showerror(stdout, exc, bt)
-                               println()
-                            end
-                            throw(e)
+                else
+                    # Solve the problem with each solver that applies for the problem, then compare the results
+                    results = Vector(undef, length(solvers))
+                    for (solver_index, solver) in enumerate(solvers)
+                        cur_problem = deepcopy(problem)
+                        println("Solving with: ", typeof(solver))
+                        # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
+                        if ((solver isa ConvDual || solver isa FastLip)) && cur_problem.output isa HalfSpace
+                            cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                         end
-                    end
-                end
 
-                # Just sees if each pair agrees
-                # if one or both return unknown then we can't make a comparison
-                tested_line = false
+                        # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
+                        if (needs_polytope_input(solver) && cur_problem.input isa Hyperrectangle)
+                            cur_problem = Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
+                        end
+                        if (needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle)
+                            cur_problem = Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
+                        end
 
-                for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
-                    if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
-                        @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
-                            println("Comparing: ", typeof(solvers[i]), " with ", typeof(solvers[j]))
-                            solver_one_complete = is_complete(solvers[i])
-                            solver_two_complete = is_complete(solvers[j])
-                            println("Completeness: ", (solver_one_complete, solver_two_complete))
-                            # Both complete
-                            if (solver_one_complete && solver_two_complete)
-                                tested_line = true
-                                # Results match
-                                @test results[i].status == results[j].status
-                            # Solver one complete, solver two incomplete
-                            elseif (solver_one_complete && !solver_two_complete)
-                                tested_line = true
-                                # Results match or solver two unknown or solver one holds solver two violated (bc incomplete)
-                                @test ((results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated))
-                            # Solver one incomplete, solver two complete
-                            elseif (!solver_one_complete && solver_two_complete)
-                                tested_line = true
-                                # Results match or solver one unknown or solver two holds solver one violated (bc incomplete)
-                                @test ((results[i].status == results[j].status) || (results[i].status == :unknown) || ((results[i].status == :violated) && (results[j].status == :holds)))
-                            # Neither are complete
+                        # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
+                        try
+                            results[solver_index] = NeuralVerification.solve(solver, cur_problem)
+                        catch e
+                            if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob"
+                                @warn "Caught GLPK error on $(typeof(solver))"
+                                results[solver_index] = CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
                             else
-                                if (results[i].status != results[j].status)
-                                    @warn "Neither solver complete but results disagree: $(typeof(solvers[i])) vs. $(typeof(solvers[j])) is $(results[i].status) vs. $(results[j].status)"
+                                # Print the error and make sure we still get its stack
+                                for (exc, bt) in Base.catch_stack()
+                                   showerror(stdout, exc, bt)
+                                   println()
                                 end
-                                # Results match or solver one unknown or solver two unknown or
-                                # no test since any mix of outcomes could be justified with two incomplete ones
+                                throw(e)
                             end
                         end
                     end
-                end
-                if (!tested_line)
-                    @warn "Didn't test line $(index): $(line)"
+
+                    # Just sees if each pair agrees
+                    # if one or both return unknown then we can't make a comparison
+                    tested_line = false
+
+                    for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
+                        if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
+                            @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
+                                println("Comparing: ", typeof(solvers[i]), " with ", typeof(solvers[j]))
+                                solver_one_complete = is_complete(solvers[i])
+                                solver_two_complete = is_complete(solvers[j])
+                                println("Completeness: ", (solver_one_complete, solver_two_complete))
+                                # Both complete
+                                if (solver_one_complete && solver_two_complete)
+                                    tested_line = true
+                                    # Results match
+                                    @test results[i].status == results[j].status
+                                # Solver one complete, solver two incomplete
+                                elseif (solver_one_complete && !solver_two_complete)
+                                    tested_line = true
+                                    # Results match or solver two unknown or solver one holds solver two violated (bc incomplete)
+                                    @test ((results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated))
+                                # Solver one incomplete, solver two complete
+                                elseif (!solver_one_complete && solver_two_complete)
+                                    tested_line = true
+                                    # Results match or solver one unknown or solver two holds solver one violated (bc incomplete)
+                                    @test ((results[i].status == results[j].status) || (results[i].status == :unknown) || ((results[i].status == :violated) && (results[j].status == :holds)))
+                                # Neither are complete
+                                else
+                                    if (results[i].status != results[j].status)
+                                        @warn "Neither solver complete but results disagree: $(typeof(solvers[i])) vs. $(typeof(solvers[j])) is $(results[i].status) vs. $(results[j].status)"
+                                    end
+                                    # Results match or solver one unknown or solver two unknown or
+                                    # no test since any mix of outcomes could be justified with two incomplete ones
+                                end
+                            end
+                        end
+                    end
+                    if (!tested_line)
+                        @warn "Didn't test line $(index): $(line)"
+                    end
                 end
             end
         end
