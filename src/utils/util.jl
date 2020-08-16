@@ -248,29 +248,14 @@ end
 
 act_gradient(l::Float64, u::Float64) = act_gradient(ReLU(), l, u)
 
-"""
-    get_gradient_bounds(nnet::Network, input::AbstractPolytope)
-
-Get lower and upper bounds on network gradient for a given input set.
-Return:
-- `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds
-"""
-function get_gradient_bounds(nnet::Network, input::AbstractPolytope)
-    LΛ, UΛ = act_gradient_bounds(nnet, input)
-    return get_gradient_bounds(nnet, LΛ, UΛ)
-end
-get_gradient_bounds(problem::Problem, args...) = get_gradient_bounds(problem.network, problem.input, args...)
-
 
 """
     act_gradient_bounds(nnet::Network, input::AbstractPolytope)
 
-Computing the bounds on the gradient of all activation functions given an input set.
+Compute the bounds on the gradient of all activation functions given an input set.
 Currently only support ReLU.
 Return:
-- `LΛ::Vector{Matrix}`: lower bounds
-- `UΛ::Vector{Matrix}`: upper bounds
+- `LΛ, UΛ::NTuple{2, Vector{BitVector}}`: lower and upper bounds on activation
 """
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     # get the pre-activation bounds, and get rid of the input set
@@ -290,14 +275,16 @@ end
 
 """
     get_gradient_bounds(nnet::Network, LΛ::Vector{AbstractVector}, UΛ::Vector{AbstractVector})
+    get_gradient_bounds(nnet::Network, input::AbstractPolytope)
 
-Get lower and upper bounds on network gradient for given gradient bounds on activations
-Inputs:
-- `LΛ::Vector{Vector{N}}`: lower bounds on activation gradients
-- `UΛ::Vector{Vector{N}}`: upper bounds on activation gradients
+Get lower and upper bounds on network gradient for given gradient bounds on activations, or given an input set.
 Return:
-- `(LG, UG)` lower and upper bounds
+- `(LG, UG)::NTuple{2, Matrix{Float64}` lower and upper bounds.
 """
+function get_gradient_bounds(nnet::Network, input::AbstractPolytope)
+    LΛ, UΛ = act_gradient_bounds(nnet, input)
+    return get_gradient_bounds(nnet, LΛ, UΛ)
+end
 function get_gradient_bounds(nnet::Network, LΛ::Vector{<:AbstractVector}, UΛ::Vector{<:AbstractVector})
     n_input = size(nnet.layers[1].weights, 2)
     LG = Matrix(1.0I, n_input, n_input)
