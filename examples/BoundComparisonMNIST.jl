@@ -53,9 +53,9 @@ function all_bounds(bounds::Vector{Hyperrectangle}; lower=false, include_input=f
     for (i, hyperrectangle) in enumerate(bounds)
         if (i > 1 || include_input)
             if (lower)
-                append!(grouped_bounds, max.(0, low(hyperrectangle)))
+                append!(grouped_bounds, low(hyperrectangle))
             else
-                append!(grouped_bounds, max.(0, high(hyperrectangle)))
+                append!(grouped_bounds, high(hyperrectangle))
             end
         end
     end

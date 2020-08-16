@@ -5,8 +5,8 @@ using NeuralVerification
 using GLPK
 
 #layer_sizes = [1, 10, 10, 10, 1]
-#layer_sizes = [1, 10, 10, 10, 10, 10, 10, 10, 10, 1]
-layer_sizes = [1, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1]
+layer_sizes = [1, 10, 10, 10, 10, 10, 10, 10, 10, 1]
+#layer_sizes = [1, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1]
 
 
 nnet = NeuralVerification.make_random_network(layer_sizes; rng=MersenneTwister(1))

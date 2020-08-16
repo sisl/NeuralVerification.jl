@@ -137,19 +137,27 @@ function tighten_bounds(problem::Problem, optimizer)
     encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
-    for i in 1:length(neurons)
+    new_bounds[1] = problem.input
+    for i in 2:length(neurons)
         lower = low(bounds[i])
         upper = high(bounds[i])
         for j in 1:length(neurons[i])
             neuron = neurons[i][j]
-            @objective(model, Min, neuron)
+            pre_activation_objective = dot(problem.network.layers[i-1].weights[j, :], neurons[i-1]) + problem.network.layers[i-1].bias[j]
+            @objective(model, Min, pre_activation_objective)
+            #@objective(model, Min, neuron)
             optimize!(model)
             termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-            lower[j] = value(neuron)
+            #lower[j] = value(neuron)
+            lower[j] = value(pre_activation_objective)
 
-            @objective(model, Max, neuron)
+            #@objective(model, Max, neuron)
+            @objective(model, Max, pre_activation_objective)
             optimize!(model)
-            upper[j] = value(neuron)
+            #upper[j] = value(neuron)
+            upper[j] = value(pre_activation_objective)
+            set_lower_bound.(neurons[i][j], max(lower[j], 0))
+            set_upper_bound.(neurons[i][j], max(upper[j], 0))
         end
         new_bounds[i] = Hyperrectangle(low = lower, high = upper)
     end
