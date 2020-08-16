@@ -49,16 +49,12 @@ function init_symbolic_mask(interval)
 end
 
 function solve(solver::ReluVal, problem::Problem)
-    reach_list = [init_symbolic_mask(problem.input)]
+    reach_list = SymbolicIntervalMask[]
     for i in 1:solver.max_iter
-
-        isempty(reach_list) && return BasicResult(:holds)
-
-        reach = select!(reach_list, solver.tree_search)
-
         if i == 1
-            intervals = [reach.sym.interval]
+            intervals = [problem.input]
         else
+            reach = select!(reach_list, solver.tree_search)
             intervals = bisect_interval_by_max_smear(problem.network, reach)
         end
 
@@ -72,6 +68,8 @@ function solve(solver::ReluVal, problem::Problem)
                 push!(reach_list, reach)
             end
         end
+
+        isempty(reach_list) && return BasicResult(:holds)
     end
     return BasicResult(:unknown)
 end
