@@ -34,7 +34,7 @@ before_install:
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y --no-install-recommends texlive-fonts-recommended texlive-latex-extra texlive-fonts-extra dvipng texlive-latex-recommended; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export GKSwstype=svg; fi
 
-script:
+script: travis_wait 15
   - julia --project --check-bounds=yes -e 'import Pkg; Pkg.build(); Pkg.test("NeuralVerification"; coverage=true)'
 
 # After successful build submit coverage report and deploy updated documentation
