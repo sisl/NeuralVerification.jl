@@ -17,8 +17,8 @@ num_outputs = length(nnet.layers[end].bias)
 net_function = (x) -> NeuralVerification.compute_output(nnet, [x])[1]
 
 # Range of inputs to consider
-x_low = -1.0
-x_high = 1.0
+x_low = -0.1
+x_high = 0.1
 
 input_set = Hyperrectangle(low=x_low * ones(num_inputs), high=x_high * ones(num_inputs)) # Create an input set from -1.0 to 1.0
 output_set = PolytopeComplement(HalfSpace(ones(num_outputs), 1000000.0)) # try to give a halfspace that doesn't give too much information
@@ -49,11 +49,11 @@ if (num_inputs == 1)
                 Plots.Linear(net_function, (x_low, x_high), xbins=100, style="red", legendentry="net dots"),
                 Plots.Linear([x_low, x_high], [net_function(x_low), net_function(x_high)], onlyMarks=true, markSize=4, style="red", legendentry="Network Output"),
                 Plots.Linear([x_low, x_high], [ia_output_upper, ia_output_upper], mark="diamond", markSize=4, style="blue",  legendentry="Interval arithmetic bounds"),
-                Plots.Linear([x_low, x_high], [ia_output_lower, ia_output_lower], mark="diamond", markSize=4, style="blue", legendentry="Interval arithmetic Bounds"),
+                Plots.Linear([x_low, x_high], [ia_output_lower, ia_output_lower], mark="diamond", markSize=4, style="blue"),
                 Plots.Linear([x_low, x_high], [convdual_output_upper, convdual_output_upper], mark="square", markSize=4, style="yellow",  legendentry="ConvDual bounds"),
-                Plots.Linear([x_low, x_high], [convdual_output_lower, convdual_output_lower], mark="square", markSize=4, style="yellow", legendentry="ConvDual bounds"),
+                Plots.Linear([x_low, x_high], [convdual_output_lower, convdual_output_lower], mark="square", markSize=4, style="yellow"),
                 Plots.Linear([x_low, x_high], [planet_output_upper, planet_output_upper], mark="triangle", markSize=4, style="cyan",  legendentry="Planet bounds"),
-                Plots.Linear([x_low, x_high], [planet_output_lower, planet_output_lower], mark="triangle", markSize=4, style="cyan", legendentry="Planet bounds"),
+                Plots.Linear([x_low, x_high], [planet_output_lower, planet_output_lower], mark="triangle", markSize=4, style="cyan"),
             ], xlabel="input", ylabel="output", title="Network response")
 
     output_plot.legendStyle = "at={(1.05,1.0)}, anchor=north west"

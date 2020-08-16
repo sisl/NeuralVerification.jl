@@ -7,9 +7,9 @@ using NPZ
 
 layer_sizes = [1, 10, 10, 10, 1]
 #nnet = NeuralVerification.make_random_network(layer_sizes; rng=MersenneTwister(1))
-nnet = NeuralVerification.read_nnet("/Users/castrong/Desktop/Research/NeuralOptimization.jl/Networks/MNIST/mnist10x10.nnet")
-center_input = transpose(npzread("/Users/castrong/Desktop/Research/NeuralOptimization.jl/Datasets/MNIST/MNISTlabel_0_index_0_.npy")) # Transpose for AutoTaxi - transpose(npzread(example_input))
-input_radius = 0.001
+nnet = NeuralVerification.read_nnet("/Users/castrong/Downloads/Bound_Sample_With_Input/mnist10x20.nnet")
+center_input = transpose(npzread("/Users/castrong/Downloads/Bound_Sample_With_Input/MNISTlabel_0_index_0_.npy")) # Transpose for AutoTaxi - transpose(npzread(example_input))
+input_radius = 0.016
 
 num_layers = length(nnet.layers) + 1 # number of layers including input and output
 num_inputs = size(nnet.layers[1].weights, 2)
@@ -17,8 +17,8 @@ num_outputs = length(nnet.layers[end].bias)
 
 net_function = (x) -> NeuralVerification.compute_output(nnet, [x])[1]
 
-input_set = Hyperrectangle(vec(center_input)[:], input_radius * ones(num_inputs)) # center and radius
-output_set = PolytopeComplement(HalfSpace(ones(num_outputs), 1000000.0)) # try to give a halfspace that doesn't give too much information
+input_set = Hyperrectangle(low=max.(vec(center_input)[:] - input_radius * ones(num_inputs), 0.0), high=min.(vec(center_input)[:] + input_radius * ones(num_inputs), 1.0)) # center and radius
+output_set = PolytopeComplement(HalfSpace([1.0, -1.0, 0, 0, 0, 0, 0, 0, 0, 0], 0.0)) # try to give a halfspace that doesn't give too much information
 problem = Problem(nnet, input_set, output_set)
 
 # Compute bounds from util get_bounds
@@ -27,7 +27,7 @@ ia_output_lower = low(ia_bounds[num_layers])[1]
 ia_output_upper = high(ia_bounds[num_layers])[1]
 
 # Compute bounds from ConvDual get_bounds
-convdual_lower, convdual_upper = NeuralVerification.get_bounds(nnet, input_set.center, input_set.radius[1]) # assumes uniform bounds!
+@time convdual_lower, convdual_upper = NeuralVerification.get_bounds(nnet, input_set.center, input_set.radius[1]) # assumes uniform bounds!
 pushfirst!(convdual_lower, low(input_set)) # For consistency with the other algorithms add the bounds from the input set
 pushfirst!(convdual_upper, high(input_set))
 convdual_output_lower = convdual_lower[num_layers][1]
@@ -37,7 +37,7 @@ convdual_output_upper = convdual_upper[num_layers][1]
 convdual_bounds = [Hyperrectangle(low=convdual_lower[i], high=convdual_upper[i]) for i = 1:num_layers]
 
 # Compute bounds from planet's tighten_bounds
-optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, GLPK.Optimizer)
+@time optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, GLPK.Optimizer)
 planet_output_lower = low(planet_bounds[num_layers])[1]
 planet_output_upper = high(planet_bounds[num_layers])[1]
 
@@ -53,9 +53,9 @@ function all_bounds(bounds::Vector{Hyperrectangle}; lower=false, include_input=f
     for (i, hyperrectangle) in enumerate(bounds)
         if (i > 1 || include_input)
             if (lower)
-                append!(grouped_bounds, low(hyperrectangle))
+                append!(grouped_bounds, max.(0, low(hyperrectangle)))
             else
-                append!(grouped_bounds, high(hyperrectangle))
+                append!(grouped_bounds, max.(0, high(hyperrectangle)))
             end
         end
     end
