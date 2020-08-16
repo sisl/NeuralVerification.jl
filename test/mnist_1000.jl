@@ -1,4 +1,4 @@
-using LazySets, Test, LinearAlgebra, GLPKMathProgInterface
+using LazySets, Test, LinearAlgebra
 using NeuralVerification
 import NeuralVerification: ReLU, Id
 using JLD2
@@ -16,15 +16,9 @@ function test_solver(solver, test_selected)
         test_idx = 1:1000
     end
 
-    # @load "MNIST_1000_data.jld2" train_x train_y
-    # net_file = "$(@__DIR__)/../examples/networks/mnist_1000.nnet"
-    # mnist_net = read_nnet(net_file, last_layer_activation = Id())
-    # @save "MNIST_1000.jld2" train_x train_y mnist_net
-
     @load "MNIST_1000.jld2" train_x train_y mnist_net
-    
+
     for i = test_idx
-        # println(i)
         input_center = reshape(train_x[:,:,i], 28*28)
         label = train_y[i]
         A = zeros(Float64, 10, 10)
@@ -36,7 +30,7 @@ function test_solver(solver, test_selected)
 
         Y = HPolytope(A, b)
         pred = argmax(NeuralVerification.compute_output(mnist_net, input_center))-1
-        
+
         if pred != label
             continue
         end
@@ -47,41 +41,33 @@ function test_solver(solver, test_selected)
         clamp!(upper, 0.0, 1.0)
         clamp!(lower, 0.0, 1.0)
         X = Hyperrectangle(low=lower, high=upper)
-        
+
         problem_mnist = Problem(mnist_net, X, Y)
 
         result =  solve(solver, problem_mnist)
-        
-        if result.status == :violated 
+
+        if result.status == :violated
             @test i ∈ violation_idx
             noisy = argmax(NeuralVerification.compute_output(mnist_net, result.counter_example))-1
             @test noisy != pred
         elseif result.status == :holds
             @test !(i ∈ violation_idx)
-        else #result.status == :unknown
-            
         end
     end
 end
 
-# if test_selected = true, only test selected index. Otherwise, test all 1000 images.
-test_selected = true
+let
+    # if test_selected = true, only test selected index. Otherwise, test all 1000 images.
+    test_selected = true
+    testname =  join(["MNIST ", (test_selected ? "selected" : "1000")])
 
-# Please note the number of tests maybe different for different solvers. 
-# Because the test cases depends on the result.
+    # NOTE the number of tests maybe different for different solvers.
+    # Because the test cases depends on the result.
+    @testset "$testname, ReluVal" begin
+        test_solver(ReluVal(max_iter = 10), test_selected)
+    end
+    @testset "$testname, Neurify" begin
+        test_solver(Neurify(max_iter = 10), test_selected)
+    end
 
-if test_selected
-    @testset "MNIST selected, ReluVal" begin
-        test_solver(ReluVal(), test_selected)
-    end
-    @testset "MNIST selected, Neurify" begin
-        test_solver(Neurify(), test_selected)
-    end
-else 
-    @testset "MNIST 1000, ReluVal" begin
-        test_solver(ReluVal(), test_selected)
-    end
-    @testset "MNIST 1000, Neurify" begin
-        test_solver(Neurify(), test_selected)
-    end
 end
