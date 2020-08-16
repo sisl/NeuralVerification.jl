@@ -68,9 +68,9 @@ function solve(solver::ReluVal, problem::Problem)
             reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
             result = check_inclusion(reach.sym, problem.output, problem.network)
 
-            if result === :violated
+            if result.status === :violated
                 return result
-            elseif result === :unknown
+            elseif result.status === :unknown
                 push!(reach_list, reach)
             end
         end
@@ -191,22 +191,12 @@ function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, U
     return ind, monotone
 end
 
-function _bound(map::AbstractVector, input::Hyperrectangle, which_bound::Symbol)
-    a, b = map[1:end-1], map[end]
+upper_bound(v, domain) = ρ(v[1:end-1], domain) + v[end]
+lower_bound(v, domain) = -ρ(-v[1:end-1], domain) + v[end]
+bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))
 
-    if which_bound === :lower
-        bound = max.(a, 0)' * low(input) +
-                min.(a, 0)' * high(input) + b
-    elseif which_bound === :upper
-        bound = max.(a, 0)' * high(input) +
-                min.(a, 0)' * low(input) + b
-    end
 
-    return bound
-end
 
-upper_bound(map, input) = _bound(map, input, :upper)
-lower_bound(map, input) = _bound(map, input, :lower)
 
 
 # Concrete forward_linear
