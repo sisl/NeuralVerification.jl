@@ -49,20 +49,18 @@ function init_symbolic_mask(interval)
 end
 
 function solve(solver::ReluVal, problem::Problem)
-
-    reach = forward_network(solver, problem.network, init_symbolic_mask(problem.input))
-    result = check_inclusion(reach.sym, problem.output, problem.network)
-    result.status === :unknown || return result
-
-    reach_list = [reach]
-
-    for i in 2:solver.max_iter
+    reach_list = [init_symbolic_mask(problem.input)]
+    for i in 1:solver.max_iter
 
         isempty(reach_list) && return BasicResult(:holds)
 
         reach = select!(reach_list, solver.tree_search)
 
-        intervals = bisect_interval_by_max_smear(problem.network, reach)
+        if i == 1
+            intervals = [reach.sym.interval]
+        else
+            intervals = bisect_interval_by_max_smear(problem.network, reach)
+        end
 
         for interval in intervals
             reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
@@ -81,7 +79,7 @@ end
 function bisect_interval_by_max_smear(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient_bounds(nnet, reach.LΛ, reach.UΛ)
     feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
-    return split_interval(reach.sym.interval, feature)
+    return collect(split_interval(reach.sym.interval, feature))
 end
 
 function select!(reach_list, tree_search)
@@ -143,19 +141,21 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
         # These are direct views into the rows of the parent arrays.
         lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
 
-        # If the upper bound is negative, set the gradient mask to 0
-        # and zero out future layer dependency
+        # If the upper bound of the upper bound is negative, set
+        # the gradient mask to 0 and zero out future layer dependency
         if upper_bound(upᵢⱼ, interval) <= 0
             LΛᵢ[j], UΛᵢ[j] = 0, 0
             out_lowᵢⱼ .= 0
             out_upᵢⱼ .= 0
 
-        # If the lower bound is positive, the gradient mask should be 1
+        # If the lower bound of the lower bound is positive,
+        # the gradient mask should be 1
         elseif lower_bound(lowᵢⱼ, interval) >= 0
             LΛᵢ[j], UΛᵢ[j] = 1, 1
 
-        # if the activation bounds overlap 0, concretize by setting
-        # the generators to 0, except the bias term.
+        # if the bounds overlap 0, concretize by setting
+        # the generators to 0, and setting the new upper bound
+        # center to be the current upper-upper bound.
         else
             LΛᵢ[j], UΛᵢ[j] = 0, 1
             out_lowᵢⱼ .= 0
