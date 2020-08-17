@@ -107,6 +107,13 @@ function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicInter
     return forward_act(forward_linear(input, layer), layer)
 end
 
+function forward_layer(solver::ReluVal, layer::Layer, input::Union{SymbolicIntervalMask, Hyperrectangle}, bounds::Vector{Hyperrectangle})
+    linear_result = forward_linear(input, layer)
+    push!(bounds, symbol_to_concrete(linear_result.sym))
+    return forward_act(linear_result, layer), bounds
+end
+
+
 # Symbolic forward_linear for the first layer
 function forward_linear(input::Hyperrectangle, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
