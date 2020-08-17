@@ -123,7 +123,7 @@ println(" - Output: ")
 println(timed_result[1])
 println("")
 
-#=
+
 solver = Sherlock()
 println("$(typeof(solver)) - mnist1")
 timed_result =@timed solve(solver, problem_mnist1)
@@ -139,7 +139,7 @@ println(" - Time: " * string(timed_result[2]) * " s")
 println(" - Output: ")
 println(timed_result[1])
 println("")
-=#
+
 
 
 problem_mnist2 = Problem(mnist2, inputSet, out_hyper)

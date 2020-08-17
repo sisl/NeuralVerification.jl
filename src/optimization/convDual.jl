@@ -76,22 +76,21 @@ end
 # This step is similar to reachability method
 function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
     layers  = nnet.layers
-    n_layer = length(layers)
 
-    l = Vector{Vector{Float64}}()
-    u = Vector{Vector{Float64}}()
-    γ = Vector{Vector{Float64}}()
-    μ = Vector{Vector{Vector{Float64}}}()
+    l = Vector{Vector{Float64}}() # Lower bound
+    u = Vector{Vector{Float64}}() # Upper bound
+    b = Vector{Vector{Float64}}() # bias
+    μ = Vector{Vector{Vector{Float64}}}() # Dual variables
     input_ReLU = Vector{Vector{Float64}}()
 
     v1 = layers[1].weights'
-    push!(γ, layers[1].bias)
+    push!(b, layers[1].bias)
     # Bounds for the first layer
     l1, u1 = input_layer_bounds(layers[1], input, ϵ)
     push!(l, l1)
     push!(u, u1)
 
-    for i in 2:n_layer
+    for i in 2:length(layers)
         n_input  = length(layers[i-1].bias)
         n_output = length(layers[i].bias)
 
@@ -99,25 +98,23 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
         push!(input_ReLU, last_input_ReLU)
         D = Diagonal(last_input_ReLU)   # a matrix whose diagonal values are the relaxed_ReLU values (maybe should be sparse?)
 
-        # Propagate existing terms
+        # Propagate existing terms by right multiplication of D*W' or left multiplication of W*D
         WD = layers[i].weights*D
-        v1 = v1 * WD' # TODO CHECK
-        map!(g -> WD*g,   γ, γ)
-
-        # Updating ν_j for all previous layers
-        for M in μ
-            map!(m -> WD*m,   M, M)
+        v1 = v1 * WD' # propagate V_1^{i-1} to V_1^{i}
+        map!(g -> WD*g,   b, b) # propagate bias        
+        for V in μ
+            map!(m -> WD*m,   V, V) # Updating ν_j for all previous layers
         end
 
         # New terms
-        push!(γ, layers[i].bias)
+        push!(b, layers[i].bias)
         push!(μ, new_μ(n_input, n_output, last_input_ReLU, WD))
 
         # Compute bounds
-        ψ = v1' * input + sum(γ)
+        ψ = v1' * input + sum(b)
         eps_v1_sum = ϵ * vec(sum(abs, v1, dims = 1))
-        neg, pos = all_neg_pos_sums(input_ReLU, l, μ, n_output)
-        push!(l,  ψ - eps_v1_sum + neg )
+        neg, pos = residual(input_ReLU, l, μ, n_output)
+        push!(l,  ψ - eps_v1_sum - neg )
         push!(u,  ψ + eps_v1_sum - pos )
     end
 
@@ -125,17 +122,17 @@ function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)
 end
 
 # TODO rename function and inputs
-function all_neg_pos_sums(slopes, l, μ, n_output)
+function residual(slopes, l, μ, n_output)
     # n_output = length(last(l))
     neg = zeros(n_output)
     pos = zeros(n_output)
     # Need to debug
     for (i, ℓ) in enumerate(l)                # ℓ::Vector{Float64}
-        for (j, M) in enumerate(μ[i])         # M::Vector{Float64}
+        for (j, V) in enumerate(μ[i])         # M::Vector{Float64}
             if 0 < slopes[i][j] < 1              # if in the triangle region of relaxed ReLU
                 #posind = M .> 0
-                neg .+= ℓ[j] * min.(M, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
-                pos .+= ℓ[j] * max.(M, 0) #M .* posind
+                neg .+= ℓ[j] * min.(V, 0) #-M .* !posind  # multiply by boolean to set the undesired values to 0.0
+                pos .+= ℓ[j] * max.(V, 0) #M .* posind
             end
         end
     end
@@ -152,7 +149,6 @@ function input_layer_bounds(input_layer, input, ϵ)
     u = out1 + Δ
     return l, u
 end
-
 
 function new_μ(n_input, n_output, input_ReLU, WD)
     sub_μ = Vector{Vector{Float64}}(undef, n_input)
