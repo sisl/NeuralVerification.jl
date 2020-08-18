@@ -45,29 +45,37 @@ struct SymbolicIntervalGradient
     r::Vector{Vector{Float64}} # range of a input interval (upper_bound - lower_bound)
 end
 
+function init_symbolic_grad(domain)
+    # with hyperrectangles, we might as well deal with the directly
+    # if !(domain isa Hyperrectangle)
+    VF = Vector{HalfSpace{Float64, Vector{Float64}}}
+    domain = HPolytope(VF(constraints_list(domain)))
+    # end
+    n = dim(domain)
+    I = Matrix{Float64}(LinearAlgebra.I(n))
+    Z = zeros(n)
+    symbolic_input = SymbolicInterval([I Z], [I Z], domain)
+    symbolic_mask = SymbolicIntervalGradient(symbolic_input,
+                                             Vector{Vector{Float64}}(),
+                                             Vector{Vector{Float64}}(),
+                                             Vector{Vector{Float64}}())
+end
+
+
 function solve(solver::Neurify, problem::Problem)
 
-    # TODO get rid of
-    function to_float_hrep(set)
-        VF = Vector{HalfSpace{Float64, Vector{Float64}}}
-        HPolytope(VF(constraints_list(set)))
-    end
-    problem = Problem(problem.network, to_float_hrep(problem.input), to_float_hrep(problem.output))
-
-
-    model = Model(solver)
-    set_silent(model)
+    model = Model(solver); set_silent(model)
 
     x = @variable(model, [1:dim(problem.input)])
     add_set_constraint!(model, problem.input, x)
 
-    reach = forward_network(solver, problem.network, problem.input)
-    result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network) # This calls the check_inclusion function in ReluVal, because the constraints are Hyperrectangle
+    reach = forward_network(solver, problem.network, init_symbolic_grad(problem.input))
+    result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
     result.status == :unknown || return result
 
     reach_list = [(reach, max_violation_con, Set())]
 
-    # Becuase of over-approximation, a split may not bisect the input set.
+    # Because of over-approximation, a split may not bisect the input set.
     # Therefore, the gradient remains unchanged (since input didn't change).
     # And this node will be chosen to split forever.
     # To prevent this, we split each node only once if the gradient of this node hasn't change.
@@ -82,7 +90,7 @@ function solve(solver::Neurify, problem::Problem)
         intervals = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
 
         for interval in intervals
-            reach = forward_network(solver, problem.network, interval)
+            reach = forward_network(solver, problem.network, init_symbolic_grad(interval))
             result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
             if result.status == :violated
                 return result
@@ -94,7 +102,7 @@ function solve(solver::Neurify, problem::Problem)
     return BasicResult(:unknown)
 end
 
-function check_inclusion(solver::Neurify, reach::SymbolicInterval{<:HPolytope},
+function check_inclusion(solver::Neurify, reach::SymbolicInterval,
                          output::AbstractPolytope, nnet::Network)
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
@@ -161,7 +169,7 @@ function constraint_refinement(solver::Neurify,
     i, j, influence = get_max_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-    reach_new = forward_network(solver, Network(nnet.layers[1:i]), reach.sym.interval)
+    reach_new = forward_network(solver, Network(nnet.layers[1:i]), init_symbolic_grad(reach.sym.interval))
 
     aL, bL = reach_new.sym.Low[j, 1:end-1], reach_new.sym.Low[j, end]
     aU, bU = reach_new.sym.Up[j, 1:end-1], reach_new.sym.Up[j, end]
@@ -234,21 +242,10 @@ function forward_layer(solver::Neurify, layer::Layer, input)
     return forward_act(solver, forward_linear(solver, input, layer), layer)
 end
 
-# Symbolic forward_linear for the first layer
-function forward_linear(solver::Neurify, input::AbstractPolytope, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
-    LΛ = Vector{Vector{Int64}}(undef, 0)
-    UΛ = Vector{Vector{Int64}}(undef, 0)
-    r = Vector{Vector{Int64}}(undef, 0)
-    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
-end
-
 # Symbolic forward_linear
 function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
-    output_Up = max.(W, 0) * input.sym.Up + min.(W, 0) * input.sym.Low
-    output_Low = max.(W, 0) * input.sym.Low + min.(W, 0) * input.sym.Up
+    output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
     output_Up[:, end] += b
     output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
@@ -257,41 +254,49 @@ end
 
 # Symbolic forward_act
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{ReLU})
-    n_node, n_input = size(input.sym.Up)
-    output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
-    mask_lower, mask_upper = zeros(Float64, n_node), ones(Float64, n_node)
-    interval_width = zeros(Float64, n_node)
-    for i in 1:n_node
-        # Symbolic linear relaxation
-        # This is different from ReluVal
 
-        up_low, up_up = bounds(input.sym.Up[i, :], input.sym.interval)
-        low_low, low_up = bounds(input.sym.Low[i, :], input.sym.interval)
+    interval = input.sym.interval
+    Low, Up = input.sym.Low, input.sym.Up
+    n_node = n_nodes(layer)
 
-        interval_width[i] = up_up - low_low
+    output_Low, output_Up = copy(Low), copy(Up)
+    LΛᵢ, UΛᵢ = zeros(n_node), ones(n_node)
+    interval_width = zeros(n_node)
+
+    # Symbolic linear relaxation
+    # This is different from ReluVal
+    for j in 1:n_node
+        # Loop-local variable bindings for notational convenience.
+        # These are direct views into the rows of the parent arrays.
+        lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
+
+        up_low, up_up = bounds(upᵢⱼ, interval)
+        low_low, low_up = bounds(lowᵢⱼ, interval)
+
+        interval_width[j] = up_up - low_low
 
         up_slope = act_gradient(up_low, up_up)
         low_slope = act_gradient(low_low, low_up)
 
-        output_Up[i, :] = up_slope * output_Up[i, :]
-        output_Up[i, end] += up_slope * max(-up_low, 0)
+        out_upᵢⱼ .*= up_slope
+        out_upᵢⱼ[end] += up_slope * max(-up_low, 0)
 
-        output_Low[i, :] = low_slope * output_Low[i, :]
+        out_lowᵢⱼ .*= low_slope
 
-        mask_lower[i], mask_upper[i] = low_slope, up_slope
+        LΛᵢ[j], UΛᵢ[j] = low_slope, up_slope
     end
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    LΛ = push!(input.LΛ, mask_lower)
-    UΛ = push!(input.UΛ, mask_upper)
+    sym = SymbolicInterval(output_Low, output_Up, interval)
+    LΛ = push!(input.LΛ, LΛᵢ)
+    UΛ = push!(input.UΛ, UΛᵢ)
     r = push!(input.r, interval_width)
     return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{Id})
     sym = input.sym
-    n_node = size(input.sym.Up, 1)
-    LΛ = push!(input.LΛ, ones(Float64, n_node))
-    UΛ = push!(input.UΛ, ones(Float64, n_node))
-    r = push!(input.r, ones(Float64, n_node))
+    n_node = n_nodes(layer)
+    LΛ = push!(input.LΛ, ones(n_node))
+    UΛ = push!(input.UΛ, ones(n_node))
+    r = push!(input.r, ones(n_node))
     return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end

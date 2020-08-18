@@ -130,7 +130,7 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
     interval = input.sym.interval
     Low, Up = input.sym.Low, input.sym.Up
 
-    n_node, n_input = size(Up)
+    n_node = n_nodes(layer)
     output_Low, output_Up = copy(Low), copy(Up)
     LΛᵢ, UΛᵢ = falses(n_node), trues(n_node)
 
@@ -140,7 +140,8 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
         lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
 
         # If the upper bound of the upper bound is negative, set
-        # the gradient mask to 0 and zero out future layer dependency
+        # the generators and centers of both bounds to 0, and
+        # the gradient mask to 0
         if upper_bound(upᵢⱼ, interval) <= 0
             LΛᵢ[j], UΛᵢ[j] = 0, 0
             out_lowᵢⱼ .= 0
@@ -165,8 +166,8 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
     end
 
     sym = SymbolicInterval(output_Low, output_Up, interval)
-    LΛ = push!(copy(input.LΛ), LΛᵢ)
-    UΛ = push!(copy(input.UΛ), UΛᵢ)
+    LΛ = push!(input.LΛ, LΛᵢ)
+    UΛ = push!(input.UΛ, UΛᵢ)
     return SymbolicIntervalMask(sym, LΛ, UΛ)
 end
 
