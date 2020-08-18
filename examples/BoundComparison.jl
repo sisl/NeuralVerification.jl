@@ -24,7 +24,7 @@ function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
     return bounds
 end
 
-layer_sizes = [1, 10, 10, 10, 10, 10, 10, 10, 10, 1]
+layer_sizes = [1, 10, 1]
 
 nnet = NeuralVerification.make_random_network(layer_sizes; rng=MersenneTwister(0))
 num_layers = length(nnet.layers) + 1 # number of layers including input and output
@@ -69,7 +69,11 @@ planet_output_upper = high(planet_bounds[num_layers])[1]
 
 # Compute bounds from symbolic bound tightening in Reluval
 print("Reluval: ")
-@time reach, reluval_bounds = forward_network(ReluVal(), nnet, input_set; get_bounds=true)
+@time reach, reluval_bounds = forward_network(ReluVal(), nnet, NeuralVerification.init_symbolic_mask(input_set); get_bounds=true)
+
+# Compute bounds from symbolic bound tightening in Neurify
+print("Neurify: ")
+@time reach, neurify_bounds = forward_network(Neurify(), nnet, input_set; get_bounds=true)
 
 # Compute bounds from Ai2z and Box
 print("Ai2z: ")
@@ -92,9 +96,9 @@ if (num_inputs == 1)
     output_plot.legendStyle = "at={(1.05,1.0)}, anchor=north west"
 end
 
-labels = ["Ground Truth", "IA", "ConvDual", "Planet", "ReluVal", "Ai2z", "Ai2 Box"]
-styles = ["green", "blue", "yellow", "cyan", "pink", "black", "gray"]
-markers = ["star", "diamond", "square", "triangle", "x", "+", "-"]
+labels = ["Ground Truth", "IA", "ConvDual", "Planet", "ReluVal", "Neurify", "Ai2z", "Ai2 Box"]
+styles = ["green", "blue", "yellow", "cyan", "brown", "pink", "black", "gray"]
+markers = ["star", "diamond", "square", "triangle", "*", "x", "+", "-"]
 bounds = [groundtruth_bounds, ia_bounds, convdual_bounds, planet_bounds, reluval_bounds, ai2z_bounds, ai2_box_bounds]
 num_algs = length(labels)
 
@@ -155,6 +159,8 @@ for (alg_index, (lower_bounds, upper_bounds)) in enumerate(zip(all_lower_bounds,
 
     gap = upper_bounds - lower_bounds
     relative_gap = gap ./ groundtruth_gap
+
+    @assert !any(isnan.(relative_gap))
     #plot_for_alg = Plots.Scatter(xs, relative_gap, string.(layer_nums), mark=markers[alg_index], markSize=1.5, scatterClasses=style, legendentry=labels[alg_index])
     plot_for_alg = Plots.Scatter(xs, relative_gap, mark=markers[alg_index], markSize=1.5, style=styles[alg_index], legendentry=labels[alg_index])
     push!(plots, plot_for_alg)

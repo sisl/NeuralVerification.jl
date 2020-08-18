@@ -3,10 +3,17 @@
 # Performs layer-by-layer propagation
 # It is called by all solvers under reachability
 # TODO: also called by ReluVal and FastLin, so move to general utils (or to network.jl)
-function forward_network(solver, nnet::Network, input::AbstractPolytope; get_bounds=true)
+function forward_network(solver, nnet::Network, input; get_bounds=false)
     if (get_bounds)
         reach = input
-        bounds = Vector{Hyperrectangle}([overapproximate(input, Hyperrectangle)])
+        # Add a hyperrectangle corresponding to the input as the first set of bounds
+        if input isa AbstractPolytope
+            bounds = Vector{Hyperrectangle}([overapproximate(input, Hyperrectangle)])
+        elseif input isa SymbolicIntervalMask
+            bounds = Vector{Hyperrectangle}([overapproximate(symbol_to_concrete(input.sym), Hyperrectangle)])
+        else
+            @assert false "Unsupported input type for bounds"
+        end
         for layer in nnet.layers
             reach, bounds = forward_layer(solver, layer, reach, bounds)
         end
