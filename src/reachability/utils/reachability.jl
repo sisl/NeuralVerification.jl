@@ -3,12 +3,21 @@
 # Performs layer-by-layer propagation
 # It is called by all solvers under reachability
 # TODO: also called by ReluVal and FastLin, so move to general utils (or to network.jl)
-function forward_network(solver, nnet::Network, input::AbstractPolytope)
-    reach = input
-    for layer in nnet.layers
-        reach = forward_layer(solver, layer, reach)
+function forward_network(solver, nnet::Network, input::AbstractPolytope; get_bounds=true)
+    if (get_bounds)
+        reach = input
+        bounds = Vector{Hyperrectangle}([overapproximate(input, Hyperrectangle)])
+        for layer in nnet.layers
+            reach, bounds = forward_layer(solver, layer, reach, bounds)
+        end
+        return reach, bounds
+    else
+        reach = input
+        for layer in nnet.layers
+            reach = forward_layer(solver, layer, reach)
+        end
+        return reach
     end
-    return reach
 end
 
 # Checks whether the reachable set belongs to the output constraint

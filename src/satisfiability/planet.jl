@@ -128,12 +128,14 @@ function max_slack(x::Vector{Vector{Float64}}, act)
 end
 
 # Only use tighten_bounds for feasibility check
-function tighten_bounds(problem::Problem, optimizer)
+function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_output_constraints=true)
     bounds = get_bounds(problem)
     model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
+    if (use_output_constraints)
+        add_complementary_set_constraint!(model, problem.output, last(neurons))
+    end
     encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
 
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
@@ -143,19 +145,26 @@ function tighten_bounds(problem::Problem, optimizer)
         upper = high(bounds[i])
         for j in 1:length(neurons[i])
             neuron = neurons[i][j]
-            pre_activation_objective = dot(problem.network.layers[i-1].weights[j, :], neurons[i-1]) + problem.network.layers[i-1].bias[j]
-            @objective(model, Min, pre_activation_objective)
-            #@objective(model, Min, neuron)
+
+            # Have the objective be z (post-activation) or z_hat (pre-activation)
+            if (pre_activation)
+                objective = dot(problem.network.layers[i-1].weights[j, :], neurons[i-1]) + problem.network.layers[i-1].bias[j]
+            else
+                objective = neuron
+            end
+
+            # Find the lower bound
+            @objective(model, Min, objective)
             optimize!(model)
             termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-            #lower[j] = value(neuron)
-            lower[j] = value(pre_activation_objective)
+            lower[j] = value(objective)
 
-            #@objective(model, Max, neuron)
-            @objective(model, Max, pre_activation_objective)
+            # Find the upper bound
+            @objective(model, Max, objective)
             optimize!(model)
-            #upper[j] = value(neuron)
-            upper[j] = value(pre_activation_objective)
+            upper[j] = value(objective)
+
+            # Update the bounds in the model
             set_lower_bound.(neurons[i][j], max(lower[j], 0))
             set_upper_bound.(neurons[i][j], max(upper[j], 0))
         end

@@ -63,14 +63,31 @@ function forward_layer(solver::Ai2h, L::Layer{ReLU}, input::AbstractPolytope)
     return convex_hull(UnionSetArray(relued_subsets))
 end
 
+function forward_layer(solver::Ai2h, L::Layer{ReLU}, input::AbstractPolytope,  bounds::Vector{Hyperrectangle})
+    Ẑ = affine_map(L, input)
+    push!(bounds, overapproximate(Ẑ))
+    relued_subsets = forward_partition(L.activation, Ẑ) # defined in reachability.jl
+    return convex_hull(UnionSetArray(relued_subsets)), bounds
+end
+
 # method for Zonotope and Hyperrectangle, if the input set isn't a Zonotope
 function forward_layer(solver::Union{Ai2z, Box}, L::Layer{ReLU}, input::AbstractPolytope)
     return forward_layer(solver, L, overapproximate(input, Hyperrectangle))
+end
+# method for Zonotope and Hyperrectangle, if the input set isn't a Zonotope
+function forward_layer(solver::Union{Ai2z, Box}, L::Layer{ReLU}, input::AbstractPolytope, bounds::Vector{Hyperrectangle})
+    return forward_layer(solver, L, overapproximate(input, Hyperrectangle), bounds)
 end
 
 function forward_layer(solver::Ai2z, L::Layer{ReLU}, input::AbstractZonotope)
     Ẑ = affine_map(L, input)
     return overapproximate(Rectification(Ẑ), Zonotope)
+end
+
+function forward_layer(solver::Ai2z, L::Layer{ReLU}, input::AbstractZonotope, bounds::Vector{Hyperrectangle})
+    Ẑ = affine_map(L, input)
+    push!(bounds, overapproximate(Ẑ, Hyperrectangle))
+    return overapproximate(Rectification(Ẑ), Zonotope), bounds
 end
 
 
@@ -79,8 +96,22 @@ function forward_layer(solver::Box, L::Layer{ReLU}, input::AbstractZonotope)
     return rectify(Ẑ)
 end
 
+function forward_layer(solver::Box, L::Layer{ReLU}, input::AbstractZonotope, bounds::Vector{Hyperrectangle})
+    Ẑ = approximate_affine_map(L, input)
+    push!(bounds, overapproximate(Ẑ, Hyperrectangle))
+    return rectify(Ẑ), bounds
+end
+
 function forward_layer(solver::Ai2, L::Layer{Id}, input)
     return affine_map(L, input)
+end
+
+function forward_layer(solver::Ai2, L::Layer{Id}, input, bounds::Vector{Hyperrectangle})
+
+    aff_map = affine_map(L, input)
+    push!(bounds, overapproximate(aff_map, Hyperrectangle))
+    return aff_map, bounds
+
 end
 
 

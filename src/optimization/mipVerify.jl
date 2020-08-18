@@ -45,3 +45,43 @@ function solve(solver::MIPVerify, problem::Problem)
     end
     return AdversarialResult(:violated, value(o))
 end
+
+function get_bounds_for_node(solver::MIPVerify, network::Network, input::Hyperrectangle, layer_index::Int, node_index::Int; pre_activation::Bool = true)
+    model = Model(solver)
+    # Truncate the network. we just encode the earliest layer_index layers
+    # layer_index = 1 corresponds to the input layer.
+    network = Network(network.layers[1:layer_index-1])
+    neurons = init_neurons(model, network)
+    deltas = init_deltas(model, network)
+    add_set_constraint!(model, input, first(neurons))
+
+    #bounds = get_bounds(network, input)
+    # Get the LP tightened bounds
+    status, bounds = tighten_bounds(Problem(network, input, Nothing), solver.optimizer; pre_activation=false, use_output_constraints=false)
+
+    encode_network!(model, network, neurons, deltas, bounds, BoundedMixedIntegerLP())
+
+    # Define the objective
+    if (pre_activation)
+        objective = dot(network.layers[layer_index-1].weights[node_index, :], neurons[layer_index-1]) + network.layers[layer_index-1].bias[node_index]
+    else
+        objective = neurons[layer_index][node_index]
+    end
+    # Find the lower bound
+    @objective(model, Min, objective)
+    optimize!(model)
+    lower = value(objective)
+
+    # Find the upper bound
+    @objective(model, Max, objective)
+    optimize!(model)
+    upper = value(objective)
+
+    return lower, upper
+end
+
+# Return a list of Hyperrectangles corresponding to the true bounds on
+# each node
+function get_bounds(solver::MIPVerify, network::Network, input::Hyperrectangle; pre_activation::Bool = false)
+    println("UNIMPLEMENTED")
+end
