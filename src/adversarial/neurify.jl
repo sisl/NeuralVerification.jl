@@ -37,11 +37,13 @@ struct SymbolicInterval{F<:AbstractPolytope}
     interval::F
 end
 
+
+
 # Data to be passed during forward_layer
-struct SymbolicIntervalGradient
-    sym::SymbolicInterval
-    LΛ::Vector{Vector{Float64}} # mask for computing gradient.
-    UΛ::Vector{Vector{Float64}}
+struct SymbolicIntervalGradient{F<:AbstractPolytope, N<:Real}
+    sym::SymbolicInterval{F}
+    LΛ::Vector{Vector{N}} # mask for computing gradient.
+    UΛ::Vector{Vector{N}}
 end
 
 # radius of the symbolic interval in the direction of the
@@ -49,7 +51,7 @@ end
 # or the bounding radius, but rather a radius with respect to
 # a node in the network. Equivalent to the upper-upper
 # bound minus the lower-lower bound
-function radius(sym::SymbolicInterval, j::Int)
+function radius(sym::SymbolicInterval, j::Integer)
     upper_bound(@view(sym.Up[:, j]), sym.interval) -
     lower_bound(@view(sym.Low[:, j]), sym.interval)
 end
@@ -121,12 +123,10 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     x = @variable(model, [1:dim(reach.interval)])
     add_set_constraint!(model, reach.interval, x)
 
-    output_constraints = constraints_list(output)
-
     max_violation = 0.0
-    max_con_ind = 0
+    max_con = 0
     # max_violation_con = nothing
-    for (i, cons) in enumerate(output_constraints)
+    for (i, cons) in enumerate(constraints_list(output))
         # NOTE can be taken out of the loop, but maybe there's no advantage
         # NOTE max.(M, 0) * U  + ... is a common operation, and maybe should get a name. It's also an "interval map".
         a, b = cons.a, cons.b
@@ -143,7 +143,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
             viol = objective_value(model)
             if viol > max_violation
                 max_violation = viol
-                max_con_ind = i
+                max_con = a
             end
 
         # NOTE This entire else branch should be eliminated for the paper version
@@ -161,9 +161,9 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     end
 
     if max_violation > 0.0
-        return CounterExampleResult(:unknown), output_constraints[max_con_ind].a
+        return CounterExampleResult(:unknown), max_con
     else
-        return CounterExampleResult(:holds),   nothing
+        return CounterExampleResult(:holds), nothing
     end
 end
 

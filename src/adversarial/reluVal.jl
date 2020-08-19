@@ -32,20 +32,16 @@ Sound but not complete.
 end
 
 # Data to be passed during forward_layer
-struct SymbolicIntervalMask
-    sym::SymbolicInterval
-    LΛ::Vector{Vector{Bool}}
-    UΛ::Vector{Vector{Bool}}
-end
+const SymbolicIntervalMask = SymbolicIntervalGradient{<:Hyperrectangle, Bool}
 
 function init_symbolic_mask(interval)
     n = dim(interval)
     I = Matrix{Float64}(LinearAlgebra.I(n))
     Z = zeros(n)
     symbolic_input = SymbolicInterval([I Z], [I Z], interval)
-    symbolic_mask = SymbolicIntervalMask(symbolic_input,
-                                         Vector{Vector{Bool}}(),
-                                         Vector{Vector{Bool}}())
+    symbolic_mask = SymbolicIntervalGradient(symbolic_input,
+                                             Vector{Vector{Bool}}(),
+                                             Vector{Vector{Bool}}())
 end
 
 function solve(solver::ReluVal, problem::Problem)
@@ -111,17 +107,17 @@ function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input)
-    return forward_act(solver, forward_linear(input, layer), layer)
+    return forward_act(solver, forward_linear(solver, input, layer), layer)
 end
 
 # Symbolic forward_linear
-function forward_linear(input::SymbolicIntervalMask, layer::Layer)
+function forward_linear(solver::ReluVal, input::SymbolicIntervalMask, layer::Layer)
     (W, b) = (layer.weights, layer.bias)
     output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
     output_Up[:, end] += b
     output_Low[:, end] += b
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    return SymbolicIntervalMask(sym, input.LΛ, input.UΛ)
+    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
@@ -168,7 +164,7 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
     sym = SymbolicInterval(output_Low, output_Up, interval)
     LΛ = push!(input.LΛ, LΛᵢ)
     UΛ = push!(input.UΛ, UΛᵢ)
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
 # Symbolic forward_act
@@ -177,7 +173,7 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{Id})
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, trues(n_node))
     UΛ = push!(input.UΛ, trues(n_node))
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
 function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
