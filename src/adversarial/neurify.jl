@@ -35,11 +35,6 @@ end
 function solve(solver::Neurify, problem::Problem)
     isbounded(problem.input) || throw(UnboundedInputError("Neurify can only handle bounded input sets."))
 
-    model = Model(solver); set_silent(model)
-
-    x = @variable(model, [1:dim(problem.input)])
-    add_set_constraint!(model, problem.input, x)
-
     reach = forward_network(solver, problem.network, problem.input)
     result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
     result.status == :unknown || return result
