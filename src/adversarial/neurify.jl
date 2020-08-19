@@ -48,7 +48,7 @@ function solve(solver::Neurify, problem::Problem)
     # Each element in splits is a tuple (gradient_of_the_node, layer_index, node_index).
 
     for i in 2:solver.max_iter
-        isempty(reach_list) && return BasicResult(:holds)
+        isempty(reach_list) && return CounterExampleResult(:holds)
 
         reach, max_violation_con, splits = select!(reach_list, solver.tree_search)
 
@@ -64,7 +64,7 @@ function solve(solver::Neurify, problem::Problem)
             end
         end
     end
-    return BasicResult(:unknown)
+    return CounterExampleResult(:unknown)
 end
 
 function check_inclusion(solver::Neurify, reach::SymbolicInterval,
