@@ -103,12 +103,6 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
 
         # NOTE This entire else branch should be eliminated for the paper version
         else
-            # NOTE Is this even valid if the problem isn't solved optimally?
-            if value(x) ∈ input_domain
-                error("Not OPTIMAL, but x in the input set.\n
-                This is usually caused by open input set.\n
-                Please check your input constraints.")
-            end
             # TODO can we be more descriptive?
             error("No solution, please check the problem definition.")
         end
