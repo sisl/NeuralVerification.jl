@@ -103,9 +103,9 @@ lower_bound(S::LazySet, j::Integer) = lower_bound(Arrays.SingleEntryVector(j, di
 bounds(S::LazySet, j::Integer) = (lower_bound(S, j), upper_bound(S, j))
 
 const _SymIntOrGrad = Union{SymbolicInterval, SymbolicIntervalGradient}
-dim(sym::_SymIntOrGrad) = size(_sym(sym).Up, 1)
-high(sym::_SymIntOrGrad) = σ(ones(dim(sym)), upper(sym))
-low(sym::_SymIntOrGrad) = σ(-ones(dim(sym)), lower(sym))
+LazySets.dim(sym::_SymIntOrGrad) = size(_sym(sym).Up, 1)
+LazySets.high(sym::_SymIntOrGrad) = σ(ones(dim(sym)), upper(sym))
+LazySets.low(sym::_SymIntOrGrad) = σ(-ones(dim(sym)), lower(sym))
 # radius of the symbolic interval in the direction of the
 # jth generating vector. This is not the axis aligned radius,
 # or the bounding radius, but rather a radius with respect to
