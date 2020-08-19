@@ -228,29 +228,22 @@ end
 
 # Symbolic forward_act
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{ReLU})
-
     n_node = n_nodes(layer)
-
     output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
     LΛᵢ, UΛᵢ = zeros(n_node), ones(n_node)
-
     # Symbolic linear relaxation
     # This is different from ReluVal
     for j in 1:n_node
-        # Loop-local variable bindings for notational convenience.
-        # These are direct views into the rows of the parent arrays.
-        out_lowᵢⱼ, out_upᵢⱼ = @views output_Low[j, :], output_Up[j, :]
-
         up_low, up_up = bounds(upper(input), j)
         low_low, low_up = bounds(lower(input), j)
 
         up_slope = relaxed_relu_gradient(up_low, up_up)
         low_slope = relaxed_relu_gradient(low_low, low_up)
 
-        out_upᵢⱼ .*= up_slope
-        out_upᵢⱼ[end] += up_slope * max(-up_low, 0)
+        output_Up[j, :] .*= up_slope
+        output_Up[j, end] += up_slope * max(-up_low, 0)
 
-        out_lowᵢⱼ .*= low_slope
+        output_Low[j, :] .*= low_slope
 
         LΛᵢ[j], UΛᵢ[j] = low_slope, up_slope
     end
