@@ -215,6 +215,6 @@ bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))
 # a node in the network. Equivalent to the upper-upper
 # bound minus the lower-lower bound
 function radius(sym::SymbolicInterval, j::Integer)
-    upper_bound(@view(sym.Up[:, j]), sym.interval) -
-    lower_bound(@view(sym.Low[:, j]), sym.interval)
+    upper_bound(@view(sym.Up[j, :]), sym.interval) -
+    lower_bound(@view(sym.Low[j, :]), sym.interval)
 end

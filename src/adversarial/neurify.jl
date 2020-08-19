@@ -163,7 +163,7 @@ function get_max_nodewise_influence(solver::Neurify,
                                     max_violation_con::AbstractVector{Float64},
                                     splits)
 
-    LΛ, UΛ = reach.LΛ, reach.UΛ
+    LΛ, UΛ = reach[end].LΛ, reach[end].UΛ
     is_ambiguous_activation(i, j) = (0 < LΛ[i][j] < 1) || (0 < UΛ[i][j] < 1)
 
     # We want to find the node with the largest influence
@@ -175,7 +175,7 @@ function get_max_nodewise_influence(solver::Neurify,
     # Backpropagation to calculate the node-wise gradient
     for i in reverse(1:length(nnet.layers))
         layer = nnet.layers[i]
-        sym = reach[i]
+        sym = reach[i].sym
         if layer.activation isa ReLU
             for j in 1:n_nodes(layer)
                 if is_ambiguous_activation(i, j)
