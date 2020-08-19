@@ -33,6 +33,7 @@ end
 
 
 function solve(solver::Neurify, problem::Problem)
+    isbounded(problem.input) || throw(UnboundedInputError("Neurify can only handle bounded input sets."))
 
     model = Model(solver); set_silent(model)
 
@@ -84,8 +85,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     add_set_constraint!(model, reach.interval, x)
 
     max_violation = 0.0
-    max_con = 0
-    # max_violation_con = nothing
+    max_violation_con = nothing
     for (i, cons) in enumerate(constraints_list(output))
         # NOTE can be taken out of the loop, but maybe there's no advantage
         # NOTE max.(M, 0) * U  + ... is a common operation, and maybe should get a name. It's also an "interval map".
@@ -103,7 +103,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
             viol = objective_value(model)
             if viol > max_violation
                 max_violation = viol
-                max_con = a
+                max_violation_con = a
             end
 
         # NOTE This entire else branch should be eliminated for the paper version
@@ -121,7 +121,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     end
 
     if max_violation > 0.0
-        return CounterExampleResult(:unknown), max_con
+        return CounterExampleResult(:unknown), max_violation_con
     else
         return CounterExampleResult(:holds), nothing
     end

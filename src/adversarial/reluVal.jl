@@ -65,6 +65,8 @@ function init_symbolic_mask(interval)
 end
 
 function solve(solver::ReluVal, problem::Problem)
+    isbounded(problem.input) || throw(UnboundedInputError("ReluVal can only handle bounded input sets."))
+
     reach_list = SymbolicIntervalMask[]
     for i in 1:solver.max_iter
         if i == 1
