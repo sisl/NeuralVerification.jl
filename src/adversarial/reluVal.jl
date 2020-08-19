@@ -87,9 +87,9 @@ function solve(solver::ReluVal, problem::Problem)
             end
         end
 
-        isempty(reach_list) && return BasicResult(:holds)
+        isempty(reach_list) && return CounterExampleResult(:holds)
     end
-    return BasicResult(:unknown)
+    return CounterExampleResult(:unknown)
 end
 
 function bisect_interval_by_max_smear(nnet::Network, reach::SymbolicIntervalMask)
@@ -118,14 +118,14 @@ end
 function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet::Network)
     reachable = symbol_to_concrete(reach)
 
-    issubset(reachable, output) && return BasicResult(:holds)
+    issubset(reachable, output) && return CounterExampleResult(:holds)
 
     # Sample the middle point
     middle_point = center(reach.interval)
     y = compute_output(nnet, middle_point)
     y ∈ output || return CounterExampleResult(:violated, middle_point)
 
-    return BasicResult(:unknown)
+    return CounterExampleResult(:unknown)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input)
