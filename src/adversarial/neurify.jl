@@ -70,7 +70,7 @@ function solve(solver::Neurify, problem::Problem)
     add_set_constraint!(model, problem.input, x)
 
     reach = forward_network(solver, problem.network, init_symbolic_grad(problem.input))
-    result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
+    result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
     result.status == :unknown || return result
 
     reach_list = [(reach, max_violation_con, Set())]
@@ -91,7 +91,7 @@ function solve(solver::Neurify, problem::Problem)
 
         for interval in intervals
             reach = forward_network(solver, problem.network, init_symbolic_grad(interval))
-            result, max_violation_con = check_inclusion(solver, reach.sym, problem.output, problem.network)
+            result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
             if result.status == :violated
                 return result
             elseif result.status == :unknown
@@ -162,22 +162,20 @@ end
 
 function constraint_refinement(solver::Neurify,
                                nnet::Network,
-                               reach::SymbolicIntervalGradient,
+                               reach::Vector{<:SymbolicIntervalGradient},
                                max_violation_con::AbstractVector{Float64},
                                splits)
 
-    i, j, influence = get_max_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
+    i, j, influence = get_max_nodewise_influence(solver, nnet, last(reach), max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
-    reach_new = forward_network(solver, Network(nnet.layers[1:i]), init_symbolic_grad(reach.sym.interval))
-
-    aL, bL = reach_new.sym.Low[j, 1:end-1], reach_new.sym.Low[j, end]
-    aU, bU = reach_new.sym.Up[j, 1:end-1], reach_new.sym.Up[j, end]
+    aL, bL = reach[i].sym.Low[j, 1:end-1], reach[i].sym.Low[j, end]
+    aU, bU = reach[i].sym.Up[j, 1:end-1], reach[i].sym.Up[j, end]
 
     # custom intersection function that doesn't do constraint pruning
     ∩ = (set, lc) -> HPolytope([constraints_list(set); lc])
 
-    subsets = [reach.sym.interval]
+    subsets = [reach[1].sym.interval] # all the reaches have the same domain
 
     # If either of the normal vectors is the 0-vector, we must skip it.
     # It cannot be used to create a halfspace constraint.
@@ -237,6 +235,17 @@ function get_max_nodewise_influence(solver::Neurify,
 
     return (i_max, j_max, influence_max)
 end
+
+
+
+function forward_network(solver::Neurify, network::Network, input)
+    forward_network(solver, network, init_symbolic_grad(input))
+end
+function forward_network(solver::Neurify, network::Network, input::SymbolicIntervalGradient)
+    reachable = [input = forward_layer(solver, L, input) for L in network.layers]
+    return reachable
+end
+
 
 function forward_layer(solver::Neurify, layer::Layer, input)
     return forward_act(solver, forward_linear(solver, input, layer), layer)
