@@ -42,7 +42,16 @@ struct SymbolicIntervalGradient
     sym::SymbolicInterval
     LΛ::Vector{Vector{Float64}} # mask for computing gradient.
     UΛ::Vector{Vector{Float64}}
-    r::Vector{Vector{Float64}} # range of a input interval (upper_bound - lower_bound)
+end
+
+# radius of the symbolic interval in the direction of the
+# jth generating vector. This is not the axis aligned radius,
+# or the bounding radius, but rather a radius with respect to
+# a node in the network. Equivalent to the upper-upper
+# bound minus the lower-lower bound
+function radius(sym::SymbolicInterval, j::Int)
+    upper_bound(@view(sym.Up[:, j]), sym.interval) -
+    lower_bound(@view(sym.Low[:, j]), sym.interval)
 end
 
 function init_symbolic_grad(domain)
@@ -57,7 +66,6 @@ function init_symbolic_grad(domain)
     symbolic_input = SymbolicInterval([I Z], [I Z], domain)
     symbolic_mask = SymbolicIntervalGradient(symbolic_input,
                                              Vector{Vector{Float64}}(),
-                                             Vector{Vector{Float64}}(),
                                              Vector{Vector{Float64}}())
 end
 
@@ -69,7 +77,7 @@ function solve(solver::Neurify, problem::Problem)
     x = @variable(model, [1:dim(problem.input)])
     add_set_constraint!(model, problem.input, x)
 
-    reach = forward_network(solver, problem.network, init_symbolic_grad(problem.input))
+    reach = forward_network(solver, problem.network, problem.input)
     result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
     result.status == :unknown || return result
 
@@ -80,7 +88,6 @@ function solve(solver::Neurify, problem::Problem)
     # And this node will be chosen to split forever.
     # To prevent this, we split each node only once if the gradient of this node hasn't change.
     # Each element in splits is a tuple (gradient_of_the_node, layer_index, node_index).
-    # splits = Set() # To prevent infinity loop.
 
     for i in 2:solver.max_iter
         isempty(reach_list) && return BasicResult(:holds)
@@ -90,7 +97,7 @@ function solve(solver::Neurify, problem::Problem)
         intervals = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
 
         for interval in intervals
-            reach = forward_network(solver, problem.network, init_symbolic_grad(interval))
+            reach = forward_network(solver, problem.network, interval)
             result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
             if result.status == :violated
                 return result
@@ -166,7 +173,7 @@ function constraint_refinement(solver::Neurify,
                                max_violation_con::AbstractVector{Float64},
                                splits)
 
-    i, j, influence = get_max_nodewise_influence(solver, nnet, last(reach), max_violation_con, splits)
+    i, j, influence = get_max_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
     aL, bL = reach[i].sym.Low[j, 1:end-1], reach[i].sym.Low[j, end]
@@ -192,11 +199,11 @@ end
 
 function get_max_nodewise_influence(solver::Neurify,
                                     nnet::Network,
-                                    reach::SymbolicIntervalGradient,
+                                    reach::Vector{<:SymbolicIntervalGradient},
                                     max_violation_con::AbstractVector{Float64},
                                     splits)
 
-    LΛ, UΛ, radii = reach.LΛ, reach.UΛ, reach.r
+    LΛ, UΛ = reach.LΛ, reach.UΛ
     is_ambiguous_activation(i, j) = (0 < LΛ[i][j] < 1) || (0 < UΛ[i][j] < 1)
 
     # We want to find the node with the largest influence
@@ -208,13 +215,17 @@ function get_max_nodewise_influence(solver::Neurify,
     # Backpropagation to calculate the node-wise gradient
     for i in reverse(1:length(nnet.layers))
         layer = nnet.layers[i]
+        sym = reach[i]
         if layer.activation isa ReLU
             for j in 1:n_nodes(layer)
                 if is_ambiguous_activation(i, j)
                     # taking `influence = max_gradient * reach.r[i][j]*k` would be
                     # different from original paper, but can improve the split efficiency.
                     # where `k = n-i+1`, i.e. counts up from 1 as you go back in layers.
-                    influence = max(abs(LG[j]), abs(UG[j])) * radii[i][j]
+
+                    # radius wrt to the jth node/hidden dimension
+                    r = radius(sym, j)
+                    influence = max(abs(LG[j]), abs(UG[j])) * r
                     if influence >= influence_max && (i, j, influence) ∉ splits
                         i_max, j_max, influence_max = i, j, influence
                     end
@@ -253,12 +264,11 @@ end
 
 # Symbolic forward_linear
 function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
-    output_Up[:, end] += b
-    output_Low[:, end] += b
+    output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
+    output_Up[:, end] += layer.bias
+    output_Low[:, end] += layer.bias
     sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ, input.r)
+    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
@@ -270,7 +280,6 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
 
     output_Low, output_Up = copy(Low), copy(Up)
     LΛᵢ, UΛᵢ = zeros(n_node), ones(n_node)
-    interval_width = zeros(n_node)
 
     # Symbolic linear relaxation
     # This is different from ReluVal
@@ -281,8 +290,6 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
 
         up_low, up_up = bounds(upᵢⱼ, interval)
         low_low, low_up = bounds(lowᵢⱼ, interval)
-
-        interval_width[j] = up_up - low_low
 
         up_slope = act_gradient(up_low, up_up)
         low_slope = act_gradient(low_low, low_up)
@@ -297,15 +304,12 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
     sym = SymbolicInterval(output_Low, output_Up, interval)
     LΛ = push!(input.LΛ, LΛᵢ)
     UΛ = push!(input.UΛ, UΛᵢ)
-    r = push!(input.r, interval_width)
-    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{Id})
-    sym = input.sym
     n_node = n_nodes(layer)
     LΛ = push!(input.LΛ, ones(n_node))
     UΛ = push!(input.UΛ, ones(n_node))
-    r = push!(input.r, ones(n_node))
-    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
+    return SymbolicIntervalGradient(input.sym, LΛ, UΛ)
 end
