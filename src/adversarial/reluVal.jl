@@ -35,7 +35,7 @@ end
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
     Up::Matrix{Float64}
-    interval::F
+    domain::F
 end
 # Data to be passed during forward_layer
 struct SymbolicIntervalGradient{F<:AbstractPolytope, N<:Real}
@@ -94,8 +94,8 @@ end
 
 function bisect_interval_by_max_smear(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient_bounds(nnet, reach.LΛ, reach.UΛ)
-    feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
-    return collect(split_interval(reach.sym.interval, feature))
+    feature, monotone = get_max_smear_index(nnet, reach.sym.domain, LG, UG) #monotonicity not used in this implementation.
+    return collect(split_interval(reach.sym.domain, feature))
 end
 
 function select!(reach_list, tree_search)
@@ -110,8 +110,8 @@ function select!(reach_list, tree_search)
 end
 
 function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle})
-    lower = [lower_bound(l, reach.interval) for l in eachrow(reach.Low)]
-    upper = [upper_bound(u, reach.interval) for u in eachrow(reach.Up)]
+    lower = [lower_bound(l, reach.domain) for l in eachrow(reach.Low)]
+    upper = [upper_bound(u, reach.domain) for u in eachrow(reach.Up)]
     return Hyperrectangle(low = lower, high = upper)
 end
 
@@ -121,7 +121,7 @@ function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet
     issubset(reachable, output) && return CounterExampleResult(:holds)
 
     # Sample the middle point
-    middle_point = center(reach.interval)
+    middle_point = center(reach.domain)
     y = compute_output(nnet, middle_point)
     y ∈ output || return CounterExampleResult(:violated, middle_point)
 
@@ -138,14 +138,14 @@ function forward_linear(solver::ReluVal, input::SymbolicIntervalMask, layer::Lay
     output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
     output_Up[:, end] += b
     output_Low[:, end] += b
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
+    sym = SymbolicInterval(output_Low, output_Up, input.sym.domain)
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
 
-    interval = input.sym.interval
+    interval = input.sym.domain
     Low, Up = input.sym.Low, input.sym.Up
 
     n_node = n_nodes(layer)
@@ -217,6 +217,6 @@ bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))
 # a node in the network. Equivalent to the upper-upper
 # bound minus the lower-lower bound
 function radius(sym::SymbolicInterval, j::Integer)
-    upper_bound(@view(sym.Up[j, :]), sym.interval) -
-    lower_bound(@view(sym.Low[j, :]), sym.interval)
+    upper_bound(@view(sym.Up[j, :]), sym.domain) -
+    lower_bound(@view(sym.Low[j, :]), sym.domain)
 end

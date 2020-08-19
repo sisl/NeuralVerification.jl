@@ -52,10 +52,10 @@ function solve(solver::Neurify, problem::Problem)
 
         reach, max_violation_con, splits = select!(reach_list, solver.tree_search)
 
-        intervals = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
+        subdomains = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
 
-        for interval in intervals
-            reach = forward_network(solver, problem.network, interval)
+        for domain in subdomains
+            reach = forward_network(solver, problem.network, domain)
             result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
             if result.status == :violated
                 return result
@@ -76,8 +76,8 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     model = Model(solver)
     set_silent(model)
 
-    x = @variable(model, [1:dim(reach.interval)])
-    add_set_constraint!(model, reach.interval, x)
+    x = @variable(model, [1:dim(reach.domain)])
+    add_set_constraint!(model, reach.domain, x)
 
     max_violation = 0.0
     max_violation_con = nothing
@@ -104,7 +104,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
         # NOTE This entire else branch should be eliminated for the paper version
         else
             # NOTE Is this even valid if the problem isn't solved optimally?
-            if value(x) ∈ reach.interval
+            if value(x) ∈ reach.domain
                 error("Not OPTIMAL, but x in the input set.\n
                 This is usually caused by open input set.\n
                 Please check your input constraints.")
@@ -137,7 +137,7 @@ function constraint_refinement(solver::Neurify,
     # custom intersection function that doesn't do constraint pruning
     ∩ = (set, lc) -> HPolytope([constraints_list(set); lc])
 
-    subsets = [reach[1].sym.interval] # all the reaches have the same domain
+    subsets = [reach[1].sym.domain] # all the reaches have the same domain
 
     # If either of the normal vectors is the 0-vector, we must skip it.
     # It cannot be used to create a halfspace constraint.
@@ -222,14 +222,14 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
     output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
     output_Up[:, end] += layer.bias
     output_Low[:, end] += layer.bias
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
+    sym = SymbolicInterval(output_Low, output_Up, input.sym.domain)
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{ReLU})
 
-    interval = input.sym.interval
+    domain = input.sym.domain
     Low, Up = input.sym.Low, input.sym.Up
     n_node = n_nodes(layer)
 
@@ -243,8 +243,8 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
         # These are direct views into the rows of the parent arrays.
         lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
 
-        up_low, up_up = bounds(upᵢⱼ, interval)
-        low_low, low_up = bounds(lowᵢⱼ, interval)
+        up_low, up_up = bounds(upᵢⱼ, domain)
+        low_low, low_up = bounds(lowᵢⱼ, domain)
 
         up_slope = act_gradient(up_low, up_up)
         low_slope = act_gradient(low_low, low_up)
@@ -256,7 +256,7 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
 
         LΛᵢ[j], UΛᵢ[j] = low_slope, up_slope
     end
-    sym = SymbolicInterval(output_Low, output_Up, interval)
+    sym = SymbolicInterval(output_Low, output_Up, domain)
     LΛ = push!(input.LΛ, LΛᵢ)
     UΛ = push!(input.UΛ, UΛᵢ)
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
