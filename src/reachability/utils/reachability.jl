@@ -47,7 +47,7 @@ end
 
 
 
-############# For ReluVal and Neurify
+###################### For ReluVal and Neurify ######################
 
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
@@ -104,8 +104,8 @@ bounds(S::LazySet, j::Integer) = (lower_bound(S, j), upper_bound(S, j))
 
 const _SymIntOrGrad = Union{SymbolicInterval, SymbolicIntervalGradient}
 LazySets.dim(sym::_SymIntOrGrad) = size(_sym(sym).Up, 1)
-LazySets.high(sym::_SymIntOrGrad) = σ(ones(dim(sym)), upper(sym))
-LazySets.low(sym::_SymIntOrGrad) = σ(-ones(dim(sym)), lower(sym))
+LazySets.high(sym::_SymIntOrGrad) = [upper_bound(upper(sym), j) for j in 1:dim(sym)]
+LazySets.low(sym::_SymIntOrGrad) = [lower_bound(lower(sym), j) for j in 1:dim(sym)]
 # radius of the symbolic interval in the direction of the
 # jth generating vector. This is not the axis aligned radius,
 # or the bounding radius, but rather a radius with respect to
