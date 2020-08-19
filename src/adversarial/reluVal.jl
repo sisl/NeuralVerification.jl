@@ -37,6 +37,7 @@ struct SymbolicInterval{F<:AbstractPolytope}
     Up::Matrix{Float64}
     domain::F
 end
+
 # Data to be passed during forward_layer
 struct SymbolicIntervalGradient{F<:AbstractPolytope, N<:Real}
     sym::SymbolicInterval{F}
@@ -109,19 +110,13 @@ function select!(reach_list, tree_search)
     return reach
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle})
-    lower = [lower_bound(l, reach.domain) for l in eachrow(reach.Low)]
-    upper = [upper_bound(u, reach.domain) for u in eachrow(reach.Up)]
-    return Hyperrectangle(low = lower, high = upper)
-end
-
 function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet::Network)
-    reachable = symbol_to_concrete(reach)
+    reachable = Hyperrectangle(low = low(reach), high = high(reach))
 
     issubset(reachable, output) && return CounterExampleResult(:holds)
 
     # Sample the middle point
-    middle_point = center(reach.domain)
+    middle_point = center(domain(reach))
     y = compute_output(nnet, middle_point)
     y ∈ output || return CounterExampleResult(:violated, middle_point)
 
@@ -134,40 +129,32 @@ end
 
 # Symbolic forward_linear
 function forward_linear(solver::ReluVal, input::SymbolicIntervalMask, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
-    output_Up[:, end] += b
-    output_Low[:, end] += b
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.domain)
+    output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
+    output_Up[:, end] += layer.bias
+    output_Low[:, end] += layer.bias
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
 
-    interval = input.sym.domain
-    Low, Up = input.sym.Low, input.sym.Up
-
+    output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
     n_node = n_nodes(layer)
-    output_Low, output_Up = copy(Low), copy(Up)
     LΛᵢ, UΛᵢ = falses(n_node), trues(n_node)
 
     for j in 1:n_node
-        # Loop-local variable bindings for notational convenience.
-        # These are direct views into the rows of the parent arrays.
-        lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
-
         # If the upper bound of the upper bound is negative, set
         # the generators and centers of both bounds to 0, and
         # the gradient mask to 0
-        if upper_bound(upᵢⱼ, interval) <= 0
+        if upper_bound(upper(input), j) <= 0
             LΛᵢ[j], UΛᵢ[j] = 0, 0
-            out_lowᵢⱼ .= 0
-            out_upᵢⱼ .= 0
+            output_Low[j, :] .= 0
+            output_Up[j, :] .= 0
 
         # If the lower bound of the lower bound is positive,
         # the gradient mask should be 1
-        elseif lower_bound(lowᵢⱼ, interval) >= 0
+        elseif lower_bound(lower(input), j) >= 0
             LΛᵢ[j], UΛᵢ[j] = 1, 1
 
         # if the bounds overlap 0, concretize by setting
@@ -175,15 +162,15 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
         # center to be the current upper-upper bound.
         else
             LΛᵢ[j], UΛᵢ[j] = 0, 1
-            out_lowᵢⱼ .= 0
-            if lower_bound(upᵢⱼ, interval) < 0
-                out_upᵢⱼ .= 0
-                out_upᵢⱼ[end] = upper_bound(upᵢⱼ, interval)
+            output_Low[j, :] .= 0
+            if lower_bound(upper(input), j) < 0
+                output_Up[j, :] .= 0
+                output_Up[j, :][end] = upper_bound(upper(input), j)
             end
         end
     end
 
-    sym = SymbolicInterval(output_Low, output_Up, interval)
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
     LΛ = push!(input.LΛ, LΛᵢ)
     UΛ = push!(input.UΛ, UΛᵢ)
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
@@ -191,11 +178,10 @@ end
 
 # Symbolic forward_act
 function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{Id})
-    sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, trues(n_node))
     UΛ = push!(input.UΛ, trues(n_node))
-    return SymbolicIntervalGradient(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(input.sym, LΛ, UΛ)
 end
 
 function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
@@ -208,15 +194,36 @@ function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, U
     return ind, monotone
 end
 
-upper_bound(v, domain) = ρ(v[1:end-1], domain) + v[end]
-lower_bound(v, domain) = -ρ(-v[1:end-1], domain) + v[end]
-bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))
+
+
+
+domain(sym::SymbolicInterval) = sym.domain
+domain(grad::SymbolicIntervalGradient) = domain(grad.sym)
+_sym(sym::SymbolicInterval) = sym
+_sym(grad::SymbolicIntervalGradient) = grad.sym
+
+upper(sym::SymbolicInterval) = AffineMap(@view(sym.Up[:, 1:end-1]), sym.domain, @view(sym.Up[:, end]))
+lower(sym::SymbolicInterval) = AffineMap(@view(sym.Low[:, 1:end-1]), sym.domain, @view(sym.Low[:, end]))
+upper(grad::SymbolicIntervalGradient) = upper(grad.sym)
+lower(grad::SymbolicIntervalGradient) = lower(grad.sym)
+
+upper_bound(a::AbstractVector, set::LazySet) = a'σ(a, set)
+lower_bound(a::AbstractVector, set::LazySet) = a'σ(-a, set) # ≡ -ρ(-a, set)
+bounds(a::AbstractVector, set::LazySet) = (a'σ(-a, set), a'σ(a, set))  # (lower, upper)
+
+upper_bound(S::LazySet, j::Integer) = upper_bound(Arrays.SingleEntryVector(j, dim(S), 1.0), S)
+lower_bound(S::LazySet, j::Integer) = lower_bound(Arrays.SingleEntryVector(j, dim(S), 1.0), S)
+bounds(S::LazySet, j::Integer) = (lower_bound(S, j), upper_bound(S, j))
+
+const _SymIntOrGrad = Union{SymbolicInterval, SymbolicIntervalGradient}
+dim(sym::_SymIntOrGrad) = size(_sym(sym).Up, 1)
+high(sym::_SymIntOrGrad) = σ(ones(dim(sym)), upper(sym))
+low(sym::_SymIntOrGrad) = σ(-ones(dim(sym)), lower(sym))
 # radius of the symbolic interval in the direction of the
 # jth generating vector. This is not the axis aligned radius,
 # or the bounding radius, but rather a radius with respect to
 # a node in the network. Equivalent to the upper-upper
 # bound minus the lower-lower bound
-function radius(sym::SymbolicInterval, j::Integer)
-    upper_bound(@view(sym.Up[j, :]), sym.domain) -
-    lower_bound(@view(sym.Low[j, :]), sym.domain)
+function radius(sym::_SymIntOrGrad, j::Integer)
+    upper_bound(upper(sym), j) - lower_bound(lower(sym), j)
 end

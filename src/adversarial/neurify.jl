@@ -27,7 +27,7 @@ Sound but not complete.
 
 @with_kw struct Neurify <: Solver
     max_iter::Int64     = 100
-    tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
+    tree_search::Symbol = :DFS
     optimizer = GLPK.Optimizer
 end
 
@@ -73,11 +73,11 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
     # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1)
 
-    model = Model(solver)
-    set_silent(model)
+    input_domain = domain(reach)
 
-    x = @variable(model, [1:dim(reach.domain)])
-    add_set_constraint!(model, reach.domain, x)
+    model = Model(solver); set_silent(model)
+    x = @variable(model, [1:dim(input_domain)])
+    add_set_constraint!(model, input_domain, x)
 
     max_violation = 0.0
     max_violation_con = nothing
@@ -104,7 +104,7 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
         # NOTE This entire else branch should be eliminated for the paper version
         else
             # NOTE Is this even valid if the problem isn't solved optimally?
-            if value(x) ∈ reach.domain
+            if value(x) ∈ input_domain
                 error("Not OPTIMAL, but x in the input set.\n
                 This is usually caused by open input set.\n
                 Please check your input constraints.")
@@ -137,7 +137,7 @@ function constraint_refinement(solver::Neurify,
     # custom intersection function that doesn't do constraint pruning
     ∩ = (set, lc) -> HPolytope([constraints_list(set); lc])
 
-    subsets = [reach[1].sym.domain] # all the reaches have the same domain
+    subsets = [domain(reach[1])] # all the reaches have the same domain, so we can pick [1]
 
     # If either of the normal vectors is the 0-vector, we must skip it.
     # It cannot be used to create a halfspace constraint.
@@ -222,18 +222,16 @@ function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer:
     output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
     output_Up[:, end] += layer.bias
     output_Low[:, end] += layer.bias
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.domain)
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{ReLU})
 
-    domain = input.sym.domain
-    Low, Up = input.sym.Low, input.sym.Up
     n_node = n_nodes(layer)
 
-    output_Low, output_Up = copy(Low), copy(Up)
+    output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
     LΛᵢ, UΛᵢ = zeros(n_node), ones(n_node)
 
     # Symbolic linear relaxation
@@ -241,10 +239,10 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
     for j in 1:n_node
         # Loop-local variable bindings for notational convenience.
         # These are direct views into the rows of the parent arrays.
-        lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
+        out_lowᵢⱼ, out_upᵢⱼ = @views output_Low[j, :], output_Up[j, :]
 
-        up_low, up_up = bounds(upᵢⱼ, domain)
-        low_low, low_up = bounds(lowᵢⱼ, domain)
+        up_low, up_up = bounds(upper(input), j)
+        low_low, low_up = bounds(lower(input), j)
 
         up_slope = act_gradient(up_low, up_up)
         low_slope = act_gradient(low_low, low_up)
@@ -256,7 +254,7 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
 
         LΛᵢ[j], UΛᵢ[j] = low_slope, up_slope
     end
-    sym = SymbolicInterval(output_Low, output_Up, domain)
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
     LΛ = push!(input.LΛ, LΛᵢ)
     UΛ = push!(input.UΛ, UΛᵢ)
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
