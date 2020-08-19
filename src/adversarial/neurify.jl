@@ -31,46 +31,6 @@ Sound but not complete.
     optimizer = GLPK.Optimizer
 end
 
-struct SymbolicInterval{F<:AbstractPolytope}
-    Low::Matrix{Float64}
-    Up::Matrix{Float64}
-    interval::F
-end
-
-
-
-# Data to be passed during forward_layer
-struct SymbolicIntervalGradient{F<:AbstractPolytope, N<:Real}
-    sym::SymbolicInterval{F}
-    LΛ::Vector{Vector{N}} # mask for computing gradient.
-    UΛ::Vector{Vector{N}}
-end
-
-# radius of the symbolic interval in the direction of the
-# jth generating vector. This is not the axis aligned radius,
-# or the bounding radius, but rather a radius with respect to
-# a node in the network. Equivalent to the upper-upper
-# bound minus the lower-lower bound
-function radius(sym::SymbolicInterval, j::Integer)
-    upper_bound(@view(sym.Up[:, j]), sym.interval) -
-    lower_bound(@view(sym.Low[:, j]), sym.interval)
-end
-
-function init_symbolic_grad(domain)
-    # with hyperrectangles, we might as well deal with the directly
-    # if !(domain isa Hyperrectangle)
-    VF = Vector{HalfSpace{Float64, Vector{Float64}}}
-    domain = HPolytope(VF(constraints_list(domain)))
-    # end
-    n = dim(domain)
-    I = Matrix{Float64}(LinearAlgebra.I(n))
-    Z = zeros(n)
-    symbolic_input = SymbolicInterval([I Z], [I Z], domain)
-    symbolic_mask = SymbolicIntervalGradient(symbolic_input,
-                                             Vector{Vector{Float64}}(),
-                                             Vector{Vector{Float64}}())
-end
-
 
 function solve(solver::Neurify, problem::Problem)
 

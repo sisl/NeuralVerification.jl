@@ -31,17 +31,37 @@ Sound but not complete.
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
+
+struct SymbolicInterval{F<:AbstractPolytope}
+    Low::Matrix{Float64}
+    Up::Matrix{Float64}
+    interval::F
+end
+# Data to be passed during forward_layer
+struct SymbolicIntervalGradient{F<:AbstractPolytope, N<:Real}
+    sym::SymbolicInterval{F}
+    LΛ::Vector{Vector{N}}
+    UΛ::Vector{Vector{N}}
+end
 # Data to be passed during forward_layer
 const SymbolicIntervalMask = SymbolicIntervalGradient{<:Hyperrectangle, Bool}
 
-function init_symbolic_mask(interval)
-    n = dim(interval)
+function _init_symbolic_grad_general(domain, N)
+    n = dim(domain)
     I = Matrix{Float64}(LinearAlgebra.I(n))
     Z = zeros(n)
-    symbolic_input = SymbolicInterval([I Z], [I Z], interval)
+    symbolic_input = SymbolicInterval([I Z], [I Z], domain)
     symbolic_mask = SymbolicIntervalGradient(symbolic_input,
-                                             Vector{Vector{Bool}}(),
-                                             Vector{Vector{Bool}}())
+                                             Vector{Vector{N}}(),
+                                             Vector{Vector{N}}())
+end
+function init_symbolic_grad(domain)
+    VF = Vector{HalfSpace{Float64, Vector{Float64}}}
+    domain = HPolytope(VF(constraints_list(domain)))
+    _init_symbolic_grad_general(domain, Float64)
+end
+function init_symbolic_mask(interval)
+    _init_symbolic_grad_general(interval, Bool)
 end
 
 function solve(solver::ReluVal, problem::Problem)
@@ -189,3 +209,12 @@ end
 upper_bound(v, domain) = ρ(v[1:end-1], domain) + v[end]
 lower_bound(v, domain) = -ρ(-v[1:end-1], domain) + v[end]
 bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))
+# radius of the symbolic interval in the direction of the
+# jth generating vector. This is not the axis aligned radius,
+# or the bounding radius, but rather a radius with respect to
+# a node in the network. Equivalent to the upper-upper
+# bound minus the lower-lower bound
+function radius(sym::SymbolicInterval, j::Integer)
+    upper_bound(@view(sym.Up[:, j]), sym.interval) -
+    lower_bound(@view(sym.Low[:, j]), sym.interval)
+end
