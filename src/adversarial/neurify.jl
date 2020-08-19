@@ -45,7 +45,7 @@ function solve(solver::Neurify, problem::Problem)
     # Therefore, the gradient remains unchanged (since input didn't change).
     # And this node will be chosen to split forever.
     # To prevent this, we split each node only once if the gradient of this node hasn't change.
-    # Each element in splits is a tuple (gradient_of_the_node, layer_index, node_index).
+    # Each element in splits is a tuple (layer_index, node_index, node_gradient).
 
     for i in 2:solver.max_iter
         isempty(reach_list) && return CounterExampleResult(:holds)
@@ -244,8 +244,8 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
         up_low, up_up = bounds(upper(input), j)
         low_low, low_up = bounds(lower(input), j)
 
-        up_slope = act_gradient(up_low, up_up)
-        low_slope = act_gradient(low_low, low_up)
+        up_slope = relaxed_relu_gradient(up_low, up_up)
+        low_slope = relaxed_relu_gradient(low_low, low_up)
 
         out_upᵢⱼ .*= up_slope
         out_upᵢⱼ[end] += up_slope * max(-up_low, 0)

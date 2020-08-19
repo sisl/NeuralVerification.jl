@@ -221,32 +221,26 @@ function get_gradient(nnet::Network, x::Vector)
 end
 
 """
-    act_gradient(act::ReLU, z_hat::Vector{N}) where N
+    act_gradient(act, z_hat::Vector{N}) where N
 
-Computing the gradient of an activation function at point z_hat.
-Currently only support ReLU and Id.
+Compute the gradient of an activation function at point z_hat.
+Currently only supports ReLU and Id.
 """
 act_gradient(act::ReLU, z_hat::Vector) = z_hat .>= 0.0
 act_gradient(act::Id,   z_hat::Vector) = trues(length(z_hat))
 
 """
-    act_gradient(act::ReLU, l::Float64, u::Float64)
+    relaxed_relu_gradient(l::Real, u::Real)
 
-Returns the slope of a ReLU activation based on its lower and upper bounds
+Return the slope of a ReLU activation based on its lower and upper bounds
 
-Inputs:
-- `l::Float64`: lower bound
-- `u::Float64`: upper bound
-Return:
-- 0 if u<0; 1 if l>0; u/(u-l) otherwise
+Returns `0` if u<0, `1` if l>0, `u/(u-l)` otherwise
 """
-function act_gradient(act::ReLU, l::Float64, u::Float64)
+function relaxed_relu_gradient(l::Real, u::Real)
     u <= 0.0 && return 0.0
     l >= 0.0 && return 1.0
     return u / (u - l)
 end
-
-act_gradient(l::Float64, u::Float64) = act_gradient(ReLU(), l, u)
 
 
 """
