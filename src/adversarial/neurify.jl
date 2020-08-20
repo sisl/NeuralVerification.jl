@@ -85,9 +85,9 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
         # NOTE can be taken out of the loop, but maybe there's no advantage
         # NOTE max.(M, 0) * U  + ... is a common operation, and maybe should get a name. It's also an "interval map".
         a, b = cons.a, cons.b
-        obj = max.(a, 0)'*reach.Up + min.(a, 0)'*reach.Low
+        c = max.(a, 0)'*reach.Up + min.(a, 0)'*reach.Low
 
-        @objective(model, Max, obj * [x; 1] - b)
+        @objective(model, Max, c * [x; 1] - b)
         optimize!(model)
 
         if termination_status(model) == OPTIMAL
@@ -100,8 +100,6 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
                 max_violation = viol
                 max_violation_con = a
             end
-
-        # NOTE This entire else branch should be eliminated for the paper version
         else
             # TODO can we be more descriptive?
             error("No solution, please check the problem definition.")
