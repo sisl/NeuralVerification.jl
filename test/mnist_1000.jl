@@ -2,6 +2,7 @@ using LazySets, Test, LinearAlgebra
 using NeuralVerification
 import NeuralVerification: ReLU, Id
 using JLD2
+using Cbc
 
 function test_solver(solver, test_selected)
 
@@ -18,7 +19,7 @@ function test_solver(solver, test_selected)
 
     @load "MNIST_1000.jld2" train_x train_y mnist_net
 
-    for i = test_idx
+    for i in test_idx
         input_center = reshape(train_x[:,:,i], 28*28)
         label = train_y[i]
         A = zeros(Float64, 10, 10)
@@ -47,11 +48,10 @@ function test_solver(solver, test_selected)
         result =  solve(solver, problem_mnist)
 
         if result.status == :violated
-            @test i ∈ violation_idx
             noisy = argmax(NeuralVerification.compute_output(mnist_net, result.counter_example))-1
-            @test noisy != pred
+            @test i ∈ violation_idx && noisy != pred
         elseif result.status == :holds
-            @test !(i ∈ violation_idx)
+            @test i ∉ violation_idx
         end
     end
 end
@@ -63,10 +63,10 @@ let
 
     # NOTE the number of tests maybe different for different solvers.
     # Because the test cases depends on the result.
-    @testset "$testname, ReluVal" begin
+    @time @testset "$testname, ReluVal" begin
         test_solver(ReluVal(max_iter = 10), test_selected)
     end
-    @testset "$testname, Neurify" begin
+    @time @testset "$testname, Neurify" begin
         test_solver(Neurify(max_iter = 10), test_selected)
     end
 
