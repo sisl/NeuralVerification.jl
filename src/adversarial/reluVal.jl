@@ -34,26 +34,21 @@ end
 function solve(solver::ReluVal, problem::Problem)
     isbounded(problem.input) || throw(UnboundedInputError("ReluVal can only handle bounded input sets."))
 
-    reach_list = SymbolicIntervalMask[]
+    reach_list = []
+    interval = problem.input
     for i in 1:solver.max_iter
-        if i == 1
-            intervals = [problem.input]
-        else
-            reach = select!(reach_list, solver.tree_search)
+        if i > 1
+            interval = select!(reach_list, solver.tree_search)
+        end
+        reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
+        result = check_inclusion(reach.sym, problem.output, problem.network)
+
+        if result.status === :violated
+            return result
+        elseif result.status === :unknown
             intervals = bisect_interval_by_max_smear(problem.network, reach)
+            append!(reach_list, intervals)
         end
-
-        for interval in intervals
-            reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
-            result = check_inclusion(reach.sym, problem.output, problem.network)
-
-            if result.status === :violated
-                return result
-            elseif result.status === :unknown
-                push!(reach_list, reach)
-            end
-        end
-
         isempty(reach_list) && return CounterExampleResult(:holds)
     end
     return CounterExampleResult(:unknown)

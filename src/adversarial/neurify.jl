@@ -35,40 +35,40 @@ end
 function solve(solver::Neurify, problem::Problem)
     isbounded(problem.input) || throw(UnboundedInputError("Neurify can only handle bounded input sets."))
 
-    reach = forward_network(solver, problem.network, problem.input)
-    result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
-    result.status == :unknown || return result
-
-    reach_list = [(reach, max_violation_con, Set())]
-
     # Because of over-approximation, a split may not bisect the input set.
     # Therefore, the gradient remains unchanged (since input didn't change).
     # And this node will be chosen to split forever.
-    # To prevent this, we split each node only once if the gradient of this node hasn't change.
+    # To prevent this, we split each node only once if the gradient of this node hasn't changed.
     # Each element in splits is a tuple (layer_index, node_index, node_gradient).
 
-    for i in 2:solver.max_iter
-        isempty(reach_list) && return CounterExampleResult(:holds)
-
-        reach, max_violation_con, splits = select!(reach_list, solver.tree_search)
-
-        subdomains = constraint_refinement(problem.network, reach, max_violation_con, splits)
-
-        for domain in subdomains
-            reach = forward_network(solver, problem.network, domain)
-            result, max_violation_con = check_inclusion(solver, last(reach).sym, problem.output, problem.network)
-            if result.status == :violated
-                return result
-            elseif result.status == :unknown
-                push!(reach_list, (reach, max_violation_con, copy(splits)))
-            end
+    nnet, output = problem.network, problem.output
+    reach_list = []
+    domain = init_symbolic_grad(problem.input)
+    splits = Set()
+    for i in 1:solver.max_iter
+        if i > 1
+            domain, splits = select!(reach_list, solver.tree_search)
         end
+
+        reach = forward_network(solver, nnet, domain)
+        result, max_violation_con = check_inclusion(solver, nnet, last(reach).sym, output)
+
+        if result.status === :violated
+            return result
+        elseif result.status === :unknown
+            subdomains = constraint_refinement(nnet, reach, max_violation_con, splits)
+            for domain in subdomains
+                push!(reach_list, (init_symbolic_grad(domain), copy(splits)))
+            end
+
+        end
+        isempty(reach_list) && return CounterExampleResult(:holds)
     end
     return CounterExampleResult(:unknown)
 end
 
-function check_inclusion(solver::Neurify, reach::SymbolicInterval,
-                         output::AbstractPolytope, nnet::Network)
+function check_inclusion(solver::Neurify, nnet::Network,
+                         reach::SymbolicInterval, output)
     # The output constraint is in the form A*x < b
     # We try to maximize output constraint to find a violated case, or to verify the inclusion.
     # Suppose the output is [1, 0, -1] * x < 2, Then we are maximizing reach.Up[1] * 1 + reach.Low[3] * (-1)
