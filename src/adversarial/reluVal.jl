@@ -1,15 +1,16 @@
 """
     ReluVal(max_iter::Int64, tree_search::Symbol)
 
-ReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
+ReluVal combines symbolic reachability analysis with iterative interval refinement to
+minimize over-approximation of the reachable set.
 
 # Problem requirement
 1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: AbstractPolytope
+2. Input: Hyperrectangle
+3. Output: LazySet
 
 # Return
-`CounterExampleResult` or `ReachabilityResult`
+`CounterExampleResult`
 
 # Method
 Symbolic reachability analysis and iterative interval refinement (search).

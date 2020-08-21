@@ -1,19 +1,22 @@
 """
     Neurify(max_iter::Int64, tree_search::Symbol)
 
-Neurify combines symbolic reachability analysis with constraint refinement to minimize over-approximation of the reachable set.
+Neurify combines symbolic reachability analysis with constraint refinement to
+minimize over-approximation of the reachable set.
 
 # Problem requirement
 1. Network: any depth, ReLU activation
 2. Input: AbstractPolytope
-3. Output: AbstractPolytope
+3. Output: LazySet
 
 # Return
-`CounterExampleResult` or `ReachabilityResult`
+`CounterExampleResult`
 
 # Method
 Symbolic reachability analysis and iterative interval refinement (search).
-- `max_iter` default `10`.
+- `max_iter` default `100`.
+- `tree_search` default `:DFS` - depth first search.
+- `optimizer` default `GLPK.Optimizer`
 
 # Property
 Sound but not complete.
