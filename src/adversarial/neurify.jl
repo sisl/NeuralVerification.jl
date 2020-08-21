@@ -52,7 +52,7 @@ function solve(solver::Neurify, problem::Problem)
 
         reach, max_violation_con, splits = select!(reach_list, solver.tree_search)
 
-        subdomains = constraint_refinement(solver, problem.network, reach, max_violation_con, splits)
+        subdomains = constraint_refinement(problem.network, reach, max_violation_con, splits)
 
         for domain in subdomains
             reach = forward_network(solver, problem.network, domain)
@@ -114,13 +114,12 @@ function check_inclusion(solver::Neurify, reach::SymbolicInterval,
     end
 end
 
-function constraint_refinement(solver::Neurify,
-                               nnet::Network,
+function constraint_refinement(nnet::Network,
                                reach::Vector{<:SymbolicIntervalGradient},
                                max_violation_con::AbstractVector{Float64},
                                splits)
 
-    i, j, influence = get_max_nodewise_influence(solver, nnet, reach, max_violation_con, splits)
+    i, j, influence = get_max_nodewise_influence(nnet, reach, max_violation_con, splits)
     # We can generate three more constraints
     # Symbolic representation of node i j is Low[i][j,:] and Up[i][j,:]
     aL, bL = reach[i].sym.Low[j, 1:end-1], reach[i].sym.Low[j, end]
@@ -144,8 +143,7 @@ function constraint_refinement(solver::Neurify,
 end
 
 
-function get_max_nodewise_influence(solver::Neurify,
-                                    nnet::Network,
+function get_max_nodewise_influence(nnet::Network,
                                     reach::Vector{<:SymbolicIntervalGradient},
                                     max_violation_con::AbstractVector{Float64},
                                     splits)
