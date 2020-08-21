@@ -1,4 +1,4 @@
-using NeuralVerification, LazySets
+using NeuralVerification, LazySets, LinearAlgebra
 using Test
 
 import NeuralVerification: ReLU, Id

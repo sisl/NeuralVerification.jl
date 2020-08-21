@@ -1,6 +1,3 @@
-using LazySets, Test, LinearAlgebra, GLPKMathProgInterface
-using NeuralVerification
-
 # The following two test is based on a 4 layer network.
 # We can consider this network is in the form of y=f(x), where x and y are 1d variables.
 # The graph of this function looks like \/\/\/\/

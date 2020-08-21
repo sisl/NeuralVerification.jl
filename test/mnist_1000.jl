@@ -1,8 +1,4 @@
-using LazySets, Test, LinearAlgebra
-using NeuralVerification
-import NeuralVerification: ReLU, Id
 using JLD2
-using Cbc
 
 function test_solver(solver, test_selected)
 

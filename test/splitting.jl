@@ -1,7 +1,3 @@
-using LazySets, Test, LinearAlgebra
-using NeuralVerification
-import NeuralVerification: ReLU, Id
-
 @testset "Splitting Test" begin
 
     net_file = "$(@__DIR__)/../examples/networks/R2_R2.nnet"
