@@ -27,13 +27,8 @@ Sound and complete.
 end
 
 function solve(solver::ExactReach, problem::Problem)
-    if (solver.return_bounds)
-        reach, bounds = forward_network(solver, problem.network, problem.input; get_bounds=solver.return_bounds)
-        return check_inclusion(reach, problem.output), bounds
-    else
-        reach = forward_network(solver, problem.network, problem.input)
-        return check_inclusion(reach, problem.output)
-    end
+    reach = forward_network(solver, problem.network, problem.input)
+    return check_inclusion(reach, problem.output)
 end
 
 forward_layer(solver::ExactReach, layer::Layer, input) = forward_layer(solver, layer, convert(HPolytope, input))

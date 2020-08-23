@@ -141,6 +141,7 @@ function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_o
     new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
     new_bounds[1] = problem.input
     for i in 2:length(neurons)
+        layer = problem.network.layers[i-1]
         lower = low(bounds[i])
         upper = high(bounds[i])
         for j in 1:length(neurons[i])
@@ -156,6 +157,10 @@ function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_o
             # Find the lower bound
             @objective(model, Min, objective)
             optimize!(model)
+            if (use_output_constraints == false)
+                # should never have an infeasible status if you have no output constraints
+                @assert termination_status(model) != INFEASIBLE "Tighten bounds should always be feasible without output consrainits"
+            end
             termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
             lower[j] = value(objective)
 
@@ -165,8 +170,18 @@ function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_o
             upper[j] = value(objective)
 
             # Update the bounds in the model
-            set_lower_bound.(neurons[i][j], max(lower[j], 0))
-            set_upper_bound.(neurons[i][j], max(upper[j], 0))
+            if (!pre_activation)
+                set_lower_bound(neurons[i][j], lower[j])
+                set_upper_bound(neurons[i][j], upper[j])
+            elseif (layer.activation == ReLU())
+                set_lower_bound(neurons[i][j], max(lower[j], 0.0))
+                set_upper_bound(neurons[i][j], max(upper[j], 0.0))
+            elseif (layer.activation == Id())
+                set_lower_bound(neurons[i][j], lower[j])
+                set_upper_bound(neurons[i][j], upper[j])
+            else
+                @assert false "Not yet supported activation in tighten_bounds, extend this with another elseif"
+            end
         end
         new_bounds[i] = Hyperrectangle(low = lower, high = upper)
     end

@@ -14,12 +14,26 @@ using Interpolations # only for PiecewiseLinear
 import LazySets: dim, HalfSpace # necessary to avoid conflict with Polyhedra
 
 using Requires
+using Gurobi
 
 abstract type Solver end
+const GRB_ENV = Gurobi.Env()
 
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
-JuMP.Model(solver::Solver) = Model(solver.optimizer)
+function model_creator(solver)
+    if (solver.optimizer == Gurobi.Optimizer)
+        println("Creating Gurobi model")
+        #return JuMP.direct_model(Gurobi.Optimizer(OutputFlag=0))
+        return JuMP.Model(with_optimizer(solver.optimizer, OutputFlag=0))
+    else
+        println("Creating optimizer not Gurobi")
+        return JuMP.Model(with_optimizer(solver.optimizer))
+    end
+end
+JuMP.Model(solver::Solver) = model_creator(solver)
+
+
 JuMP.value(vars::Vector{VariableRef}) = value.(vars)
 
 include("utils/activation.jl")

@@ -30,13 +30,12 @@ V. Tjeng, K. Xiao, and R. Tedrake,
     optimizer = GLPK.Optimizer
 end
 
-function solve(solver::MIPVerify, problem::Problem)
+function solve(solver::MIPVerify, problem::Problem; bounds=get_bounds(problem))
     model = Model(solver)
     neurons = init_neurons(model, problem.network)
     deltas = init_deltas(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     add_complementary_set_constraint!(model, problem.output, last(neurons))
-    bounds = get_bounds(problem)
     encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(neurons) - problem.input.center)
     optimize!(model)
@@ -46,7 +45,7 @@ function solve(solver::MIPVerify, problem::Problem)
     return AdversarialResult(:violated, value(o))
 end
 
-function get_bounds_for_node(solver::MIPVerify, network::Network, input::Hyperrectangle, layer_index::Int, node_index::Int; pre_activation::Bool = true)
+function get_bounds_for_node(solver::MIPVerify, network::Network, input::Hyperrectangle, layer_index::Int, node_index::Int; pre_activation::Bool = true, bounds=get_bounds(network, input))
     model = Model(solver)
     # Truncate the network. we just encode the earliest layer_index layers
     # layer_index = 1 corresponds to the input layer.
@@ -54,11 +53,6 @@ function get_bounds_for_node(solver::MIPVerify, network::Network, input::Hyperre
     neurons = init_neurons(model, network)
     deltas = init_deltas(model, network)
     add_set_constraint!(model, input, first(neurons))
-
-    #bounds = get_bounds(network, input)
-    # Get the LP tightened bounds
-    status, bounds = tighten_bounds(Problem(network, input, Nothing), solver.optimizer; pre_activation=false, use_output_constraints=false)
-
     encode_network!(model, network, neurons, deltas, bounds, BoundedMixedIntegerLP())
 
     # Define the objective
