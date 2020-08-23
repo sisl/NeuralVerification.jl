@@ -102,10 +102,11 @@ include("satisfiability/planet.jl")
 export Planet
 
 include("adversarial/reluVal.jl")
+include("adversarial/neurify.jl")
 include("adversarial/fastLin.jl")
 include("adversarial/fastLip.jl")
 include("adversarial/dlv.jl")
-export ReluVal, FastLin, FastLip, DLV
+export ReluVal, Neurify, FastLin, FastLip, DLV
 
 const TOL = Ref(sqrt(eps()))
 set_tolerance(x::Real) = (TOL[] = x)

@@ -1,4 +1,4 @@
-using NeuralVerification, LazySets, GLPKMathProgInterface, GLPK
+using NeuralVerification, LazySets, GLPKMathProgInterface, GLPK, LinearAlgebra
 using Test
 
 import NeuralVerification: ReLU, Id, HalfSpace
@@ -22,6 +22,9 @@ if Base.find_package("Flux") != nothing
     include("flux.jl")
 end
 include("complements.jl")
+include("splitting.jl")
+include("mnist_1000.jl")
+include("fully_split.jl")
 include("write_nnet_test.jl")
 include("write_and_read_set_test.jl")
 include("write_and_read_problem_test.jl")

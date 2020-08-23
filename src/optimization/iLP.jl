@@ -45,7 +45,8 @@ function solve(solver::ILP, problem::Problem)
         encode_network!(model, nnet, neurons, δ, StandardLP())
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        return interpret_result(solver, value(o), problem.input)
+        x = value.(first(neurons))
+        return interpret_result(solver, x, problem.input)
     end
 
     encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
@@ -55,17 +56,19 @@ function solve(solver::ILP, problem::Problem)
         x = value.(first(neurons))
         matched, index = match_activation(nnet, x, δ)
         if matched
-            return interpret_result(solver, value(o), problem.input)
+            return interpret_result(solver, x, problem.input)
         end
         add_constraint!(model, nnet, neurons, δ, index)
     end
 end
 
-function interpret_result(solver::ILP, o, input)
-    if o >= maximum(input.radius)
-        return AdversarialResult(:holds, o)
+function interpret_result(solver::ILP, x, input)
+    radius = abs.(x .- center(input))
+
+    if all(radius .>= radius_hyperrectangle(input))
+        return AdversarialResult(:holds, minimum(radius))
     else
-        return AdversarialResult(:violated, o)
+        return AdversarialResult(:violated, minimum(radius))
     end
 end
 

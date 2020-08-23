@@ -222,86 +222,65 @@ function get_gradient(nnet::Network, x::Vector)
 end
 
 """
-    act_gradient(act::ReLU, z_hat::Vector{N}) where N
+    act_gradient(act, z_hat::Vector{N}) where N
 
-Computing the gradient of an activation function at point z_hat.
-Currently only support ReLU and Id.
+Compute the gradient of an activation function at point z_hat.
+Currently only supports ReLU and Id.
 """
 act_gradient(act::ReLU, z_hat::Vector) = z_hat .>= 0.0
 act_gradient(act::Id,   z_hat::Vector) = trues(length(z_hat))
 
 """
-    get_gradient(nnet::Network, input::AbstractPolytope)
+    relaxed_relu_gradient(l::Real, u::Real)
 
-Get lower and upper bounds on network gradient for a given input set.
-Return:
-- `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds
+Return the slope of a ReLU activation based on its lower and upper bounds
+
+Returns `0` if u<0, `1` if l>0, `u/(u-l)` otherwise
 """
-function get_gradient(nnet::Network, input::AbstractPolytope)
-    LΛ, UΛ = act_gradient_bounds(nnet, input)
-    return get_gradient(nnet, LΛ, UΛ)
+function relaxed_relu_gradient(l::Real, u::Real)
+    u <= 0.0 && return 0.0
+    l >= 0.0 && return 1.0
+    return u / (u - l)
 end
+
 
 """
     act_gradient_bounds(nnet::Network, input::AbstractPolytope)
 
-Computing the bounds on the gradient of all activation functions given an input set.
+Compute the bounds on the gradient of all activation functions given an input set.
 Currently only support ReLU.
 Return:
-- `LΛ::Vector{Matrix}`: lower bounds
-- `UΛ::Vector{Matrix}`: upper bounds
+- `LΛ, UΛ::NTuple{2, Vector{BitVector}}`: lower and upper bounds on activation
 """
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
-    bounds = get_bounds(nnet, input)
-    LΛ = Vector{Matrix}(undef, 0)
-    UΛ = Vector{Matrix}(undef, 0)
+    # get the pre-activation bounds, and get rid of the input set
+    bounds = get_bounds(nnet, input, false)
+    popfirst!(bounds)
+
+    LΛ = Vector{BitVector}(undef, 0)
+    UΛ = Vector{BitVector}(undef, 0)
     for (i, layer) in enumerate(nnet.layers)
-        before_act_bound = approximate_affine_map(layer, bounds[i])
-        lower = low(before_act_bound)
-        upper = high(before_act_bound)
-        l = act_gradient(layer.activation, lower)
-        u = act_gradient(layer.activation, upper)
-        push!(LΛ, Diagonal(l))
-        push!(UΛ, Diagonal(u))
+        l = act_gradient(layer.activation, low(bounds[i]))
+        u = act_gradient(layer.activation, high(bounds[i]))
+        push!(LΛ, l)
+        push!(UΛ, u)
     end
     return (LΛ, UΛ)
 end
 
 """
-    get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
+    get_gradient_bounds(nnet::Network, LΛ::Vector{AbstractVector}, UΛ::Vector{AbstractVector})
+    get_gradient_bounds(nnet::Network, input::AbstractPolytope)
 
-Get lower and upper bounds on network gradient for given gradient bounds on activations
-Inputs:
-- `LΛ::Vector{Matrix}`: lower bounds on activation gradients
-- `UΛ::Vector{Matrix}`: upper bounds on activation gradients
+Get lower and upper bounds on network gradient for given gradient bounds on activations, or given an input set.
 Return:
-- `LG::Vector{Matrix}`: lower bounds
-- `UG::Vector{Matrix}`: upper bounds
+- `(LG, UG)::NTuple{2, Matrix{Float64}` lower and upper bounds.
 """
-function get_gradient(nnet::Network, LΛ::Vector{Matrix}, UΛ::Vector{Matrix})
-    n_input = size(nnet.layers[1].weights, 2)
-    LG = Matrix(1.0I, n_input, n_input)
-    UG = Matrix(1.0I, n_input, n_input)
-    for (i, layer) in enumerate(nnet.layers)
-        LG_hat, UG_hat = interval_map(layer.weights, LG, UG)
-        LG = LΛ[i] * max.(LG_hat, 0) + UΛ[i] * min.(LG_hat, 0)
-        UG = LΛ[i] * min.(UG_hat, 0) + UΛ[i] * max.(UG_hat, 0)
-    end
-    return (LG, UG)
+function get_gradient_bounds(nnet::Network, input::AbstractPolytope)
+    LΛ, UΛ = act_gradient_bounds(nnet, input)
+    return get_gradient_bounds(nnet, LΛ, UΛ)
 end
-
-"""
-    get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
-
-Get lower and upper bounds on network gradient for given gradient bounds on activations
-Inputs:
-- `LΛ::Vector{Vector{N}}`: lower bounds on activation gradients
-- `UΛ::Vector{Vector{N}}`: upper bounds on activation gradients
-Return:
-- `(LG, UG)` lower and upper bounds
-"""
-function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{N}}) where N
+function get_gradient_bounds(nnet::Network, LΛ::Vector{<:AbstractVector}, UΛ::Vector{<:AbstractVector})
     n_input = size(nnet.layers[1].weights, 2)
     LG = Matrix(1.0I, n_input, n_input)
     UG = Matrix(1.0I, n_input, n_input)
@@ -314,17 +293,15 @@ function get_gradient(nnet::Network, LΛ::Vector{Vector{N}}, UΛ::Vector{Vector{
 end
 
 """
-    interval_map(W::Matrix, l, u)
+    interval_map(W::Matrix, l::AbstractVecOrMat, u::AbstractVecOrMat)
 
-Simple linear mapping on intervals
-Inputs:
-- `W::Matrix{N}`: linear mapping
-- `l::Vector{N}`: lower bound
-- `u::Vector{N}`: upper bound
+Simple linear mapping on intervals.
+`L, U := ([W]₊*l + [W]₋*u), ([W]₊*u + [W]₋*l)`
+
 Outputs:
 - `(lbound, ubound)` (after the mapping)
 """
-function interval_map(W::Matrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
+function interval_map(W::AbstractMatrix{N}, l::AbstractVecOrMat, u::AbstractVecOrMat) where N
     l_new = max.(W, zero(N)) * l + min.(W, zero(N)) * u
     u_new = max.(W, zero(N)) * u + min.(W, zero(N)) * l
     return (l_new, u_new)

@@ -44,7 +44,7 @@ function solve(solver::FastLip, problem::Problem)
     result = solve(FastLin(solver), problem)
     result.status == :violated && return result
     ϵ_fastLin = result.max_disturbance
-    LG, UG = get_gradient(problem.network, problem.input)
+    LG, UG = get_gradient_bounds(problem.network, problem.input)
 
     # C = problem.network.layers[1].weights
     # L = zeros(size(C))
