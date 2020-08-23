@@ -128,17 +128,17 @@ function max_slack(x::Vector{Vector{Float64}}, act)
 end
 
 # Only use tighten_bounds for feasibility check
-function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_output_constraints=true)
-    bounds = get_bounds(problem)
+# pre_activation_bounds tells whether (i) the bounds passed in, and (ii) the bounds returned should be pre-activation bounds.
+function tighten_bounds(problem::Problem, optimizer; pre_activation_bounds=false, use_output_constraints=true, bounds = get_bounds(problem, !pre_activation_bounds))
     model = Model(optimizer)
     neurons = init_neurons(model, problem.network)
     add_set_constraint!(model, problem.input, first(neurons))
     if (use_output_constraints)
         add_complementary_set_constraint!(model, problem.output, last(neurons))
     end
-    encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
+    encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP(); pre_activation=pre_activation_bounds)
 
-    new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
+    new_bounds = deepcopy(bounds)
     new_bounds[1] = problem.input
     for i in 2:length(neurons)
         layer = problem.network.layers[i-1]
@@ -148,7 +148,7 @@ function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_o
             neuron = neurons[i][j]
 
             # Have the objective be z (post-activation) or z_hat (pre-activation)
-            if (pre_activation)
+            if (pre_activation_bounds)
                 objective = dot(problem.network.layers[i-1].weights[j, :], neurons[i-1]) + problem.network.layers[i-1].bias[j]
             else
                 objective = neuron
@@ -169,19 +169,15 @@ function tighten_bounds(problem::Problem, optimizer; pre_activation=false, use_o
             optimize!(model)
             upper[j] = value(objective)
 
-            # Update the bounds in the model
-            if (!pre_activation)
-                set_lower_bound(neurons[i][j], lower[j])
-                set_upper_bound(neurons[i][j], upper[j])
-            elseif (layer.activation == ReLU())
-                set_lower_bound(neurons[i][j], max(lower[j], 0.0))
-                set_upper_bound(neurons[i][j], max(upper[j], 0.0))
-            elseif (layer.activation == Id())
-                set_lower_bound(neurons[i][j], lower[j])
-                set_upper_bound(neurons[i][j], upper[j])
-            else
-                @assert false "Not yet supported activation in tighten_bounds, extend this with another elseif"
+            # Update the bounds and re-generate the model.
+            new_bounds[i] = Hyperrectangle(low = lower, high = upper)
+            model = Model(optimizer)
+            neurons = init_neurons(model, problem.network)
+            add_set_constraint!(model, problem.input, first(neurons))
+            if (use_output_constraints)
+                add_complementary_set_constraint!(model, problem.output, last(neurons))
             end
+            encode_network!(model, problem.network, neurons, new_bounds, TriangularRelaxedLP(); pre_activation=pre_activation_bounds)
         end
         new_bounds[i] = Hyperrectangle(low = lower, high = upper)
     end

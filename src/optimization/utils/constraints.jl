@@ -26,6 +26,20 @@ function encode_network!(model::Model,
     return encoding # only matters for SlackLP
 end
 
+
+function encode_network!(model::Model,
+                         network::Network,
+                         zs::Vector{Vector{VariableRef}},
+                         bounds::Vector{Hyperrectangle},
+                         encoding::TriangularRelaxedLP;
+                         pre_activation::Bool = false)
+     for (i, layer) in enumerate(network.layers)
+         # If pre-activation, then pass in the bounds for the next layer since these
+         # will be relevant in encoding zs[i+1].
+         encode_layer!(encoding, model, layer, zs[i], zs[i+1], pre_activation ? bounds[i+1] : bounds[i]; pre_activation=pre_activation)
+     end
+end
+
 # TODO: find a way to eliminate the two methods below.
 # i.e. make BoundedMixedIntegerLP(bounds) and TriangularRelaxedLP(bounds) or something
 function encode_network!(model::Model,
@@ -60,7 +74,7 @@ function encode_layer!(::AbstractLinearProgram,
                        layer::Layer{Id},
                        z_current::Vector{VariableRef},
                        z_next::Vector{VariableRef},
-                       args...)
+                       args...; pre_activation=false)
     @constraint(model, z_next .== layer.weights*z_current + layer.bias)
 end
 
@@ -151,11 +165,18 @@ function encode_layer!(::TriangularRelaxedLP,
                        layer::Layer{ReLU},
                        z_current::Vector{VariableRef},
                        z_next::Vector{VariableRef},
-                       bounds::Hyperrectangle)
+                       bounds::Hyperrectangle;
+                       pre_activation::Bool = false)
 
     ẑ = layer.weights * z_current + layer.bias
-    ẑ_bound = approximate_affine_map(layer, bounds)
-    l̂, û = low(ẑ_bound), high(ẑ_bound)
+    # With pre-actrivation bounds they can be directly applied. Otherwise,
+    # we use an approximate affine map to compute them.
+    if (pre_activation)
+        l̂, û = low(bounds), high(bounds)
+    else
+        ẑ_bound = approximate_affine_map(layer, bounds)
+        l̂, û = low(ẑ_bound), high(ẑ_bound)
+    end
     for j in 1:length(layer.bias)
         if l̂[j] > 0.0
             @constraint(model, z_next[j] == ẑ[j])

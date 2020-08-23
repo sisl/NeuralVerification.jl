@@ -1,20 +1,6 @@
-using LazySets, Test, LinearAlgebra
-using NeuralVerification
-import NeuralVerification: ReLU, Id
-
 @testset "Splitting Test" begin
 
     net_file = "$(@__DIR__)/../examples/networks/R2_R2.nnet"
-    # This is a 3 layer simple network mapping from R2 to R2.
-
-    # y1 =  x1 + x2 - 1
-    # y2 = -x1 + x2 - 1
-
-    # z1 = ReLU(y1)
-    # z2 = ReLU(y2)
-
-    # o1 = 1*z1 + 0*z2 + 0
-    # o2 = 0*z1 + 1*z2 + 0
 
     net = read_nnet(net_file, last_layer_activation = Id())
     A = [1. 0.; 0. 1.; -1. 0.; 0. -1.;]

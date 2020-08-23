@@ -1,15 +1,16 @@
 """
     ReluVal(max_iter::Int64, tree_search::Symbol)
 
-ReluVal combines symbolic reachability analysis with iterative interval refinement to minimize over-approximation of the reachable set.
+ReluVal combines symbolic reachability analysis with iterative interval refinement to
+minimize over-approximation of the reachable set.
 
 # Problem requirement
 1. Network: any depth, ReLU activation
-2. Input: hyperrectangle
-3. Output: AbstractPolytope
+2. Input: Hyperrectangle
+3. Output: LazySet
 
 # Return
-`CounterExampleResult` or `ReachabilityResult`
+`CounterExampleResult`
 
 # Method
 Symbolic reachability analysis and iterative interval refinement (search).
@@ -31,53 +32,33 @@ Sound but not complete.
     tree_search::Symbol = :DFS # only :DFS/:BFS allowed? If so, we should assert this.
 end
 
-# Data to be passed during forward_layer
-struct SymbolicIntervalMask
-    sym::SymbolicInterval
-    LΛ::Vector{Vector{Bool}}
-    UΛ::Vector{Vector{Bool}}
-end
-
-function init_symbolic_mask(interval)
-    n = dim(interval)
-    I = Matrix{Float64}(LinearAlgebra.I(n))
-    Z = zeros(n)
-    symbolic_input = SymbolicInterval([I Z], [I Z], interval)
-    symbolic_mask = SymbolicIntervalMask(symbolic_input,
-                                         Vector{Vector{Bool}}(),
-                                         Vector{Vector{Bool}}())
-end
-
 function solve(solver::ReluVal, problem::Problem)
-    reach_list = SymbolicIntervalMask[]
+    isbounded(problem.input) || throw(UnboundedInputError("ReluVal can only handle bounded input sets."))
+
+    reach_list = []
+    interval = problem.input
     for i in 1:solver.max_iter
-        if i == 1
-            intervals = [problem.input]
-        else
-            reach = select!(reach_list, solver.tree_search)
+        if i > 1
+            interval = select!(reach_list, solver.tree_search)
+        end
+        reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
+        result = check_inclusion(reach.sym, problem.output, problem.network)
+
+        if result.status === :violated
+            return result
+        elseif result.status === :unknown
             intervals = bisect_interval_by_max_smear(problem.network, reach)
+            append!(reach_list, intervals)
         end
-
-        for interval in intervals
-            reach = forward_network(solver, problem.network, init_symbolic_mask(interval))
-            result = check_inclusion(reach.sym, problem.output, problem.network)
-
-            if result.status === :violated
-                return result
-            elseif result.status === :unknown
-                push!(reach_list, reach)
-            end
-        end
-
-        isempty(reach_list) && return BasicResult(:holds)
+        isempty(reach_list) && return CounterExampleResult(:holds)
     end
-    return BasicResult(:unknown)
+    return CounterExampleResult(:unknown)
 end
 
 function bisect_interval_by_max_smear(nnet::Network, reach::SymbolicIntervalMask)
     LG, UG = get_gradient_bounds(nnet, reach.LΛ, reach.UΛ)
-    feature, monotone = get_max_smear_index(nnet, reach.sym.interval, LG, UG) #monotonicity not used in this implementation.
-    return collect(split_interval(reach.sym.interval, feature))
+    feature, monotone = get_max_smear_index(nnet, reach.sym.domain, LG, UG) #monotonicity not used in this implementation.
+    return collect(split_interval(reach.sym.domain, feature))
 end
 
 function select!(reach_list, tree_search)
@@ -91,27 +72,21 @@ function select!(reach_list, tree_search)
     return reach
 end
 
-function symbol_to_concrete(reach::SymbolicInterval{<:Hyperrectangle})
-    lower = [lower_bound(l, reach.interval) for l in eachrow(reach.Low)]
-    upper = [upper_bound(u, reach.interval) for u in eachrow(reach.Up)]
-    return Hyperrectangle(low = lower, high = upper)
-end
-
 function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet::Network)
-    reachable = symbol_to_concrete(reach)
+    reachable = Hyperrectangle(low = low(reach), high = high(reach))
 
-    issubset(reachable, output) && return BasicResult(:holds)
+    issubset(reachable, output) && return CounterExampleResult(:holds)
 
     # Sample the middle point
-    middle_point = center(reach.interval)
+    middle_point = center(domain(reach))
     y = compute_output(nnet, middle_point)
     y ∈ output || return CounterExampleResult(:violated, middle_point)
 
-    return BasicResult(:unknown)
+    return CounterExampleResult(:unknown)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input)
-    return forward_act(solver, forward_linear(input, layer), layer)
+    return forward_act(solver, forward_linear(solver, input, layer), layer)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input, bounds::Vector{Hyperrectangle})
@@ -121,40 +96,33 @@ function forward_layer(solver::ReluVal, layer::Layer, input, bounds::Vector{Hype
 end
 
 # Symbolic forward_linear
-function forward_linear(input::SymbolicIntervalMask, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    output_Low, output_Up = interval_map(W, input.sym.Low, input.sym.Up)
-    output_Up[:, end] += b
-    output_Low[:, end] += b
-    sym = SymbolicInterval(output_Low, output_Up, input.sym.interval)
-    return SymbolicIntervalMask(sym, input.LΛ, input.UΛ)
+function forward_linear(solver::ReluVal, input::SymbolicIntervalMask, layer::Layer)
+    output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
+    output_Up[:, end] += layer.bias
+    output_Low[:, end] += layer.bias
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
+    return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
 
-    interval = input.sym.interval
-    Low, Up = input.sym.Low, input.sym.Up
-
-    n_node, n_input = size(Up)
-    output_Low, output_Up = copy(Low), copy(Up)
+    output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
+    n_node = n_nodes(layer)
     LΛᵢ, UΛᵢ = falses(n_node), trues(n_node)
 
     for j in 1:n_node
-        # Loop-local variable bindings for notational convenience.
-        # These are direct views into the rows of the parent arrays.
-        lowᵢⱼ, upᵢⱼ, out_lowᵢⱼ, out_upᵢⱼ = @views Low[j, :], Up[j, :], output_Low[j, :], output_Up[j, :]
-
         # If the upper bound of the upper bound is negative, set
-        # the gradient mask to 0 and zero out future layer dependency
-        if upper_bound(upᵢⱼ, interval) <= 0
+        # the generators and centers of both bounds to 0, and
+        # the gradient mask to 0
+        if upper_bound(upper(input), j) <= 0
             LΛᵢ[j], UΛᵢ[j] = 0, 0
-            out_lowᵢⱼ .= 0
-            out_upᵢⱼ .= 0
+            output_Low[j, :] .= 0
+            output_Up[j, :] .= 0
 
         # If the lower bound of the lower bound is positive,
         # the gradient mask should be 1
-        elseif lower_bound(lowᵢⱼ, interval) >= 0
+        elseif lower_bound(lower(input), j) >= 0
             LΛᵢ[j], UΛᵢ[j] = 1, 1
 
         # if the bounds overlap 0, concretize by setting
@@ -162,27 +130,26 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
         # center to be the current upper-upper bound.
         else
             LΛᵢ[j], UΛᵢ[j] = 0, 1
-            out_lowᵢⱼ .= 0
-            if lower_bound(upᵢⱼ, interval) < 0
-                out_upᵢⱼ .= 0
-                out_upᵢⱼ[end] = upper_bound(upᵢⱼ, interval)
+            output_Low[j, :] .= 0
+            if lower_bound(upper(input), j) < 0
+                output_Up[j, :] .= 0
+                output_Up[j, :][end] = upper_bound(upper(input), j)
             end
         end
     end
 
-    sym = SymbolicInterval(output_Low, output_Up, interval)
-    LΛ = push!(copy(input.LΛ), LΛᵢ)
-    UΛ = push!(copy(input.UΛ), UΛᵢ)
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    sym = SymbolicInterval(output_Low, output_Up, domain(input))
+    LΛ = push!(input.LΛ, LΛᵢ)
+    UΛ = push!(input.UΛ, UΛᵢ)
+    return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
 # Symbolic forward_act
 function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{Id})
-    sym = input.sym
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, trues(n_node))
     UΛ = push!(input.UΛ, trues(n_node))
-    return SymbolicIntervalMask(sym, LΛ, UΛ)
+    return SymbolicIntervalGradient(input.sym, LΛ, UΛ)
 end
 
 function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, UG::Matrix)
@@ -194,7 +161,3 @@ function get_max_smear_index(nnet::Network, input::Hyperrectangle, LG::Matrix, U
 
     return ind, monotone
 end
-
-upper_bound(v, domain) = ρ(v[1:end-1], domain) + v[end]
-lower_bound(v, domain) = -ρ(-v[1:end-1], domain) + v[end]
-bounds(v, domain) = (lower_bound(v, domain), upper_bound(v, domain))

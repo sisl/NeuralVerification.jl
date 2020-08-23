@@ -5,6 +5,7 @@ using NeuralVerification
 using GLPK
 using Gurobi
 using NPZ
+using Colors
 
 function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
     solver = MIPVerify(optimizer=Gurobi.Optimizer)
@@ -44,7 +45,7 @@ function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
 end
 
 layer_sizes = [1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1]
-filename_start = "mnist_10x20"
+filename_start = "temp_test"
 use_mnist = true
 # If we want to use an mnist example, then read in the network and
 # create a query with the desired radius
@@ -86,22 +87,15 @@ polytope_problem = Problem(nnet, convert(HPolytope, input_set), HPolytope([HalfS
 groundtruth_time = @elapsed groundtruth_bounds = get_groundtruth_bounds(nnet, input_set)
 
 # Compute bounds from planet's tighten_bounds
-planet_time = @elapsed optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation=true, use_output_constraints=false)
-planet_output_lower = low(planet_bounds[num_layers])[1]
-planet_output_upper = high(planet_bounds[num_layers])[1]
-
+planet_time = @elapsed optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false)
 
 # Compute bounds from util get_bounds with interval arithmetic
 ia_time = @elapsed ia_bounds = NeuralVerification.get_bounds(nnet, input_set, false) # get pre-activation bounds using interval arithmetic (IA)
-ia_output_lower = low(ia_bounds[num_layers])[1]
-ia_output_upper = high(ia_bounds[num_layers])[1]
 
 # Compute bounds from ConvDual get_bounds
 convdual_time = @elapsed convdual_lower, convdual_upper = NeuralVerification.get_bounds(nnet, input_set.center, input_set.radius[1]) # assumes uniform bounds!
 pushfirst!(convdual_lower, low(input_set)) # For consistency with the other algorithms add the bounds from the input set
 pushfirst!(convdual_upper, high(input_set))
-convdual_output_lower = convdual_lower[num_layers][1]
-convdual_output_upper = convdual_upper[num_layers][1]
 
 # create convdual hyperrectangle bounds
 convdual_bounds = [Hyperrectangle(low=convdual_lower[i], high=convdual_upper[i]) for i = 1:num_layers]
@@ -115,6 +109,9 @@ neurify_time = @elapsed reach, neurify_bounds = forward_network(Neurify(), nnet,
 # Compute bounds from Ai2z and Box
 ai2z_time = @elapsed reach, ai2z_bounds = forward_network(Ai2z(), nnet, input_set; get_bounds=true)
 ai2_box_time = @elapsed reach, ai2_box_bounds = forward_network(Box(), nnet, input_set; get_bounds=true)
+
+# Compute bounds from ai2z followed by Planet's tighten bounds
+ai2z_planet_time = @elapsed optimal, ai2z_planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false, bounds=ai2z_bounds)
 
 
 labels = ["  Ground Truth  ", "  Interval Arithmetic  ", "  Planet  ", "  Symbolic Interval Propagation  ", "  Symbolic Linear Relaxation  ", "  Ai2z  ", "  ConvDual  ", "  Ai2 Box  "]
@@ -227,6 +224,8 @@ for alg_index in indices_to_plot
     y_loc_high_below_sub = max(relative_gap[alg_index][1:num_nodes_for_subplot]..., y_loc_high_below_sub)
 end
 
+y_loc_low = 0.5 * minimum([minimum(relative_gap[i]) for i in indices_to_plot])
+y_loc_high = 2.0 * maximum([maximum(relative_gap[i]) for i in indices_to_plot])
 rectangle_bottom_y = y_loc_low*1.5
 rectangle_top_y = max_height_subplot * 1.2
 
@@ -251,8 +250,6 @@ println("y loc high: ", y_loc_high_below_sub)
 sub_plot.style = string("black, width = 6cm, height=3.7cm, at={(insetSW)}, anchor=south west, xticklabels={}, yticklabels={}")
 
 # Draw dashed lines between each layer. Number of layers - 1 divisions
-y_loc_low = 0.5 * minimum([minimum(relative_gap[i]) for i in indices_to_plot])
-y_loc_high = 2.0 * maximum([maximum(relative_gap[i]) for i in indices_to_plot])
 for index = 1:(length(nodes_per_layer) - 2)
     y_loc_high_temp = y_loc_high
     if (index <= 4)

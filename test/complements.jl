@@ -1,18 +1,3 @@
-using NeuralVerification, LazySets, GLPKMathProgInterface
-using Test
-
-import NeuralVerification: ReLU, Id
-
-macro no_error(ex)
-    quote
-        try $(esc(ex))
-            true
-        catch e
-            @error(e)
-            false
-        end
-    end
-end
 
 @testset "PolytopeComplements" begin
 
