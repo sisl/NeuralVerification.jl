@@ -90,8 +90,8 @@ function forward_layer(solver::ReluVal, layer::Layer, input)
 end
 
 function forward_layer(solver::ReluVal, layer::Layer, input, bounds::Vector{Hyperrectangle})
-    forwarded_linear = forward_linear(input, layer)
-    push!(bounds, symbol_to_concrete(forwarded_linear.sym))
+    forwarded_linear = forward_linear(solver, input, layer)
+    push!(bounds, Hyperrectangle(low=low(forwarded_linear), high=high(forwarded_linear)))
     return forward_act(solver, forwarded_linear, layer), bounds
 end
 

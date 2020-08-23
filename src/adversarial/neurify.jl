@@ -207,21 +207,12 @@ end
 
 function forward_layer(solver::Neurify, layer::Layer, input)
     return forward_act(solver, forward_linear(solver, input, layer), layer)
+end
 
 function forward_layer(solver::Neurify, layer::Layer, input, bounds::Vector{Hyperrectangle})
     forwarded_linear = forward_linear(solver, input, layer)
-    push!(bounds, overapproximate(symbol_to_concrete(forwarded_linear.sym), Hyperrectangle))
+    push!(bounds, Hyperrectangle(low=low(forwarded_linear), high=high(forwarded_linear)))
     return forward_act(solver, forwarded_linear, layer), bounds
-end
-
-# Symbolic forward_linear for the first layer
-function forward_linear(solver::Neurify, input::AbstractPolytope, layer::Layer)
-    (W, b) = (layer.weights, layer.bias)
-    sym = SymbolicInterval(hcat(W, b), hcat(W, b), input)
-    LΛ = Vector{Vector{Int64}}(undef, 0)
-    UΛ = Vector{Vector{Int64}}(undef, 0)
-    r = Vector{Vector{Int64}}(undef, 0)
-    return SymbolicIntervalGradient(sym, LΛ, UΛ, r)
 end
 
 # Symbolic forward_linear

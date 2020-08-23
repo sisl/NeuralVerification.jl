@@ -44,9 +44,54 @@ function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
     return bounds
 end
 
-layer_sizes = [1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1]
+function all_bounds(bounds::Vector{Hyperrectangle}; lower=false, include_input=false)
+    grouped_bounds = Vector{Float64}()
+    for (i, hyperrectangle) in enumerate(bounds)
+        if (i > 1 || include_input)
+            if (lower)
+                append!(grouped_bounds, low(hyperrectangle))
+            else
+                append!(grouped_bounds, high(hyperrectangle))
+            end
+        end
+    end
+    return grouped_bounds
+end
+
+# Get a list with length equal to the number of nodes in the network
+# (or # nodes - # inputs if include_input=false) which has the
+# layer number for that node
+function get_layer_indices(network; include_input=false)
+    layer_sizes = [size(layer.weights, 2) for layer in network.layers]
+    push!(layer_sizes, length(network.layers[end].bias))
+    if (!include_input)
+        popfirst!(layer_sizes)
+    end
+    indices = 1:sum(layer_sizes)
+    layer_nums = []
+    for (i, layer_size) in enumerate(layer_sizes)
+        append!(layer_nums, i * ones(layer_size))
+    end
+    # Layer nums will start at 1 on the first hidden layer if include input is false
+    return layer_nums
+end
+
+layer_sizes = [1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1]
 filename_start = "temp_test"
-use_mnist = true
+use_mnist = false
+use_subplot = false
+compute_groundtruth = true
+
+labels = ["  Ground Truth  ", "  Interval Arithmetic  ", "  Planet  ", "  Symbolic Interval Propagation  ", "  Symbolic Linear Relaxation  ", "  Ai2z  ", "  ConvDual  ", "  Ai2z + Planet  ", "  Virtual Best  "]
+styles =  ["green", "blue", "cyan", "violet", "pink", "black", "orange", "red", "gray"]
+markers = ["star", "diamond", "x", "pentagon", "triangle", "+", "square", "o", "-"]
+indices_to_plot = [6, 7, 2, 3, 4, 5, 8, 1, 9]
+#indices_to_plot = [6, 7, 3, 4, 8, 9, 1]
+indices_for_subplot = [6, 7, 1, 3]
+legend_cols = 1
+groundtruth_index = 1
+
+
 # If we want to use an mnist example, then read in the network and
 # create a query with the desired radius
 if (use_mnist)
@@ -84,7 +129,11 @@ polytope_problem = Problem(nnet, convert(HPolytope, input_set), HPolytope([HalfS
 
 
 # Compute ground truth bounds from MIPVerify
-groundtruth_time = @elapsed groundtruth_bounds = get_groundtruth_bounds(nnet, input_set)
+if (compute_groundtruth)
+    groundtruth_time = @elapsed groundtruth_bounds = get_groundtruth_bounds(nnet, input_set)
+else
+    groundtruth_bounds = NeuralVerification.get_bounds(nnet, input_set, false) # Just fill it with IA so its the right shape
+end
 
 # Compute bounds from planet's tighten_bounds
 planet_time = @elapsed optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false)
@@ -101,10 +150,12 @@ pushfirst!(convdual_upper, high(input_set))
 convdual_bounds = [Hyperrectangle(low=convdual_lower[i], high=convdual_upper[i]) for i = 1:num_layers]
 
 # Compute bounds from symbolic bound tightening in Reluval
-reluval_time = @elapsed reach, reluval_bounds = forward_network(ReluVal(), nnet, NeuralVerification.init_symbolic_mask(input_set); get_bounds=true)
+reluval_domain = NeuralVerification.init_symbolic_mask(input_set)
+reluval_time = @elapsed reach, reluval_bounds = forward_network(ReluVal(), nnet, reluval_domain; get_bounds=true)
 
 # Compute bounds from symbolic bound tightening in Neurify
-neurify_time = @elapsed reach, neurify_bounds = forward_network(Neurify(), nnet, input_set; get_bounds=true)
+neurify_domain = NeuralVerification.init_symbolic_grad(input_set)
+neurify_time = @elapsed reach, neurify_bounds = forward_network(Neurify(), nnet, neurify_domain; get_bounds=true)
 
 # Compute bounds from Ai2z and Box
 ai2z_time = @elapsed reach, ai2z_bounds = forward_network(Ai2z(), nnet, input_set; get_bounds=true)
@@ -113,15 +164,7 @@ ai2_box_time = @elapsed reach, ai2_box_bounds = forward_network(Box(), nnet, inp
 # Compute bounds from ai2z followed by Planet's tighten bounds
 ai2z_planet_time = @elapsed optimal, ai2z_planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false, bounds=ai2z_bounds)
 
-
-labels = ["  Ground Truth  ", "  Interval Arithmetic  ", "  Planet  ", "  Symbolic Interval Propagation  ", "  Symbolic Linear Relaxation  ", "  Ai2z  ", "  ConvDual  ", "  Ai2 Box  "]
-styles =  ["green", "blue", "cyan", "violet", "pink", "black", "orange", "gray"]
-markers = ["star", "diamond", "x", "star", "triangle", "+", "square", "-"]
-indices_to_plot = [6, 7, 8, 1, 2, 3, 4, 5]
-#indices_to_plot = 1:length(labels)
-indices_for_subplot = [6, 7, 1, 3]
-
-bounds = [groundtruth_bounds, ia_bounds, planet_bounds, reluval_bounds, neurify_bounds, ai2z_bounds, convdual_bounds, ai2_box_bounds]
+bounds = [groundtruth_bounds, ia_bounds, planet_bounds, reluval_bounds, neurify_bounds, ai2z_bounds, convdual_bounds, ai2z_planet_bounds]
 num_algs = length(labels)
 
 # Define colors for plot
@@ -133,45 +176,25 @@ for i = 1:num_colors
     color_dict[indices_to_plot[i]] = string("mycolor", i)
 end
 
-function all_bounds(bounds::Vector{Hyperrectangle}; lower=false, include_input=false)
-    grouped_bounds = Vector{Float64}()
-    for (i, hyperrectangle) in enumerate(bounds)
-        if (i > 1 || include_input)
-            if (lower)
-                append!(grouped_bounds, low(hyperrectangle))
-            else
-                append!(grouped_bounds, high(hyperrectangle))
-            end
-        end
-    end
-    return grouped_bounds
-end
-
-# Get a list with length equal to the number of nodes in the network
-# (or # nodes - # inputs if include_input=false) which has the
-# layer number for that node
-function get_layer_indices(network; include_input=false)
-    layer_sizes = [size(layer.weights, 2) for layer in network.layers]
-    push!(layer_sizes, length(network.layers[end].bias))
-    if (!include_input)
-        popfirst!(layer_sizes)
-    end
-    indices = 1:sum(layer_sizes)
-    layer_nums = []
-    for (i, layer_size) in enumerate(layer_sizes)
-        append!(layer_nums, i * ones(layer_size))
-    end
-    # Layer nums will start at 1 on the first hidden layer if include input is false
-    return layer_nums
-end
-
 # Group all of the bounds into a single vector for each algorithm.
 # This will create a list of length num_algorithms, where each element
 # is a vector with all of its lower bounds / upper bounds.
-groundtruth_index = 1
 all_lower_bounds = all_bounds.(bounds; lower=true, include_input=false)
 all_upper_bounds = all_bounds.(bounds; lower=false, include_input=false)
+virtual_best_lower = all_lower_bounds[1]
+virtual_best_upper = all_upper_bounds[1]
+# Virtual best just taken from those you're plotting
+for alg_index = 1:length(all_lower_bounds)
+    global virtual_best_lower, virtual_best_upper
+    if (alg_index in indices_to_plot)
+        virtual_best_lower = max.(virtual_best_lower, all_lower_bounds[alg_index])
+        virtual_best_upper = min.(virtual_best_upper, all_upper_bounds[alg_index])
+    end
+end
+push!(all_lower_bounds, virtual_best_lower)
+push!(all_upper_bounds, virtual_best_upper)
 relative_gap = [(upper_bound - lower_bound) ./ (all_upper_bounds[groundtruth_index] - all_lower_bounds[groundtruth_index]) for (upper_bound, lower_bound) in zip(all_upper_bounds, all_lower_bounds)]
+
 
 counts_best = zeros(length(relative_gap))
 for i = 1:length(relative_gap[1])
@@ -180,7 +203,6 @@ for i = 1:length(relative_gap[1])
     println("Cur lowest: ", cur_node_lowest)
     for alg_index = 1:length(relative_gap)
         if (alg_index != groundtruth_index)
-            println("Comparing: ", relative_gap[alg_index][i])
             if (relative_gap[alg_index][i] ≈ cur_node_lowest)
                 counts_best[alg_index] = counts_best[alg_index] + 1
             end
@@ -197,7 +219,7 @@ accum_nodes = accumulate(+, nodes_per_layer[2:end]) # ignore input layer
 groundtruth_gap = all_upper_bounds[groundtruth_index] - all_lower_bounds[groundtruth_index]
 plots = Vector{Plots.Plot}()
 full_plot = Axis(ymode="log", style="black", xlabel="Neuron", ylabel="Bound relative to ground truth", title="Bound Comparison, MNIST Network", width="12cm", height="8cm")
-full_plot.legendStyle = "at={(0.5,-0.2)}, anchor = north, legend columns=4, column sep = 5"
+full_plot.legendStyle = string("at={(0.5,-0.2)}, anchor = north, legend columns=", legend_cols, " column sep = 5")
 
 
 num_layers_for_subplot = 4
@@ -229,22 +251,26 @@ y_loc_high = 2.0 * maximum([maximum(relative_gap[i]) for i in indices_to_plot])
 rectangle_bottom_y = y_loc_low*1.5
 rectangle_top_y = max_height_subplot * 1.2
 
-# Add coordinates to the main plot that we'll use for our sub plot
-# push!(full_plot, Plots.Command(string(raw"\coordinate (insetSW) at (axis cs: ", -8.0, ", ", y_loc_high_below_sub * 5.0, ");")))
-# push!(full_plot, Plots.Command(string(raw"\coordinate (insetSE) at (axis cs: ", 93.7, ", ", y_loc_high_below_sub * 5.0, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (insetSW) at (axis cs: ", -10.0, ", ", y_loc_high_below_sub * 60.0, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (insetSE) at (axis cs: ", 95.8, ", ", y_loc_high_below_sub * 60.0, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (insetNW) at (axis cs: ", -10.0, ", ", 300000, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (insetNE) at (axis cs: ", 95.8, ", ", 300000, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (leftsubset) at (axis cs: 0.0, ", rectangle_bottom_y, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (rightsubset) at (axis cs: ", num_nodes_for_subplot + 0.5,",", rectangle_bottom_y, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (leftsubsettop) at (axis cs: 0.0, ", rectangle_top_y, ");")))
-push!(full_plot, Plots.Command(string(raw"\coordinate (rightsubsettop) at (axis cs: ", num_nodes_for_subplot + 0.5,",", rectangle_top_y, ");")))
-push!(full_plot, Plots.Command(raw"\draw[color=gray,dashed] (leftsubset) -- (insetSW);"))
-push!(full_plot, Plots.Command(raw"\draw[color=gray,dashed] (rightsubset) -- (insetSE);"))
-#push!(full_plot, Plots.Command(raw"\draw[color=black,solid] (leftsubsettop) -- (insetNW);"))
-#push!(full_plot, Plots.Command(raw"\draw[color=black,solid] (rightsubsettop) -- (insetNE);"))
+if (use_subplot)
+    # Add coordinates to the main plot that we'll use for our sub plot
+    # push!(full_plot, Plots.Command(string(raw"\coordinate (insetSW) at (axis cs: ", -8.0, ", ", y_loc_high_below_sub * 5.0, ");")))
+    # push!(full_plot, Plots.Command(string(raw"\coordinate (insetSE) at (axis cs: ", 93.7, ", ", y_loc_high_below_sub * 5.0, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (insetSW) at (axis cs: ", -10.0, ", ", y_loc_high_below_sub * 60.0, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (insetSE) at (axis cs: ", 95.8, ", ", y_loc_high_below_sub * 60.0, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (insetNW) at (axis cs: ", -10.0, ", ", 300000, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (insetNE) at (axis cs: ", 95.8, ", ", 300000, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (leftsubset) at (axis cs: 0.0, ", rectangle_bottom_y, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (rightsubset) at (axis cs: ", num_nodes_for_subplot + 0.5,",", rectangle_bottom_y, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (leftsubsettop) at (axis cs: 0.0, ", rectangle_top_y, ");")))
+    push!(full_plot, Plots.Command(string(raw"\coordinate (rightsubsettop) at (axis cs: ", num_nodes_for_subplot + 0.5,",", rectangle_top_y, ");")))
+    push!(full_plot, Plots.Command(raw"\draw[color=gray,dashed] (leftsubset) -- (insetSW);"))
+    push!(full_plot, Plots.Command(raw"\draw[color=gray,dashed] (rightsubset) -- (insetSE);"))
+    #push!(full_plot, Plots.Command(raw"\draw[color=black,solid] (leftsubsettop) -- (insetNW);"))
+    #push!(full_plot, Plots.Command(raw"\draw[color=black,solid] (rightsubsettop) -- (insetNE);"))
 
+    rectangle_top_y = max_height_subplot * 1.2
+    push!(full_plot, Plots.Command(string(raw"\draw (0, ", rectangle_bottom_y, ") rectangle(", num_nodes_for_subplot+0.5, ", ", rectangle_top_y, ");")))
+end
 
 println("y loc high: ", y_loc_high_below_sub)
 sub_plot.style = string("black, width = 6cm, height=3.7cm, at={(insetSW)}, anchor=south west, xticklabels={}, yticklabels={}")
@@ -270,15 +296,18 @@ for index = 1:(length(nodes_per_layer) - 2)
     # Add on the separating dashed lines to the subplot
     if (index < num_layers_for_subplot)
         push!(sub_plot, cur_dash)
-        #push!(sub_plot, Plots.Node(string(index), string_x_loc, y_loc_low, style="black"))
     end
 end
 
-rectangle_top_y = max_height_subplot * 1.2
-push!(full_plot, Plots.Command(string(raw"\draw (0, ", rectangle_bottom_y, ") rectangle(", num_nodes_for_subplot+0.5, ", ", rectangle_top_y, ");")))
 
-save(string(filename_start, "_full_plot", num_layers, "layers.pdf"), [full_plot, sub_plot])
-save(string(filename_start, "_full_plot", num_layers, "layers.tex"), [full_plot, sub_plot])
+if (use_subplot)
+    save(string(filename_start, "_full_plot", num_layers, "layers.pdf"), [full_plot, sub_plot])
+    save(string(filename_start, "_full_plot", num_layers, "layers.tex"), [full_plot, sub_plot])
+else
+    save(string(filename_start, "_full_plot", num_layers, "layers.pdf"), full_plot)
+    save(string(filename_start, "_full_plot", num_layers, "layers.tex"), full_plot)
+end
+
 
 # Print summary of the times
 println("Ground truth time: ", groundtruth_time)
@@ -289,20 +318,4 @@ println("Reluval time: ", reluval_time)
 println("Neurify time: ", neurify_time)
 println("Ai2z time: ", ai2z_time)
 println("ConvDual time: ", convdual_time)
-
-# if (num_inputs == 1)
-#     output_plot = Axis([
-#                 Plots.Linear(net_function, (x_low, x_high), xbins=100, style="red", legendentry="net dots"),
-#                 Plots.Linear([x_low, x_high], [net_function(x_low), net_function(x_high)], onlyMarks=true, markSize=4, style="red", legendentry="Network Output"),
-#                 Plots.Linear([x_low, x_high], [ia_output_upper, ia_output_upper], mark="diamond", markSize=4, style="blue",  legendentry="Interval arithmetic bounds"),
-#                 Plots.Linear([x_low, x_high], [ia_output_lower, ia_output_lower], mark="diamond", markSize=4, style="blue"),
-#                 Plots.Linear([x_low, x_high], [convdual_output_upper, convdual_output_upper], mark="square", markSize=4, style="yellow",  legendentry="ConvDual bounds"),
-#                 Plots.Linear([x_low, x_high], [convdual_output_lower, convdual_output_lower], mark="square", markSize=4, style="yellow"),
-#                 Plots.Linear([x_low, x_high], [planet_output_upper, planet_output_upper], mark="triangle", markSize=4, style="cyan",  legendentry="Planet bounds"),
-#                 Plots.Linear([x_low, x_high], [planet_output_lower, planet_output_lower], mark="triangle", markSize=4, style="cyan"),
-#             ], xlabel="input", ylabel="output", title="Network response")
-#
-#     output_plot.legendStyle = "at={(1.05,1.0)}, anchor=north west"
-# end
-# save(string(filename_start, "_output_plot_", num_layers, "layers.tex"), output_plot)
-# save(string(filename_start, "_output_plot_", num_layers, "layers.pdf"), output_plot)
+println("Ai2z + Planet time: ", ai2z_time + ai2z_planet_time)
