@@ -55,7 +55,7 @@
         problem_holds    = Problem(small_nnet, in_hyper, out_superset)
         problem_violated = Problem(small_nnet, in_hyper, out_overlapping)
 
-        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(ϵ = 0.5), BaB()]
+        for solver in [ReluVal(max_iter = 10), DLV(), Sherlock(ϵ = 0.5), BaB(), Neurify()]
             holds    = solve(solver, problem_holds)
             violated = solve(solver, problem_violated)
 
