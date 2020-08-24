@@ -13,20 +13,23 @@ function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
     bounds = Vector{Hyperrectangle}(undef, num_layers)
 
     # Get tightened bounds to help with the solving process
-    #status, LP_bounds = NeuralVerification.tighten_bounds(Problem(network, input_set, Nothing), Gurobi.Optimizer; pre_activation=false, use_output_constraints=false)
+    #status, LP_bounds = NeuralVerification.tighten_bounds(Problem(network, input_set, Nothing), Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false)
     reach, ai2z_bounds = forward_network(Ai2z(), nnet, input_set; get_bounds=true)
-    ai2z_bounds_post_activation = Vector{Hyperrectangle}(undef, length(ai2z_bounds))
-    ai2z_bounds_post_activation[1] = ai2z_bounds[1] # The input bounds should match
-    for i = 2:length(ai2z_bounds)
+    # reluval_domain = NeuralVerification.init_symbolic_mask(input_set)
+    # reluval_time = @elapsed reach, reluval_bounds = forward_network(ReluVal(), nnet, reluval_domain; get_bounds=true)
+
+    external_bounds = ai2z_bounds
+    external_bounds_post_activation = Vector{Hyperrectangle}(undef, length(external_bounds))
+    external_bounds_post_activation[1] = external_bounds[1] # The input bounds should match
+    for i = 2:length(external_bounds)
         if (network.layers[i-1].activation == NeuralVerification.Id())
-            ai2z_bounds_post_activation[i] = ai2z_bounds[i]
+            external_bounds_post_activation[i] = external_bounds[i]
         elseif (network.layers[i-1].activation == NeuralVerification.ReLU())
-            ai2z_bounds_post_activation[i] = Hyperrectangle(low=max.(low(ai2z_bounds[i]), 0.0), high=max.(high(ai2z_bounds[i]), 0.0))
+            external_bounds_post_activation[i] = Hyperrectangle(low=max.(low(external_bounds[i]), 0.0), high=max.(high(external_bounds[i]), 0.0))
         else
             @assert false "Unsupported activation for ground truth bounds"
         end
     end
-    external_bounds = ai2z_bounds_post_activation
 
     bounds[1] = input_set
     for layer_index = 2:num_layers
@@ -37,7 +40,7 @@ function get_groundtruth_bounds(network::Network, input_set::Hyperrectangle)
         upper_bounds = Vector{Float64}(undef, num_nodes)
         for node_index = 1:num_nodes
             println("Finding values for layer ", layer_index, " node ", node_index)
-            lower_bounds[node_index], upper_bounds[node_index] = NeuralVerification.get_bounds_for_node(solver, network, input_set, layer_index, node_index; bounds=external_bounds)
+            lower_bounds[node_index], upper_bounds[node_index] = NeuralVerification.get_bounds_for_node(solver, network, input_set, layer_index, node_index; bounds=external_bounds_post_activation)
         end
         bounds[layer_index] = Hyperrectangle(low=lower_bounds, high=upper_bounds)
     end
@@ -76,25 +79,38 @@ function get_layer_indices(network; include_input=false)
     return layer_nums
 end
 
-layer_sizes = [1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1]
-filename_start = "temp_test"
-use_mnist = false
+layer_sizes = [1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1]
+filename_start = "mnist_temptest"
+use_mnist = true
+use_acas = false
 use_subplot = false
 compute_groundtruth = true
 
-labels = ["  Ground Truth  ", "  Interval Arithmetic  ", "  Planet  ", "  Symbolic Interval Propagation  ", "  Symbolic Linear Relaxation  ", "  Ai2z  ", "  ConvDual  ", "  Ai2z + Planet  ", "  Virtual Best  "]
+labels = ["  Ground Truth  ", "  Interval Arithmetic  ", "  Planet  ", "  Symbolic Interval Propagation (ReluVal) ", "  Symbolic Linear Relaxation (Neurify) ", "  Ai2z  ", "  ConvDual  ", "  Ai2z and Planet  ", "  Virtual Best  "]
 styles =  ["green", "blue", "cyan", "violet", "pink", "black", "orange", "red", "gray"]
 markers = ["star", "diamond", "x", "pentagon", "triangle", "+", "square", "o", "-"]
-indices_to_plot = [6, 7, 2, 3, 4, 5, 8, 1, 9]
-#indices_to_plot = [6, 7, 3, 4, 8, 9, 1]
-indices_for_subplot = [6, 7, 1, 3]
+indices_to_plot = [6, 7, 2, 3, 4, 5, 8, 1]
+#indices_to_plot = [6, 7, 3, 8, 1]
+#indices_to_plot = [6, 2, 3, 4, 5, 8, 9]
+indices_for_subplot = []
 legend_cols = 1
 groundtruth_index = 1
+num_layers_for_subplot = 1
+
 
 
 # If we want to use an mnist example, then read in the network and
 # create a query with the desired radius
-if (use_mnist)
+if (use_acas)
+    nnet = NeuralVerification.read_nnet("/Users/castrong/Desktop/Research/NeuralOptimization.jl/Networks/ACASXu/ACASXU_experimental_v2a_1_1.nnet")
+    num_layers = length(nnet.layers) + 1 # number of layers including input and output
+    num_inputs = size(nnet.layers[1].weights, 2)
+    num_outputs = length(nnet.layers[end].bias)
+    # bounds for property three, no output constraint tho
+    input_set = Hyperrectangle(low=[-0.3035311561, -0.0095492967, 0.4933803236, 0.3, 0.3], high=[-0.2985528119, 0.0095492966, 0.5, 0.5, 0.5])
+    output_set = PolytopeComplement(HalfSpace(ones(num_outputs), 100000000.0)) # try to give a halfspace that doesn't give too much information
+
+elseif (use_mnist)
     nnet = NeuralVerification.read_nnet("/Users/castrong/Desktop/Research/NeuralOptimization.jl/Networks/MNIST/mnist10x20.nnet")
     num_layers = length(nnet.layers) + 1 # number of layers including input and output
     num_inputs = size(nnet.layers[1].weights, 2)
@@ -107,7 +123,7 @@ if (use_mnist)
     input_set = Hyperrectangle(low=(vec(center_input)[:] - input_radius * ones(num_inputs)), high=(vec(center_input)[:] + input_radius * ones(num_inputs))) # center and radius
     output_set = PolytopeComplement(HalfSpace([1.0, -1.0, 0, 0, 0, 0, 0, 0, 0, 0], 0.0)) # try to give a halfspace that doesn't give too much information
 else
-    nnet = NeuralVerification.make_random_network(layer_sizes; rng=MersenneTwister(0))
+    nnet = NeuralVerification.make_random_network(layer_sizes; rng=MersenneTwister(8)) # seed 0 before
     num_layers = length(nnet.layers) + 1 # number of layers including input and output
     num_inputs = size(nnet.layers[1].weights, 2)
     num_outputs = length(nnet.layers[end].bias)
@@ -134,6 +150,9 @@ if (compute_groundtruth)
 else
     groundtruth_bounds = NeuralVerification.get_bounds(nnet, input_set, false) # Just fill it with IA so its the right shape
 end
+
+#exactreach_time = @elapsed reach, exactreach_bounds = forward_network(ExactReach(), nnet, convert(HPolytope, input_set); get_bounds=true)
+
 
 # Compute bounds from planet's tighten_bounds
 planet_time = @elapsed optimal, planet_bounds = NeuralVerification.tighten_bounds(problem, Gurobi.Optimizer; pre_activation_bounds=true, use_output_constraints=false)
@@ -218,11 +237,10 @@ accum_nodes = accumulate(+, nodes_per_layer[2:end]) # ignore input layer
 
 groundtruth_gap = all_upper_bounds[groundtruth_index] - all_lower_bounds[groundtruth_index]
 plots = Vector{Plots.Plot}()
-full_plot = Axis(ymode="log", style="black", xlabel="Neuron", ylabel="Bound relative to ground truth", title="Bound Comparison, MNIST Network", width="12cm", height="8cm")
-full_plot.legendStyle = string("at={(0.5,-0.2)}, anchor = north, legend columns=", legend_cols, " column sep = 5")
+full_plot = Axis(ymode="log", style="black", xlabel="Neuron", ylabel="Bound relative to ground truth", title="Bound Comparison, ACAS Network", width="12cm", height="8cm")
+full_plot.legendStyle = string("at={(0.5,-0.2)}, anchor = north, legend columns=", legend_cols, " column sep = 20")
 
 
-num_layers_for_subplot = 4
 num_nodes_for_subplot = accum_nodes[num_layers_for_subplot]
 sub_plot = Axis(ymode="log")
 max_height_subplot = -Inf
@@ -248,7 +266,7 @@ end
 
 y_loc_low = 0.5 * minimum([minimum(relative_gap[i]) for i in indices_to_plot])
 y_loc_high = 2.0 * maximum([maximum(relative_gap[i]) for i in indices_to_plot])
-rectangle_bottom_y = y_loc_low*1.5
+rectangle_bottom_y = y_loc_low * 1.5
 rectangle_top_y = max_height_subplot * 1.2
 
 if (use_subplot)
@@ -278,7 +296,7 @@ sub_plot.style = string("black, width = 6cm, height=3.7cm, at={(insetSW)}, ancho
 # Draw dashed lines between each layer. Number of layers - 1 divisions
 for index = 1:(length(nodes_per_layer) - 2)
     y_loc_high_temp = y_loc_high
-    if (index <= 4)
+    if (index <= 4 && use_subplot)
         y_loc_high_temp = y_loc_high_below_sub
     end
     x_loc = accum_nodes[index] + 0.5

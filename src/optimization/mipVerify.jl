@@ -50,6 +50,7 @@ function get_bounds_for_node(solver::MIPVerify, network::Network, input::Hyperre
     # Truncate the network. we just encode the earliest layer_index layers
     # layer_index = 1 corresponds to the input layer.
     network = Network(network.layers[1:layer_index-1])
+    bounds = bounds[1:layer_index]
     neurons = init_neurons(model, network)
     deltas = init_deltas(model, network)
     add_set_constraint!(model, input, first(neurons))

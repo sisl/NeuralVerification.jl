@@ -10,7 +10,7 @@ function forward_network(solver, nnet::Network, input; get_bounds=false)
         if input isa AbstractPolytope
             bounds = Vector{Hyperrectangle}([overapproximate(input, Hyperrectangle)])
         elseif input isa SymbolicIntervalGradient
-            bounds = Vector{Hyperrectangle}([Hyperrectangle(low(input), high(input))])
+            bounds = Vector{Hyperrectangle}([Hyperrectangle(low=low(input), high=high(input))])
         else
             @assert false "Unsupported input type for bounds"
         end

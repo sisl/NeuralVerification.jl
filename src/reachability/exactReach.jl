@@ -22,9 +22,7 @@ Sound and complete.
 "Reachable Set Computation and Safety Verification for Neural Networks with ReLU Activations,"
 *ArXiv Preprint ArXiv:1712.08163*, 2017.](https://arxiv.org/abs/1712.08163)
 """
-@with_kw struct ExactReach <: Solver
-    return_bounds::Bool = false
-end
+struct ExactReach <: Solver end
 
 function solve(solver::ExactReach, problem::Problem)
     reach = forward_network(solver, problem.network, problem.input)
@@ -48,7 +46,6 @@ function forward_layer(solver::ExactReach, layer::Layer, input::Vector{<:HPolyto
     num_bounds = size(layer.weights, 1)
     lower_bounds = Vector{Float64}(undef, num_bounds)
     upper_bounds = Vector{Float64}(undef, num_bounds)
-
     for i in 1:length(input)
         input[i] = affine_map(layer, input[i])
 
@@ -60,11 +57,9 @@ function forward_layer(solver::ExactReach, layer::Layer, input::Vector{<:HPolyto
         else
             lower_bounds, upper_bounds = min.(cur_lower_bounds, lower_bounds), max.(cur_upper_bounds, upper_bounds)
         end
-
         # Project with the ReLU activation function
         append!(output, forward_partition(layer.activation, input[i]))
     end
-
     push!(bounds, Hyperrectangle(low=lower_bounds, high=upper_bounds))
 
     return output, bounds
