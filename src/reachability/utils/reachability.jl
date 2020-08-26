@@ -15,7 +15,7 @@ function forward_network(solver, nnet::Network, input; get_bounds=false)
             @assert false "Unsupported input type for bounds"
         end
         for layer in nnet.layers
-            reach, bounds = forward_layer(solver, layer, reach, bounds)
+            @time reach, bounds = forward_layer(solver, layer, reach, bounds)
         end
         return reach, bounds
     else
