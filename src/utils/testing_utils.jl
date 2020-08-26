@@ -1,5 +1,7 @@
 using Random
-using NeuralVerification;
+using LinearAlgebra
+using Cbc
+using Test
 
 """
     make_random_network(layer_sizes::Vector{Int}, [min_weight = -1.0], [max_weight = 1.0], [min_bias = -1.0], [max_bias = 1.0], [rng = 1.0])
@@ -11,7 +13,7 @@ and max_weight and min_bias and max_bias respectively. The last layer will have 
 activation function and the rest will have ReLU() activation functions. Allow a random number
 generator(rng) to be passed in. This allows for seeded random network generation.
 """
-function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister(0))
+function make_random_network(layer_sizes::Vector{Int}; min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister())
     # Create each layer based on the layer_size
     layers = []
     for index in 1:(length(layer_sizes)-1)
@@ -19,9 +21,9 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
         next_size = layer_sizes[index+1]
         # Use Id activation for the last layer - otherwise use ReLU activation
         if index == (length(layer_sizes)-1)
-            cur_activation = NeuralVerification.Id()
+            cur_activation = Id()
         else
-            cur_activation = NeuralVerification.ReLU()
+            cur_activation = ReLU()
         end
 
         # Dimension: num_out x num_in
@@ -30,8 +32,8 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
 
         # Dimension: num_out x 1
         cur_bias = min_bias .+ (max_bias - min_bias) * rand(rng, Float64, (next_size))
-        push!(layers, NeuralVerification.Layer(cur_weights, cur_bias, cur_activation))
+        push!(layers, Layer(cur_weights, cur_bias, cur_activation))
     end
-    
+
     return Network(layers)
 end
