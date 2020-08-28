@@ -61,14 +61,14 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     act_pattern = get_activation(nnet, x)
     gradient = get_gradient(nnet, x)
     model = Model(optimizer)
-    neurons = init_neurons(model, nnet)
-    add_set_constraint!(model, problem.input, first(neurons))
-    encode_network!(model, nnet, neurons, act_pattern, StandardLP())
-    o = gradient * neurons[1]
+    z = init_vars(model, nnet, :z, with_input=true)
+    add_set_constraint!(model, problem.input, first(z))
+    encode_network!(model, nnet, z, act_pattern, StandardLP())
+    o = gradient * z[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * o[1])
     optimize!(model)
-    x_new = value(neurons[1])
+    x_new = value(z[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
 end

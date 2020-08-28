@@ -27,13 +27,9 @@ Sound and complete.
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    initial_model = Model(solver)
-    bs, fs = encode(solver, initial_model, problem)
-    layers = problem.network.layers
-    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
-    insert!(initial_status, 1, zeros(Int, dim(problem.input)))
-
-    return reluplex_step(solver, problem, initial_model, bs, fs, initial_status)
+    model = Model(solver)
+    encode(solver, model, problem)
+    return reluplex_step(solver, problem, model)
 end
 
 function find_relu_to_fix(ẑ, z)
@@ -79,8 +75,8 @@ end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    ẑ = init_neurons(model, layers) # before activation
-    z = init_neurons(model, layers) # after activation
+    ẑ = init_vars(model, layers, :ẑ, with_input=true) # before activation
+    z = init_vars(model, layers, :z, with_input=true) # after activation
 
     # Each layer has an input set constraint associated with it based on the bounds.
     # Additionally, consective variables zᵢ, ẑᵢ₊₁ are related by a constraint given
@@ -89,10 +85,12 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # related by the activation function. Since the input layer has no activation,
     # its variables are related implicitly by identity.
     activation_constraint!(model, ẑ[1], z[1], Id())
-    bounds = get_bounds(problem)
+    post_act_bounds = get_bounds(problem, false)
+    pre_act_bounds = get_bounds(problem, true)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], z[i])
+        add_set_constraint!(model, pre_act_bounds[i], ẑ[i])
+        add_set_constraint!(model, post_act_bounds[i], z[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     # Add the bounds on your output layer
@@ -105,13 +103,11 @@ end
 
 function reluplex_step(solver::Reluplex,
                        problem::Problem,
-                       model::Model,
-                       ẑ::Vector{Vector{VariableRef}},
-                       z::Vector{Vector{VariableRef}},
-                       relu_status::Vector{Vector{Int}})
+                       model::Model)
 
     optimize!(model)
 
+    ẑ, z = model[:ẑ], model[:z]
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid
     # counterexample. If the problem is infeasible or unbounded. The property holds.
@@ -126,7 +122,7 @@ function reluplex_step(solver::Reluplex,
             new_constraints = repair!(model, ẑ[i][j], z[i][j])
 
             # Recurse with the ReLU i, j fixed to active or inactive
-            result = reluplex_step(solver, problem, model, ẑ, z, relu_status)
+            result = reluplex_step(solver, problem, model, ẑ, z)
 
             # Reset the model when we're done with this ReLU
             delete.(model, new_constraints)

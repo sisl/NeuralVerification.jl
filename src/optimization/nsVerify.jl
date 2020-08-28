@@ -42,17 +42,17 @@ function solve(solver::NSVerify, problem::Problem)
 
     # Set up and solve the problem
     model = Model(solver)
-    neurons = init_neurons(model, problem.network)
-    deltas = init_deltas(model, problem.network)
-    add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_network!(model, problem.network, neurons, deltas, MixedIntegerLP(M))
+    z = init_vars(model, problem.network, :z, with_input=true)
+    δ = init_vars(model, problem.network, :δ, binary=true)
+    add_set_constraint!(model, problem.input, first(z))
+    add_complementary_set_constraint!(model, problem.output, last(z))
+    encode_network!(model, problem.network, z, δ, MixedIntegerLP(M))
     feasibility_problem!(model)
     optimize!(model)
 
 
     if termination_status(model) == OPTIMAL
-        return CounterExampleResult(:violated, value.(first(neurons)))
+        return CounterExampleResult(:violated, value.(first(z)))
 
     elseif termination_status(model) == INFEASIBLE
         return CounterExampleResult(:holds)

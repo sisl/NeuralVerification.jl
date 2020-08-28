@@ -1,28 +1,30 @@
 import JuMP: GenericAffExpr
 
-init_neurons(model::Model, layers::Vector{Layer})     = init_variables(model, layers, include_input = true)
-init_deltas(model::Model, layers::Vector{Layer})      = init_variables(model, layers, binary = true, name = "δ")
-init_multipliers(model::Model, layers::Vector{Layer}, name::String) = init_variables(model, layers, name = name)
-# Allow ::Network input also (NOTE for legacy purposes mostly...)
-init_neurons(m,     network::Network) = init_neurons(m, network.layers)
-init_deltas(m,      network::Network) = init_deltas(m,  network.layers)
-init_multipliers(m, network::Network, name::String) = init_multipliers(m, network.layers, name)
+init_vars(model::Model, net::Network, args...; kwargs...) = init_vars(model, net.layers, args...; kwargs...)
+function init_vars(model::Model, layers::Vector{Layer}, name=nothing; binary=false, with_input = false)
+    N = length(layers)
+    vars = Vector{Vector{VariableRef}}(undef, N + with_input)
 
-function init_variables(model::Model, layers::Vector{Layer}; binary = false, include_input = false, name = "z")
-    # TODO: only neurons get offset array
-    vars = Vector{Vector{VariableRef}}(undef, length(layers))
-    all_layers_n = n_nodes.(layers)
-
-    if include_input
-        # input to the first layer also gets variables
-        # essentially an input constraint
-        input_layer_n = size(first(layers).weights, 2)
-        prepend!(all_layers_n, input_layer_n)
-        push!(vars, Vector{VariableRef}())        # expand vars by one to account
+    if with_input
+        n = size(layers[1].weights, 2)
+        vars[1] = @variable(model, [1:n], binary = binary)
     end
 
-    for (i, n) in enumerate(all_layers_n)
-        vars[i] = @variable(model, [1:n], binary = binary, base_name = string(name, "$i"))
+    for i in 1:N
+        n = n_nodes(layers[i])
+        vars[i+with_input] = @variable(model, [1:n], binary = binary)
+    end
+
+    if !isnothing(name)
+        for i in 1:length(vars), j in 1:length(vars[i])
+            set_name(vars[i][j], string(name, i-with_input, '[', j, ']'))
+        end
+        # should never happen:
+        if haskey(object_dictionary(model), name)
+            @warn("overwriting key $name in model")
+            delete.(model, model[name])
+        end
+        model[name] = vars
     end
     return vars
 end
