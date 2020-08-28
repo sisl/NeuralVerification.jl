@@ -29,7 +29,7 @@ end
 function solve(solver::Reluplex, problem::Problem)
     model = Model(solver)
     encode(solver, model, problem)
-    return reluplex_step(solver, problem, model)
+    return reluplex_step(solver, model)
 end
 
 function find_relu_to_fix(ẑ, z)
@@ -99,9 +99,7 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     return ẑ, z
 end
 
-function reluplex_step(solver::Reluplex,
-                       problem::Problem,
-                       model::Model)
+function reluplex_step(solver::Reluplex, model::Model)
 
     optimize!(model)
 
@@ -120,7 +118,7 @@ function reluplex_step(solver::Reluplex,
             new_constraints = repair!(model, ẑ[i][j], z[i][j])
 
             # Recurse with the ReLU i, j fixed to active or inactive
-            result = reluplex_step(solver, problem, model, ẑ, z)
+            result = reluplex_step(solver, model)
 
             # Reset the model when we're done with this ReLU
             delete.(model, new_constraints)

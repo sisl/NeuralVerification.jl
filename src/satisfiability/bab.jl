@@ -111,7 +111,8 @@ end
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
     model = Model(optimizer)
-    model[:bounds] = get_bounds(nnet, dom)
+    model[:bounds] = get_bounds(nnet, dom, false)
+    model[:before_act] = true
     z = init_vars(model, nnet, :z, with_input=true)
 
     add_set_constraint!(model, dom, first(z))
