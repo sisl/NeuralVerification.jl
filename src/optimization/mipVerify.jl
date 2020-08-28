@@ -34,10 +34,13 @@ function solve(solver::MIPVerify, problem::Problem)
     model = Model(solver)
     z = init_vars(model, problem.network, :z, with_input=true)
     δ = init_vars(model, problem.network, :δ, binary=true)
+    # get the pre-activation bounds:
+    model[:bounds] = get_bounds(problem, false)
+    model[:before_act] = true
+
     add_set_constraint!(model, problem.input, first(z))
     add_complementary_set_constraint!(model, problem.output, last(z))
-    bounds = get_bounds(problem)
-    encode_network!(model, problem.network, z, δ, bounds, BoundedMixedIntegerLP())
+    encode_network!(model, problem.network, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(z) - problem.input.center)
     optimize!(model)
     if termination_status(model) == INFEASIBLE

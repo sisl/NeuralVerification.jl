@@ -110,11 +110,12 @@ end
 
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
-    bounds = get_bounds(nnet, dom)
     model = Model(optimizer)
+    model[:bounds] = get_bounds(nnet, dom)
     z = init_vars(model, nnet, :z, with_input=true)
+
     add_set_constraint!(model, dom, first(z))
-    encode_network!(model, nnet, z, bounds, TriangularRelaxedLP())
+    encode_network!(model, nnet, TriangularRelaxedLP())
     index = ifelse(type == :max, 1, -1)
     o = sum(last(z))
     @objective(model, Max, index * o)

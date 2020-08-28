@@ -36,20 +36,20 @@ function solve(solver::ILP, problem::Problem)
     nnet = problem.network
     x = problem.input.center
     model = Model(solver)
-    δ = get_activation(nnet, x)
+    model[:δ] = δ = get_activation(nnet, x)
     z = init_vars(model, nnet, :z, with_input=true)
     add_complementary_set_constraint!(model, problem.output, last(z))
     o = max_disturbance!(model, first(z) - problem.input.center)
 
     if !solver.iterative
-        encode_network!(model, nnet, z, δ, StandardLP())
+        encode_network!(model, nnet, StandardLP())
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
         x = value.(first(z))
         return interpret_result(solver, x, problem.input)
     end
 
-    encode_network!(model, nnet, z, δ, LinearRelaxedLP())
+    encode_network!(model, nnet, LinearRelaxedLP())
     while true
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)

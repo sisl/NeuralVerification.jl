@@ -81,13 +81,16 @@ end
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
     model = Model(optimizer)
+    model[:bounds] = bounds
     z = init_vars(model, problem.network, :z, with_input=true)
+    slack = init_vars(model, problem.network, :slack, with_input=true)
+
     add_set_constraint!(model, problem.input, first(z))
     add_complementary_set_constraint!(model, problem.output, last(z))
-    encode_network!(model, problem.network, z, bounds, TriangularRelaxedLP())
-    SLP = encode_network!(model, problem.network, z, δ, SlackLP())
-    slack = SLP.slack
+    encode_network!(model, problem.network, TriangularRelaxedLP())
+    encode_network!(model, problem.network, SlackLP())
     min_sum!(model, slack)
+
     conflict = Vector{Int64}()
     act = get_activation(problem.network, bounds)
     while true
@@ -129,12 +132,12 @@ end
 
 # Only use tighten_bounds for feasibility check
 function tighten_bounds(problem::Problem, optimizer)
-    bounds = get_bounds(problem)
     model = Model(optimizer)
+    model[:bounds] = bounds = get_bounds(problem)
     z = init_vars(model, problem.network, :z, with_input=true)
     add_set_constraint!(model, problem.input, first(z))
     add_complementary_set_constraint!(model, problem.output, last(z))
-    encode_network!(model, problem.network, z, bounds, TriangularRelaxedLP())
+    encode_network!(model, problem.network, TriangularRelaxedLP())
 
     new_bounds = Vector{Hyperrectangle}(undef, length(z))
     for i in 1:length(z)

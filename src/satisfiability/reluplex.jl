@@ -85,12 +85,10 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # related by the activation function. Since the input layer has no activation,
     # its variables are related implicitly by identity.
     activation_constraint!(model, ẑ[1], z[1], Id())
-    post_act_bounds = get_bounds(problem, false)
-    pre_act_bounds = get_bounds(problem, true)
+    bounds = get_bounds(problem, false)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, pre_act_bounds[i], ẑ[i])
-        add_set_constraint!(model, post_act_bounds[i], z[i])
+        add_set_constraint!(model, bounds[i], ẑ[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     # Add the bounds on your output layer

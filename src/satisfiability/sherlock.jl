@@ -58,16 +58,19 @@ end
 
 function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Symbol)
     nnet = problem.network
-    act_pattern = get_activation(nnet, x)
-    gradient = get_gradient(nnet, x)
+
     model = Model(optimizer)
+    model[:δ] = get_activation(nnet, x)
     z = init_vars(model, nnet, :z, with_input=true)
     add_set_constraint!(model, problem.input, first(z))
-    encode_network!(model, nnet, z, act_pattern, StandardLP())
+    encode_network!(model, nnet, StandardLP())
+
+    gradient = get_gradient(nnet, x)
     o = gradient * z[1]
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * o[1])
     optimize!(model)
+
     x_new = value(z[1])
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])

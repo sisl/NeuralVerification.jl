@@ -82,11 +82,12 @@ function backward_map(solver::DLV, y::Vector{Float64}, nnet::Network, bounds::Ve
     output = Hyperrectangle(y, zeros(size(y)))
     input = first(bounds)
     model = Model(solver)
+    model[:bounds] = bounds
     z = init_vars(model, nnet, :z, with_input=true)
     δ = init_vars(model, nnet, :δ, binary=true)
     add_set_constraint!(model, input, first(z))
     add_set_constraint!(model, output, last(z))
-    encode_network!(model, nnet, z, δ, bounds, BoundedMixedIntegerLP())
+    encode_network!(model, nnet, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(z) - input.center)
     optimize!(model)
     if termination_status(model) == OPTIMAL

@@ -29,27 +29,26 @@ Sound and complete.
 end
 
 function solve(solver::NSVerify, problem::Problem)
+    # Set up and solve the problem
+    model = Model(solver)
+    z = init_vars(model, problem.network, :z, with_input=true)
+    δ = init_vars(model, problem.network, :δ, binary=true)
     # Set M automatically if not already set.
     if isnothing(solver.m)
-        M = set_automatic_M(problem)
+        model[:M] = set_automatic_M(problem)
     else
         @warn "M should be chosen carefully. An M which is too small will cause
         the problem to be solved incorrectly. Not setting the `m` keyword, or setting
         it equal to `nothing` will cause a safe value to be calculated automatically.
         E.g. NSVerify()." maxlog = 1
-        M = solver.m
+        model[:M] = solver.m
     end
 
-    # Set up and solve the problem
-    model = Model(solver)
-    z = init_vars(model, problem.network, :z, with_input=true)
-    δ = init_vars(model, problem.network, :δ, binary=true)
     add_set_constraint!(model, problem.input, first(z))
     add_complementary_set_constraint!(model, problem.output, last(z))
-    encode_network!(model, problem.network, z, δ, MixedIntegerLP(M))
+    encode_network!(model, problem.network, MixedIntegerLP())
     feasibility_problem!(model)
     optimize!(model)
-
 
     if termination_status(model) == OPTIMAL
         return CounterExampleResult(:violated, value.(first(z)))
