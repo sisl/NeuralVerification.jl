@@ -42,7 +42,7 @@ end
 model_params(LP::StandardLP,      m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
 model_params(LP::LinearRelaxedLP, m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
 model_params(LP::MixedIntegerLP,  m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
-model_params(LP::SlackLP,         m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:slack][i])
+model_params(LP::SlackLP,         m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], m[:slack][i])
 
 # For an Id Layer, any encoding type defaults to this:
 function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
@@ -57,7 +57,7 @@ end
 
 # TODO not needed I think. But test without first!
 # SlackLP is slightly different, because we need to keep track of the slack variables
-function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, sᵢ)
+function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, sᵢ)
     encode_layer!(StandardLP(), model, layer, ẑᵢ, zᵢ)
     # We need identity layer slack variables so that the algorithm doesn't
     # "get confused", but they are set to 0 because they're not relevant
@@ -71,7 +71,7 @@ end
 
 
 
-function encode_relu(::SlackLP, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, sᵢⱼ)
+function encode_relu(::SlackLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, sᵢⱼ)
     if δᵢⱼ
         @constraint(model, zᵢⱼ == ẑᵢⱼ + sᵢⱼ)
         @constraint(model, ẑᵢⱼ + sᵢⱼ >= 0.0)

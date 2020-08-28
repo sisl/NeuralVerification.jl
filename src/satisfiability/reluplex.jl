@@ -85,10 +85,10 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # related by the activation function. Since the input layer has no activation,
     # its variables are related implicitly by identity.
     activation_constraint!(model, ẑ[1], z[1], Id())
-    bounds = get_bounds(problem, false)
+    bounds = get_bounds(problem)
     for (i, L) in enumerate(layers)
         @constraint(model, affine_map(L, z[i]) .== ẑ[i+1])
-        add_set_constraint!(model, bounds[i], ẑ[i])
+        add_set_constraint!(model, bounds[i], z[i])
         activation_constraint!(model, ẑ[i+1], z[i+1], L.activation)
     end
     # Add the bounds on your output layer
@@ -96,7 +96,8 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # Add the complementary set defind as part of the problem
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
-    return ẑ, z
+
+    return nothing
 end
 
 function reluplex_step(solver::Reluplex, model::Model)

@@ -82,8 +82,9 @@ end
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
     model = Model(optimizer)
     model[:bounds] = bounds
+    model[:δ] = δ
     z = init_vars(model, problem.network, :z, with_input=true)
-    slack = init_vars(model, problem.network, :slack, with_input=true)
+    slack = init_vars(model, problem.network, :slack)
 
     add_set_constraint!(model, problem.input, first(z))
     add_complementary_set_constraint!(model, problem.output, last(z))
