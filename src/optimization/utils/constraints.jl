@@ -17,7 +17,7 @@ function encode_network!(model::Model, network::Network, encoding::AbstractLinea
     end
 end
 
-function model_params(LP::Union{BoundedMixedIntegerLP, TriangularRelaxedLP}, m, layer, i)
+function model_params(LP::BoundedMixedIntegerLP, m, layer, i)
     # let's assume we're post-activation if the parameter isn't set,
     # since that's the default for get_bounds
     if get(object_dictionary(m), :before_act, false)
@@ -26,6 +26,17 @@ function model_params(LP::Union{BoundedMixedIntegerLP, TriangularRelaxedLP}, m, 
         ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
     end
     affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], low(ẑ_bound), high(ẑ_bound)
+end
+
+function model_params(LP::TriangularRelaxedLP, m, layer, i)
+    # let's assume we're post-activation if the parameter isn't set,
+    # since that's the default for get_bounds
+    if get(object_dictionary(m), :before_act, false)
+        ẑ_bound = m[:bounds][i+1]
+    else
+        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
+    end
+    affine_map(layer, m[:z][i]), m[:z][i+1], low(ẑ_bound), high(ẑ_bound)
 end
 
 model_params(LP::StandardLP,      m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
