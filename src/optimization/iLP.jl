@@ -36,29 +36,29 @@ function solve(solver::ILP, problem::Problem)
     nnet = problem.network
     x = problem.input.center
     model = Model(solver)
-    δ = get_activation(nnet, x)
-    neurons = init_neurons(model, nnet)
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
-    o = max_disturbance!(model, first(neurons) - problem.input.center)
+    model[:δ] = δ = get_activation(nnet, x)
+    z = init_vars(model, nnet, :z, with_input=true)
+    add_complementary_set_constraint!(model, problem.output, last(z))
+    o = max_disturbance!(model, first(z) - problem.input.center)
 
     if !solver.iterative
-        encode_network!(model, nnet, neurons, δ, StandardLP())
+        encode_network!(model, nnet, StandardLP())
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value.(first(neurons))
+        x = value.(first(z))
         return interpret_result(solver, x, problem.input)
     end
 
-    encode_network!(model, nnet, neurons, δ, LinearRelaxedLP())
+    encode_network!(model, nnet, LinearRelaxedLP())
     while true
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value.(first(neurons))
+        x = value.(first(z))
         matched, index = match_activation(nnet, x, δ)
         if matched
             return interpret_result(solver, x, problem.input)
         end
-        add_constraint!(model, nnet, neurons, δ, index)
+        add_constraint!(model, nnet, z, δ, index)
     end
 end
 

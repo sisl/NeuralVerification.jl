@@ -5,218 +5,134 @@ struct StandardLP            <: AbstractLinearProgram end
 struct LinearRelaxedLP       <: AbstractLinearProgram end
 struct TriangularRelaxedLP   <: AbstractLinearProgram end
 struct BoundedMixedIntegerLP <: AbstractLinearProgram end
-struct SlackLP <: AbstractLinearProgram
-    slack::Vector{Vector{VariableRef}}
-end
-SlackLP() = SlackLP([])
-struct MixedIntegerLP <: AbstractLinearProgram
-    m::Float64
-end
+struct SlackLP               <: AbstractLinearProgram end
+struct MixedIntegerLP        <: AbstractLinearProgram end
+
+Base.Broadcast.broadcastable(LP::AbstractLinearProgram) = Ref(LP)
 
 # Any encoding passes through here first:
-function encode_network!(model::Model,
-                         network::Network,
-                         zs::Vector{Vector{VariableRef}},
-                         δs::Vector,
-                         encoding::AbstractLinearProgram)
-
+function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
     for (i, layer) in enumerate(network.layers)
-        encode_layer!(encoding, model, layer, zs[i], zs[i+1], δs[i])
+        encode_layer!(encoding, model, layer, model_params(encoding, model, layer, i)...)
     end
-    return encoding # only matters for SlackLP
 end
 
-# TODO: find a way to eliminate the two methods below.
-# i.e. make BoundedMixedIntegerLP(bounds) and TriangularRelaxedLP(bounds) or something
-function encode_network!(model::Model,
-                         network::Network,
-                         zs::Vector{Vector{VariableRef}},
-                         δs::Vector,
-                         bounds::Vector{Hyperrectangle},
-                         encoding::AbstractLinearProgram)
-
-    for (i, layer) in enumerate(network.layers)
-        encode_layer!(encoding, model, layer, zs[i], zs[i+1], δs[i], bounds[i])
+function model_params(LP::BoundedMixedIntegerLP, m, layer, i)
+    # let's assume we're post-activation if the parameter isn't set,
+    # since that's the default for get_bounds
+    if get(object_dictionary(m), :before_act, false)
+        ẑ_bound = m[:bounds][i+1]
+    else
+        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
     end
-    return encoding # only matters for SlackLP
+    affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], low(ẑ_bound), high(ẑ_bound)
 end
 
-function encode_network!(model::Model,
-                         network::Network,
-                         zs::Vector{Vector{VariableRef}},
-                         bounds::Vector{Hyperrectangle},
-                         encoding::AbstractLinearProgram)
-
-    for (i, layer) in enumerate(network.layers)
-        encode_layer!(encoding, model, layer, zs[i], zs[i+1], bounds[i])
+function model_params(LP::TriangularRelaxedLP, m, layer, i)
+    # let's assume we're post-activation if the parameter isn't set,
+    # since that's the default for get_bounds
+    if get(object_dictionary(m), :before_act, false)
+        ẑ_bound = m[:bounds][i+1]
+    else
+        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
     end
-    return encoding # only matters for SlackLP
+    affine_map(layer, m[:z][i]), m[:z][i+1], low(ẑ_bound), high(ẑ_bound)
 end
 
+model_params(LP::StandardLP,      m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
+model_params(LP::LinearRelaxedLP, m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
+model_params(LP::MixedIntegerLP,  m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
+model_params(LP::SlackLP,         m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], m[:slack][i])
 
 # For an Id Layer, any encoding type defaults to this:
-function encode_layer!(::AbstractLinearProgram,
-                       model::Model,
-                       layer::Layer{Id},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       args...)
-    @constraint(model, z_next .== layer.weights*z_current + layer.bias)
+function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
+    @constraint(model, zᵢ .== ẑᵢ)
+    nothing
 end
 
-# SlackLP is slightly different, because we need to keep track of the slack variables
-function encode_layer!(SLP::SlackLP,
-                       model::Model,
-                       layer::Layer{Id},
-                       z1::Array{VariableRef,1},
-                       z2::Array{VariableRef,1},
-                       δ...)
+function encode_layer!(LP::AbstractLinearProgram, model::Model, layer::Layer{ReLU}, args...)
+    encode_relu.(LP, model, args...)
+    nothing
+end
 
-    encode_layer!(StandardLP(), model, layer, z1, z2)
+# TODO not needed I think. But test without first!
+# SlackLP is slightly different, because we need to keep track of the slack variables
+function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, sᵢ)
+    encode_layer!(StandardLP(), model, layer, ẑᵢ, zᵢ)
     # We need identity layer slack variables so that the algorithm doesn't
     # "get confused", but they are set to 0 because they're not relevant
-    slack_vars = @variable(model, [1:n_nodes(layer)])
-    @constraint(model, slack_vars .== 0.0)
-    push!(SLP.slack, slack_vars)
+    @constraint(model, sᵢ .== 0.0)
     return nothing
 end
 
-# alternative signature:
-# encode_layer!(encoding, model::Model, current_layer::VarLayer{ReLU},  next_layer::VarLayer)
-function encode_layer!(::StandardLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       δ::Vector{Bool})
 
-    # The jth ReLU is forced to be active or inactive,
-    # depending on the activation pattern given by δᵢ.
-    # δᵢⱼ == true denotes ẑ >=0 (i.e. an *inactive* ReLU)
 
-    ẑ = layer.weights * z_current + layer.bias
-    for j in 1:length(layer.bias)
-        if δ[j]
-            @constraint(model, ẑ[j] >= 0.0)
-            @constraint(model, z_next[j] == ẑ[j])
-        else
-            @constraint(model, ẑ[j] <= 0.0)
-            @constraint(model, z_next[j] == 0.0)
-        end
+
+
+
+
+function encode_relu(::SlackLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, sᵢⱼ)
+    if δᵢⱼ
+        @constraint(model, zᵢⱼ == ẑᵢⱼ + sᵢⱼ)
+        @constraint(model, ẑᵢⱼ + sᵢⱼ >= 0.0)
+    else
+        @constraint(model, zᵢⱼ == sᵢⱼ)
+        @constraint(model, ẑᵢⱼ <= sᵢⱼ)
     end
 end
 
-function encode_layer!(SLP::SlackLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       δ::Vector{Bool})
-
-    ẑ = layer.weights * z_current + layer.bias
-    slack_vars = @variable(model, [1:length(layer.bias)])
-    for j in 1:length(layer.bias)
-        if δ[j]
-            @constraint(model, z_next[j] == ẑ[j] + slack_vars[j])
-            @constraint(model, ẑ[j] + slack_vars[j] >= 0.0)
-        else
-            @constraint(model, z_next[j] == slack_vars[j])
-            @constraint(model, 0.0 >= ẑ[j] - slack_vars[j])
-        end
-    end
-    push!(SLP.slack, slack_vars)
-    return nothing
-end
-
-function encode_layer!(::LinearRelaxedLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       δ::Vector{Bool})
-
-    ẑ = layer.weights * z_current + layer.bias
-    for j in 1:length(layer.bias)
-        if δ[j]
-            @constraint(model, z_next[j] == ẑ[j])
-        else
-            @constraint(model, z_next[j] == 0.0)
-        end
-    end
-end
-
-
-function encode_layer!(::TriangularRelaxedLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       bounds::Hyperrectangle)
-
-    ẑ = layer.weights * z_current + layer.bias
-    ẑ_bound = approximate_affine_map(layer, bounds)
-    l̂, û = low(ẑ_bound), high(ẑ_bound)
-    for j in 1:length(layer.bias)
-        if l̂[j] > 0.0
-            @constraint(model, z_next[j] == ẑ[j])
-        elseif û[j] < 0.0
-            @constraint(model, z_next[j] == 0.0)
-        else
-            @constraints(model, begin
-                                    z_next[j] >= ẑ[j]
-                                    z_next[j] <= û[j] / (û[j] - l̂[j]) * (ẑ[j] - l̂[j])
-                                    z_next[j] >= 0.0
-                                end)
-        end
-    end
-end
-
-function encode_layer!(MIP::MixedIntegerLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       δ::Vector{VariableRef})
-    m = MIP.m
-
-    ẑ = layer.weights * z_current + layer.bias
-    for j in 1:length(layer.bias)
+function encode_relu(::BoundedMixedIntegerLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, l̂ᵢⱼ, ûᵢⱼ)
+    if l̂ᵢⱼ >= 0.0
+        @constraint(model, zᵢⱼ == ẑᵢⱼ)
+    elseif ûᵢⱼ <= 0.0
+        @constraint(model, zᵢⱼ == 0.0)
+    else
         @constraints(model, begin
-                                z_next[j] >= ẑ[j]
-                                z_next[j] >= 0.0
-                                z_next[j] <= ẑ[j] + m * (1 - δ[j])
-                                z_next[j] <= m * δ[j]
+                                zᵢⱼ >= 0.0
+                                zᵢⱼ >= ẑᵢⱼ
+                                zᵢⱼ <= ûᵢⱼ * δᵢⱼ
+                                zᵢⱼ <= ẑᵢⱼ - l̂ᵢⱼ * (1 - δᵢⱼ)
                             end)
     end
 end
 
-function encode_layer!(::BoundedMixedIntegerLP,
-                       model::Model,
-                       layer::Layer{ReLU},
-                       z_current::Vector{VariableRef},
-                       z_next::Vector{VariableRef},
-                       δ::Vector,
-                       bounds::Hyperrectangle)
+function encode_relu(::MixedIntegerLP, args...)
+    encode_relu(BoundedMixedIntegerLP(), args...)
+end
 
-    ẑ = layer.weights * z_current + layer.bias
-    ẑ_bound = approximate_affine_map(layer, bounds)
-    l̂, û = low(ẑ_bound), high(ẑ_bound)
-
-    for j in 1:length(layer.bias) # For evey node
-        if l̂[j] >= 0.0
-            @constraint(model, z_next[j] == ẑ[j])
-        elseif û[j] <= 0.0
-            @constraint(model, z_next[j] == 0.0)
-        else
-            @constraints(model, begin
-                                    z_next[j] >= ẑ[j]
-                                    z_next[j] >= 0.0
-                                    z_next[j] <= û[j] * δ[j]
-                                    z_next[j] <= ẑ[j] - l̂[j] * (1 - δ[j])
-                                end)
-        end
+function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ, ûᵢⱼ)
+    if l̂ᵢⱼ > 0.0
+        @constraint(model, zᵢⱼ == ẑᵢⱼ)
+    elseif ûᵢⱼ < 0.0
+        @constraint(model, zᵢⱼ == 0.0)
+    else
+        @constraints(model, begin
+                                zᵢⱼ >= 0.0
+                                zᵢⱼ >= ẑᵢⱼ
+                                zᵢⱼ <= (ẑᵢⱼ - l̂ᵢⱼ) * ûᵢⱼ / (ûᵢⱼ - l̂ᵢⱼ)
+                            end)
     end
 end
+
+function encode_relu(::LinearRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
+    @constraint(model, zᵢⱼ == (δᵢⱼ ? ẑᵢⱼ : 0.0))
+end
+
+function encode_relu(::StandardLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
+    if δᵢⱼ
+        @constraint(model, ẑᵢⱼ >= 0.0)
+        @constraint(model, zᵢⱼ == ẑᵢⱼ)
+    else
+        @constraint(model, ẑᵢⱼ <= 0.0)
+        @constraint(model, zᵢⱼ == 0.0)
+    end
+end
+
+
+
+
+
+
 
 
 #=

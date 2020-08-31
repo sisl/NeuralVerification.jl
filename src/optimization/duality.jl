@@ -34,8 +34,8 @@ function solve(solver::Duality, problem::Problem)
     @assert length(d) == 1 "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
     d = d[1]
 
-    λ = init_multipliers(model, problem.network, "λ")
-    μ = init_multipliers(model, problem.network, "μ")
+    λ = init_vars(model, problem.network, :λ)
+    μ = init_vars(model, problem.network, :μ)
     o = dual_value(solver, problem, model, λ, μ)
     @constraint(model, last(λ) .== -c)
     optimize!(model)

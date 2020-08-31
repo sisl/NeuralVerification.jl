@@ -81,21 +81,25 @@ end
 
 function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::Vector{Hyperrectangle}, optimizer)
     model = Model(optimizer)
-    neurons = init_neurons(model, problem.network)
-    add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
-    SLP = encode_network!(model, problem.network, neurons, δ, SlackLP())
-    slack = SLP.slack
+    model[:bounds] = bounds
+    model[:δ] = δ
+    z = init_vars(model, problem.network, :z, with_input=true)
+    slack = init_vars(model, problem.network, :slack)
+
+    add_set_constraint!(model, problem.input, first(z))
+    add_complementary_set_constraint!(model, problem.output, last(z))
+    encode_network!(model, problem.network, TriangularRelaxedLP())
+    encode_network!(model, problem.network, SlackLP())
     min_sum!(model, slack)
+
     conflict = Vector{Int64}()
     act = get_activation(problem.network, bounds)
     while true
         optimize!(model)
         termination_status(model) == OPTIMAL || return (INFEASIBLE, conflict)
         (m, index) = max_slack(value.(slack), act)
-        m > 0.0 || return (:Feasible, value.(neurons[1]))
-        # activated neurons get a factor of (-1)
+        m > 0.0 || return (:Feasible, value.(z[1]))
+        # activated z get a factor of (-1)
         coeff = δ[index[1]][index[2]] ? -1 : 1
         node = coeff * get_node_id(problem.network, index)
         push!(conflict, node)
@@ -129,19 +133,19 @@ end
 
 # Only use tighten_bounds for feasibility check
 function tighten_bounds(problem::Problem, optimizer)
-    bounds = get_bounds(problem)
     model = Model(optimizer)
-    neurons = init_neurons(model, problem.network)
-    add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
-    encode_network!(model, problem.network, neurons, bounds, TriangularRelaxedLP())
+    model[:bounds] = bounds = get_bounds(problem)
+    z = init_vars(model, problem.network, :z, with_input=true)
+    add_set_constraint!(model, problem.input, first(z))
+    add_complementary_set_constraint!(model, problem.output, last(z))
+    encode_network!(model, problem.network, TriangularRelaxedLP())
 
-    new_bounds = Vector{Hyperrectangle}(undef, length(neurons))
-    for i in 1:length(neurons)
+    new_bounds = Vector{Hyperrectangle}(undef, length(z))
+    for i in 1:length(z)
         lower = low(bounds[i])
         upper = high(bounds[i])
-        for j in 1:length(neurons[i])
-            neuron = neurons[i][j]
+        for j in 1:length(z[i])
+            neuron = z[i][j]
             @objective(model, Min, neuron)
             optimize!(model)
             termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
