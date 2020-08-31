@@ -52,7 +52,6 @@ function solve(solver::NSVerify, problem::Problem)
 
     if termination_status(model) == OPTIMAL
         return CounterExampleResult(:violated, value.(first(z)))
-
     elseif termination_status(model) == INFEASIBLE
         return CounterExampleResult(:holds)
     else

@@ -36,16 +36,13 @@ function solve(solver::BaB, problem::Problem)
     (l_approx, l, x_l) = output_bound(solver, problem, :min)
     bound = Hyperrectangle(low = [l], high = [u])
     reach = Hyperrectangle(low = [l_approx], high = [u_approx])
-    return interpret_result(reach, bound, problem.output, x_l, x_u)
-end
 
-# This function is used by BaB and Sherlock
-function interpret_result(reach, bound, output, x_l, x_u)
-    if high(reach) < high(output) && low(reach) > low(output)
+    output = problem.output
+    if reach ⊆ output
         return ReachabilityResult(:holds, [reach])
     end
-    high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
-    low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
+    high(bound) > high(output) && return CounterExampleResult(:violated, x_u)
+    low(bound)  < low(output)  && return CounterExampleResult(:violated, x_l)
     return ReachabilityResult(:unknown, [reach])
 end
 
@@ -99,13 +96,10 @@ end
 
 # For simplicity
 function concrete_bound(nnet::Network, subdom::Hyperrectangle, type::Symbol)
-    points = [subdom.center, low(subdom), high(subdom)]
-    values = Vector{Float64}(undef, 0)
-    for p in points
-        push!(values, sum(compute_output(nnet, p)))
-    end
-    value, index = ifelse(type == :min, findmin(values), findmax(values))
-    return (value, points[index])
+    points = [center(subdom), low(subdom), high(subdom)]
+    vals = [sum(compute_output(nnet, p)) for p in points]
+    i = (type == :min) ? argmin(vals) : argmax(vals)
+    return vals[i], points[i]
 end
 
 

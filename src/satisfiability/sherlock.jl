@@ -40,7 +40,14 @@ function solve(solver::Sherlock, problem::Problem)
     println("bounds: [", l, ", ", u, "]")
     bound = Hyperrectangle(low = [l], high = [u])
     reach = Hyperrectangle(low = [l - solver.ϵ], high = [u + solver.ϵ])
-    return interpret_result(reach, bound, problem.output, x_l, x_u) # This function is defined in bab.jl
+
+    output = problem.output
+    if reach ⊆ output
+        return ReachabilityResult(:holds, [reach])
+    end
+    high(bound) > high(output) && return CounterExampleResult(:violated, x_u)
+    low(bound)  < low(output)  && return CounterExampleResult(:violated, x_l)
+    return ReachabilityResult(:unknown, [reach])
 end
 
 function output_bound(solver::Sherlock, problem::Problem, type::Symbol)
@@ -66,12 +73,12 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     encode_network!(model, nnet, StandardLP())
 
     gradient = get_gradient(nnet, x)
-    o = gradient * z[1]
+    o = gradient'*first(z)
     index = ifelse(type == :max, 1, -1)
-    @objective(model, Max, index * o[1])
+    @objective(model, Max, index * o)
     optimize!(model)
 
-    x_new = value(z[1])
+    x_new = value(first(z))
     bound_new = compute_output(nnet, x_new)
     return (x_new, bound_new[1])
 end
