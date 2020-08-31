@@ -112,7 +112,7 @@ function reluplex_step(solver::Reluplex, model::Model)
         i, j = find_relu_to_fix(ẑ, z)
 
         # In case no broken relus could be found, return the input as a counterexample
-        i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
+        i == 0 && return CounterExampleResult(:violated, value(first(ẑ)))
 
         for repair! in (type_one_repair!, type_two_repair!)
             # Add the constraints associated with the ReLU being fixed

@@ -73,9 +73,9 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     encode_network!(model, nnet, StandardLP())
 
     gradient = get_gradient(nnet, x)
-    o = gradient'*first(z)
+    o = gradient*first(z)
     index = ifelse(type == :max, 1, -1)
-    @objective(model, Max, index * o)
+    @objective(model, Max, index * o[1])
     optimize!(model)
 
     x_new = value(first(z))
