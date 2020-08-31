@@ -43,8 +43,8 @@ function solve(solver::MIPVerify, problem::Problem)
     encode_network!(model, problem.network, BoundedMixedIntegerLP())
     o = max_disturbance!(model, first(z) - problem.input.center)
     optimize!(model)
-    if termination_status(model) == INFEASIBLE
-        return AdversarialResult(:holds)
+    if termination_status(model) == OPTIMAL
+        return AdversarialResult(:violated, value(o))
     end
-    return AdversarialResult(:violated, value(o))
+    return AdversarialResult(:holds)
 end

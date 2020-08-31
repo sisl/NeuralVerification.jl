@@ -111,7 +111,7 @@ function reluplex_step(solver::Reluplex, model::Model)
     if termination_status(model) == OPTIMAL
         i, j = find_relu_to_fix(ẑ, z)
 
-        # In case no broken relus could be found, return the "input" as a counterexample
+        # In case no broken relus could be found, return the input as a counterexample
         i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
 
         for repair! in (type_one_repair!, type_two_repair!)
@@ -121,10 +121,11 @@ function reluplex_step(solver::Reluplex, model::Model)
             # Recurse with the ReLU i, j fixed to active or inactive
             result = reluplex_step(solver, model)
 
+            # Return (all the way to top level) if violated.
+            result.status == :violated && return result
+
             # Reset the model when we're done with this ReLU
             delete.(model, new_constraints)
-
-            result.status == :violated && return result
         end
     end
     return CounterExampleResult(:holds)
