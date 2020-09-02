@@ -72,8 +72,11 @@ function local_search(problem::Problem, x::Vector{Float64}, optimizer, type::Sym
     add_set_constraint!(model, problem.input, first(z))
     encode_network!(model, nnet, StandardLP())
 
+    # the gradient wrt to the input is a `1xn` matrix,
+    # because the output is 1-d. Therefore o[1] is the
+    # only entry in g*z₀
     gradient = get_gradient(nnet, x)
-    o = gradient*first(z)
+    o = gradient * first(z)
     index = ifelse(type == :max, 1, -1)
     @objective(model, Max, index * o[1])
     optimize!(model)
