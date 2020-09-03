@@ -10,7 +10,15 @@ struct MixedIntegerLP        <: AbstractLinearProgram end
 
 Base.Broadcast.broadcastable(LP::AbstractLinearProgram) = Ref(LP)
 
-function init_model_vars(model, problem, encoding::AbstractLinearProgram; kwargs...)
+function init_model_vars(model::Model,
+                         problem::Problem,
+                         encoding::AbstractLinearProgram
+                         ;
+                         kwargs...)
+    model[:network] = problem.network
+    model[:input]   = problem.input
+    model[:output]  = problem.output
+
     init_vars(model, problem.network, :z, with_input=true)
     for (k, v) in kwargs
         model[k] = v
@@ -28,21 +36,14 @@ function _init_unique(m::Model, prob::Problem, encoding::BoundedMixedIntegerLP)
 end
 
 function _insert_bounds(m::Model, prob::Problem, encoding::Union{TriangularRelaxedLP, BoundedMixedIntegerLP})
-    if !haskey(object_dictionary(m, :bounds))
-        before_act = get!(object_dictionary(m, :before_act, true))
+    if !haskey(object_dictionary(m), :bounds)
+        before_act = get!(object_dictionary(m), :before_act, true)
         m[:bounds] = get_bounds(prob, !before_act)
     end
 end
 
 
-# Any encoding passes through here first:
-function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
-    for (i, layer) in enumerate(network.layers)
-        encode_layer!(encoding, model, layer, model_params(encoding, model, layer, i)...)
-    end
-end
-
-function model_params(LP::BoundedMixedIntegerLP, m, layer, i)
+function model_params(LP::BoundedMixedIntegerLP, m::Model, layer, i)
     # let's assume we're post-activation if the parameter isn't set,
     # since that's the default for get_bounds
     if get(object_dictionary(m), :before_act, false)
@@ -53,7 +54,7 @@ function model_params(LP::BoundedMixedIntegerLP, m, layer, i)
     affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], low(ẑ_bound), high(ẑ_bound)
 end
 
-function model_params(LP::TriangularRelaxedLP, m, layer, i)
+function model_params(LP::TriangularRelaxedLP, m::Model, layer, i)
     # let's assume we're post-activation if the parameter isn't set,
     # since that's the default for get_bounds
     if get(object_dictionary(m), :before_act, false)
@@ -64,10 +65,26 @@ function model_params(LP::TriangularRelaxedLP, m, layer, i)
     affine_map(layer, m[:z][i]), m[:z][i+1], low(ẑ_bound), high(ẑ_bound)
 end
 
-model_params(LP::StandardLP,      m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
-model_params(LP::LinearRelaxedLP, m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
-model_params(LP::MixedIntegerLP,  m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
-model_params(LP::SlackLP,         m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], m[:slack][i])
+model_params(LP::StandardLP,      m::Model, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
+model_params(LP::LinearRelaxedLP, m::Model, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
+model_params(LP::MixedIntegerLP,  m::Model, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
+model_params(LP::SlackLP,         m::Model, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], m[:slack][i])
+
+
+
+
+# Any encoding passes through here first:
+function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
+    for (i, layer) in enumerate(network.layers)
+        encode_layer!(encoding, model, layer, model_params(encoding, model, layer, i)...)
+    end
+end
+
+function encode_layer!(LP::AbstractLinearProgram, model::Model, i::Integer)
+    L = model[:network].layers[i]
+    encode_layer!(LP, model, L, model_params(LP, model, L, i)...)
+    nothing
+end
 
 # For an Id Layer, any encoding type defaults to this:
 function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
@@ -80,7 +97,6 @@ function encode_layer!(LP::AbstractLinearProgram, model::Model, layer::Layer{ReL
     nothing
 end
 
-# TODO not needed I think. But test without first!
 # SlackLP is slightly different, because we need to keep track of the slack variables
 function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, sᵢ)
     @constraint(model, zᵢ .== ẑᵢ)
@@ -89,8 +105,6 @@ function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, z�
     @constraint(model, sᵢ .== 0.0)
     return nothing
 end
-
-
 
 
 
