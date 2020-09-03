@@ -10,6 +10,31 @@ struct MixedIntegerLP        <: AbstractLinearProgram end
 
 Base.Broadcast.broadcastable(LP::AbstractLinearProgram) = Ref(LP)
 
+function init_model_vars(model, problem, encoding::AbstractLinearProgram; kwargs...)
+    init_vars(model, problem.network, :z, with_input=true)
+    for (k, v) in kwargs
+        model[k] = v
+    end
+    _init_unique(model, problem, encoding)
+    model
+end
+_init_unique(m::Model, prob::Problem, encoding::AbstractLinearProgram) = nothing
+_init_unique(m::Model, prob::Problem, encoding::SlackLP) = init_vars(m, prob.network, :slack)
+_init_unique(m::Model, prob::Problem, encoding::MixedIntegerLP) = init_vars(m, prob.network, :δ, binary=true)
+_init_unique(m::Model, prob::Problem, encoding::TriangularRelaxedLP) = _insert_bounds(m, prob, encoding)
+function _init_unique(m::Model, prob::Problem, encoding::BoundedMixedIntegerLP)
+    init_vars(m, prob.network, :δ, binary=true)
+    _insert_bounds(m, prob, encoding)
+end
+
+function _insert_bounds(m::Model, prob::Problem, encoding::Union{TriangularRelaxedLP, BoundedMixedIntegerLP})
+    if !haskey(object_dictionary(m, :bounds))
+        before_act = get!(object_dictionary(m, :before_act, true))
+        m[:bounds] = get_bounds(prob, !before_act)
+    end
+end
+
+
 # Any encoding passes through here first:
 function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
     for (i, layer) in enumerate(network.layers)
@@ -58,7 +83,7 @@ end
 # TODO not needed I think. But test without first!
 # SlackLP is slightly different, because we need to keep track of the slack variables
 function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, sᵢ)
-    encode_layer!(StandardLP(), model, layer, ẑᵢ, zᵢ)
+    @constraint(model, zᵢ .== ẑᵢ)
     # We need identity layer slack variables so that the algorithm doesn't
     # "get confused", but they are set to 0 because they're not relevant
     @constraint(model, sᵢ .== 0.0)
