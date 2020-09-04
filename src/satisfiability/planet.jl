@@ -97,8 +97,8 @@ function elastic_filtering(problem::Problem, δ::Vector{Vector{Bool}}, bounds::V
     while true
         optimize!(model)
         termination_status(model) == OPTIMAL || return (INFEASIBLE, conflict)
-        (m, index) = max_slack(value.(slack), act)
-        m > 0.0 || return (:Feasible, value.(z[1]))
+        (m, index) = max_slack(slack, act)
+        m > 0.0 || return (:Feasible, value(first(z)))
         # activated z get a factor of (-1)
         coeff = δ[index[1]][index[2]] ? -1 : 1
         node = coeff * get_node_id(problem.network, index)
@@ -117,13 +117,14 @@ function elastic_filtering(problem::Problem,
                              optimizer)
 end
 
-function max_slack(x::Vector{Vector{Float64}}, act)
+function max_slack(x::Vector{<:Vector}, act)
     m = 0.0
     index = (0, 0)
-    for i in 1:length(x)
-        for j in 1:length(x[i])
-            if x[i][j] > m && act[i][j] == 0 # Only return undetermined nodes
-                m = x[i][j]
+    for i in 1:length(x), j in 1:length(x[i])
+        if act[i][j] == 0 # Only return undetermined nodes
+            val = value(x[i][j])
+            if val > m
+                m = val
                 index = (i, j)
             end
         end
@@ -145,15 +146,15 @@ function tighten_bounds(problem::Problem, optimizer)
         lower = low(bounds[i])
         upper = high(bounds[i])
         for j in 1:length(z[i])
-            neuron = z[i][j]
-            @objective(model, Min, neuron)
+            zᵢⱼ = z[i][j]
+            @objective(model, Min, zᵢⱼ)
             optimize!(model)
             termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-            lower[j] = value(neuron)
+            lower[j] = value(zᵢⱼ)
 
-            @objective(model, Max, neuron)
+            @objective(model, Max, zᵢⱼ)
             optimize!(model)
-            upper[j] = value(neuron)
+            upper[j] = value(zᵢⱼ)
         end
         new_bounds[i] = Hyperrectangle(low = lower, high = upper)
     end

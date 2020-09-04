@@ -45,7 +45,7 @@ function solve(solver::ILP, problem::Problem)
         encode_network!(model, nnet, StandardLP())
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value.(first(z))
+        x = value(first(z))
         return interpret_result(solver, x, problem.input)
     end
 
@@ -53,7 +53,7 @@ function solve(solver::ILP, problem::Problem)
     while true
         optimize!(model)
         termination_status(model) != OPTIMAL && return AdversarialResult(:unknown)
-        x = value.(first(z))
+        x = value(first(z))
         matched, index = match_activation(nnet, x, δ)
         if matched
             return interpret_result(solver, x, problem.input)
