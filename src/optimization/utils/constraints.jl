@@ -10,39 +10,78 @@ struct MixedIntegerLP        <: AbstractLinearProgram end
 
 Base.Broadcast.broadcastable(LP::AbstractLinearProgram) = Ref(LP)
 
+function init_model_vars(model::Model,
+                         problem::Problem,
+                         encoding::AbstractLinearProgram
+                         ;
+                         kwargs...)
+    model[:network] = problem.network
+    model[:input]   = problem.input
+    model[:output]  = problem.output
+
+    init_vars(model, problem.network, :z, with_input=true)
+    for (k, v) in kwargs
+        model[k] = v
+    end
+    _init_unique(model, problem, encoding)
+    model
+end
+
+_init_unique(m::Model, prob::Problem, encoding::AbstractLinearProgram) = nothing
+_init_unique(m::Model, prob::Problem, encoding::SlackLP) = init_vars(m, prob.network, :slack)
+_init_unique(m::Model, prob::Problem, encoding::MixedIntegerLP) = init_vars(m, prob.network, :δ, binary=true)
+_init_unique(m::Model, prob::Problem, encoding::TriangularRelaxedLP) = _insert_bounds(m, prob, encoding)
+function _init_unique(m::Model, prob::Problem, encoding::BoundedMixedIntegerLP)
+    init_vars(m, prob.network, :δ, binary=true)
+    _insert_bounds(m, prob, encoding)
+end
+
+function _insert_bounds(m::Model, prob::Problem, encoding::Union{TriangularRelaxedLP, BoundedMixedIntegerLP})
+    if !haskey(object_dictionary(m), :bounds)
+        before_act = get!(object_dictionary(m), :before_act, true)
+        m[:bounds] = get_bounds(prob, !before_act)
+    end
+end
+
+model_params(LP::BoundedMixedIntegerLP, m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], m[:δ][i], _ẑᵢ₊₁_bound(m, i)...)
+model_params(LP::TriangularRelaxedLP,   m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], _ẑᵢ₊₁_bound(m, i)...)
+model_params(LP::StandardLP,            m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], m[:δ][i])
+model_params(LP::LinearRelaxedLP,       m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], m[:δ][i])
+model_params(LP::MixedIntegerLP,        m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
+model_params(LP::SlackLP,               m::Model, i::Integer) = (_ẑᵢ₊₁(m, i), m[:z][i+1], m[:δ][i], m[:slack][i])
+
+# helper function to get the bounds relevant for the i-th layer constraint.
+# If before_act=true, then the model is storing the pre-activation
+# bounds, and we return the i+1th bound (goes with ẑᵢ₊₁). Otherwise
+# NOTE we forward propagate (affine map) the ith bound. We assume the model
+# stores post-activation bounds since this is the current default for get_bounds
+function _ẑᵢ₊₁_bound(m, i)
+    layer = m[:network].layers[i]
+    # let's assume we're post-activation if the parameter isn't set,
+    # since that's the default for get_bounds
+    if get(object_dictionary(m), :before_act, false)
+        ẑ_bound = m[:bounds][i+1]
+    else
+        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
+    end
+    low(ẑ_bound), high(ẑ_bound)
+end
+_ẑᵢ₊₁(m, i) = affine_map(m[:network].layers[i], m[:z][i])
+
+
 # Any encoding passes through here first:
 function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
+    get!(object_dictionary(model), :network, network)
     for (i, layer) in enumerate(network.layers)
-        encode_layer!(encoding, model, layer, model_params(encoding, model, layer, i)...)
+        encode_layer!(encoding, model, layer, model_params(encoding, model, i)...)
     end
 end
 
-function model_params(LP::BoundedMixedIntegerLP, m, layer, i)
-    # let's assume we're post-activation if the parameter isn't set,
-    # since that's the default for get_bounds
-    if get(object_dictionary(m), :before_act, false)
-        ẑ_bound = m[:bounds][i+1]
-    else
-        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
-    end
-    affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], low(ẑ_bound), high(ẑ_bound)
+function encode_layer!(LP::AbstractLinearProgram, model::Model, i::Integer)
+    L = model[:network].layers[i]
+    encode_layer!(LP, model, L, model_params(LP, model, i)...)
+    nothing
 end
-
-function model_params(LP::TriangularRelaxedLP, m, layer, i)
-    # let's assume we're post-activation if the parameter isn't set,
-    # since that's the default for get_bounds
-    if get(object_dictionary(m), :before_act, false)
-        ẑ_bound = m[:bounds][i+1]
-    else
-        ẑ_bound = approximate_affine_map(layer, m[:bounds][i])
-    end
-    affine_map(layer, m[:z][i]), m[:z][i+1], low(ẑ_bound), high(ẑ_bound)
-end
-
-model_params(LP::StandardLP,      m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
-model_params(LP::LinearRelaxedLP, m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i])
-model_params(LP::MixedIntegerLP,  m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], -m[:M], m[:M])
-model_params(LP::SlackLP,         m, layer, i) = (affine_map(layer, m[:z][i]), m[:z][i+1], m[:δ][i], m[:slack][i])
 
 # For an Id Layer, any encoding type defaults to this:
 function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
@@ -55,10 +94,9 @@ function encode_layer!(LP::AbstractLinearProgram, model::Model, layer::Layer{ReL
     nothing
 end
 
-# TODO not needed I think. But test without first!
 # SlackLP is slightly different, because we need to keep track of the slack variables
 function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, sᵢ)
-    encode_layer!(StandardLP(), model, layer, ẑᵢ, zᵢ)
+    @constraint(model, zᵢ .== ẑᵢ)
     # We need identity layer slack variables so that the algorithm doesn't
     # "get confused", but they are set to 0 because they're not relevant
     @constraint(model, sᵢ .== 0.0)
@@ -66,8 +104,19 @@ function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, z�
 end
 
 
-
-
+function encode_ij(LP, model, i, j)
+    L = model[:network].layers[i]
+    params = model_params(LP, model, i)
+    if L.activation isa Id
+        ẑᵢⱼ = _ẑᵢ₊₁(model, i)[j]
+        zᵢⱼ = model[:z][i+1][j]
+        @constraint(model, ẑᵢⱼ == zᵢⱼ)
+    elseif L.activation isa ReLU
+        # ridiculous hack so it works with scalar params (like :M)
+        _getindex_hack(x, j) = x isa Number ? x : x[j]
+        encode_relu(LP, model, _getindex_hack.(params, j)...)
+    end
+end
 
 
 
