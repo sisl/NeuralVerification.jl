@@ -36,16 +36,13 @@ function solve(solver::BaB, problem::Problem)
     (l_approx, l, x_l) = output_bound(solver, problem, :min)
     bound = Hyperrectangle(low = [l], high = [u])
     reach = Hyperrectangle(low = [l_approx], high = [u_approx])
-    return interpret_result(reach, bound, problem.output, x_l, x_u)
-end
 
-# This function is used by BaB and Sherlock
-function interpret_result(reach, bound, output, x_l, x_u)
-    if high(reach) < high(output) && low(reach) > low(output)
+    output = problem.output
+    if reach ⊆ output
         return ReachabilityResult(:holds, [reach])
     end
-    high(bound) > high(output)    && return CounterExampleResult(:violated, x_u)
-    low(bound)  < low(output)     && return CounterExampleResult(:violated, x_l)
+    high(bound) > high(output) && return CounterExampleResult(:violated, x_u)
+    low(bound)  < low(output)  && return CounterExampleResult(:violated, x_l)
     return ReachabilityResult(:unknown, [reach])
 end
 
@@ -99,24 +96,23 @@ end
 
 # For simplicity
 function concrete_bound(nnet::Network, subdom::Hyperrectangle, type::Symbol)
-    points = [subdom.center, low(subdom), high(subdom)]
-    values = Vector{Float64}(undef, 0)
-    for p in points
-        push!(values, sum(compute_output(nnet, p)))
-    end
-    value, index = ifelse(type == :min, findmin(values), findmax(values))
-    return (value, points[index])
+    points = [center(subdom), low(subdom), high(subdom)]
+    vals = [sum(compute_output(nnet, p)) for p in points]
+    i = (type == :min) ? argmin(vals) : argmax(vals)
+    return vals[i], points[i]
 end
 
 
 function approx_bound(nnet::Network, dom::Hyperrectangle, optimizer, type::Symbol)
-    bounds = get_bounds(nnet, dom)
     model = Model(optimizer)
-    neurons = init_neurons(model, nnet)
-    add_set_constraint!(model, dom, first(neurons))
-    encode_network!(model, nnet, neurons, bounds, TriangularRelaxedLP())
+    model[:bounds] = get_bounds(nnet, dom, false)
+    model[:before_act] = true
+    z = init_vars(model, nnet, :z, with_input=true)
+
+    add_set_constraint!(model, dom, first(z))
+    encode_network!(model, nnet, TriangularRelaxedLP())
     index = ifelse(type == :max, 1, -1)
-    o = sum(last(neurons))
+    o = sum(last(z))
     @objective(model, Max, index * o)
     optimize!(model)
     termination_status(model) == OPTIMAL && return value(o)

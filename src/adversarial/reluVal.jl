@@ -127,7 +127,7 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
             output_Low[j, :] .= 0
             if lower_bound(upper(input), j) < 0
                 output_Up[j, :] .= 0
-                output_Up[j, :][end] = upper_bound(upper(input), j)
+                output_Up[j, end] = upper_bound(upper(input), j)
             end
         end
     end

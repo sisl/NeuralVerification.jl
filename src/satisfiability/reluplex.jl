@@ -27,13 +27,9 @@ Sound and complete.
 end
 
 function solve(solver::Reluplex, problem::Problem)
-    initial_model = Model(solver)
-    bs, fs = encode(solver, initial_model, problem)
-    layers = problem.network.layers
-    initial_status = [zeros(Int, n) for n in n_nodes.(layers)]
-    insert!(initial_status, 1, zeros(Int, dim(problem.input)))
-
-    return reluplex_step(solver, problem, initial_model, bs, fs, initial_status)
+    model = Model(solver)
+    encode(solver, model, problem)
+    return reluplex_step(solver, model)
 end
 
 function find_relu_to_fix(ẑ, z)
@@ -79,8 +75,8 @@ end
 
 function encode(solver::Reluplex, model::Model,  problem::Problem)
     layers = problem.network.layers
-    ẑ = init_neurons(model, layers) # before activation
-    z = init_neurons(model, layers) # after activation
+    ẑ = init_vars(model, layers, :ẑ, with_input=true) # before activation
+    z = init_vars(model, layers, :z, with_input=true) # after activation
 
     # Each layer has an input set constraint associated with it based on the bounds.
     # Additionally, consective variables zᵢ, ẑᵢ₊₁ are related by a constraint given
@@ -100,38 +96,36 @@ function encode(solver::Reluplex, model::Model,  problem::Problem)
     # Add the complementary set defind as part of the problem
     add_complementary_set_constraint!(model, problem.output, last(z))
     feasibility_problem!(model)
-    return ẑ, z
+
+    return nothing
 end
 
-function reluplex_step(solver::Reluplex,
-                       problem::Problem,
-                       model::Model,
-                       ẑ::Vector{Vector{VariableRef}},
-                       z::Vector{Vector{VariableRef}},
-                       relu_status::Vector{Vector{Int}})
+function reluplex_step(solver::Reluplex, model::Model)
 
     optimize!(model)
 
+    ẑ, z = model[:ẑ], model[:z]
     # If the problem is optimally solved, this could potentially be a counterexample.
     # Branch by repair type (inactive or active) and redetermine if this is a valid
     # counterexample. If the problem is infeasible or unbounded. The property holds.
     if termination_status(model) == OPTIMAL
         i, j = find_relu_to_fix(ẑ, z)
 
-        # In case no broken relus could be found, return the "input" as a counterexample
-        i == 0 && return CounterExampleResult(:violated, value.(first(ẑ)))
+        # In case no broken relus could be found, return the input as a counterexample
+        i == 0 && return CounterExampleResult(:violated, value(first(ẑ)))
 
         for repair! in (type_one_repair!, type_two_repair!)
             # Add the constraints associated with the ReLU being fixed
             new_constraints = repair!(model, ẑ[i][j], z[i][j])
 
             # Recurse with the ReLU i, j fixed to active or inactive
-            result = reluplex_step(solver, problem, model, ẑ, z, relu_status)
+            result = reluplex_step(solver, model)
+
+            # Return (all the way to top level) if violated.
+            result.status == :violated && return result
 
             # Reset the model when we're done with this ReLU
             delete.(model, new_constraints)
-
-            result.status == :violated && return result
         end
     end
     return CounterExampleResult(:holds)

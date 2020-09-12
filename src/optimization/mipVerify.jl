@@ -32,16 +32,19 @@ end
 
 function solve(solver::MIPVerify, problem::Problem)
     model = Model(solver)
-    neurons = init_neurons(model, problem.network)
-    deltas = init_deltas(model, problem.network)
-    add_set_constraint!(model, problem.input, first(neurons))
-    add_complementary_set_constraint!(model, problem.output, last(neurons))
-    bounds = get_bounds(problem)
-    encode_network!(model, problem.network, neurons, deltas, bounds, BoundedMixedIntegerLP())
-    o = max_disturbance!(model, first(neurons) - problem.input.center)
+    z = init_vars(model, problem.network, :z, with_input=true)
+    δ = init_vars(model, problem.network, :δ, binary=true)
+    # get the pre-activation bounds:
+    model[:bounds] = get_bounds(problem, false)
+    model[:before_act] = true
+
+    add_set_constraint!(model, problem.input, first(z))
+    add_complementary_set_constraint!(model, problem.output, last(z))
+    encode_network!(model, problem.network, BoundedMixedIntegerLP())
+    o = max_disturbance!(model, first(z) - problem.input.center)
     optimize!(model)
-    if termination_status(model) == INFEASIBLE
-        return AdversarialResult(:holds)
+    if termination_status(model) == OPTIMAL
+        return AdversarialResult(:violated, value(o))
     end
-    return AdversarialResult(:violated, value(o))
+    return AdversarialResult(:holds)
 end

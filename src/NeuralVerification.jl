@@ -20,9 +20,13 @@ abstract type Solver end
 
 # For optimization methods:
 import JuMP.MOI.OPTIMAL, JuMP.MOI.INFEASIBLE
-using Cbc
-JuMP.Model(solver::Solver) = model_suppress(solver) # Model(solver.optimizer);
-JuMP.value(vars::Vector{VariableRef}) = value.(vars)
+JuMP.Model(solver::Solver) = Model(solver.optimizer)
+# define a `value` function that recurses so that value(vector) and
+# value(VecOfVec) works cleanly. This is only so the code looks nice.
+value(var::JuMP.AbstractJuMPScalar) = JuMP.value(var)
+value(vars::Vector) = value.(vars)
+value(val) = val
+
 
 function model_suppress(solver::Solver)
     model = Model(solver.optimizer)
