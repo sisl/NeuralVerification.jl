@@ -83,9 +83,6 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
     network_dir = joinpath(test_set_dir, "networks")
     input_set_dir = joinpath(test_set_dir, "input_sets")
     output_set_dir = joinpath(test_set_dir, "output_sets")
-    mkpath(network_dir)
-    mkpath(input_set_dir)
-    mkpath(output_set_dir)
 
     for (shape_index, (num_networks, layer_sizes)) in enumerate(zip(num_networks_for_size, layer_sizes))
         for i = 1:num_networks
@@ -232,6 +229,14 @@ function write_to_query_file(network_file::String, input_file::String, output_fi
     open(query_file, "a") do f
         println(f, string(network_file, " ", input_file, " ", output_file))
     end
+end
+
+function write_problem(dir::String, name::String, problem::Problem)
+    network_file = joinpath(dir, "networks", name*"_network.nnet")
+    input_file = joinpath(dir, "input_sets", name*"_input.json")
+    output_file = joinpath(dir, "output_sets", name*"_output.json")
+    query_file = joinpath(dir, "queries.txt")
+    write_problem(network_file, input_file, output_file, problem; query_file=query_file)
 end
 
 """
@@ -564,6 +569,16 @@ end
     Utils for running the tests themselves
 =#
 
+# Assume the file starts with an index separated from the rest of the filename by an underscore
+function get_next_file_index(query_file)
+    if (isfile(query_file))
+        lines = readlines(query_file)
+        return parse(Int, split(basename(lines[end]), "_")[1])
+    else
+        return 1
+    end
+end
+
 """
 test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], [solver_types_to_remove =[]], [solver_types_to_report=[]])
 
@@ -577,7 +592,7 @@ test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], 
 
 """
 
-function test_query_file(file_name::String; all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
+function test_query_file(file_name::String; all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[], write_failed_dir="")
     path, file = splitdir(file_name)
     @testset "Correctness Tests on $(file)" begin
         queries = readlines(file_name)
@@ -588,10 +603,11 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 solvers = get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
                 # Skip the line if you won't report it - assume no solvers to report
                 # corresponds to reporting all solvers
-                if !(length(solver_types_to_report) == 0)) && (!any([solver isa Union{solver_types_to_report...} for solver in solvers])
+                if !(length(solver_types_to_report) == 0) && !any([solver isa Union{solver_types_to_report...} for solver in solvers])
                     @warn "Skipping line because no solver in solvers_to_report will be used"
                 else
                     # Solve the problem with each solver that applies for the problem, then compare the results
+                    error_in_line = false
                     results = Vector(undef, length(solvers))
                     for (solver_index, solver) in enumerate(solvers)
                         cur_problem = deepcopy(problem)
@@ -602,42 +618,44 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                         end
 
                         # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
-                        if needs_polytope_input(solver) && cur_problem.input isa Hyperrectangl
+                        if needs_polytope_input(solver) && cur_problem.input isa Hyperrectangle
                             cur_problem = Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
                         end
                         if needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle
                             cur_problem = Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
                         end
 
-                        # Try-catch while solving to handle a GLPK bug by attempting to run with Gurobi instead when this bug shows up
+                        # Try-catch while solving to write out cases that error
                         try
                             results[solver_index] = NeuralVerification.solve(solver, cur_problem)
                         catch e
-                            if e isa GLPK.GLPKError && e.msg == "invalid GLPK.Prob"
-                                @warn "Caught GLPK error on $(typeof(solver))"
-                                results[solver_index] = CounterExampleResult(:unknown) # Known issue with GLPK so ignore this error and just push an unknown result
-                            else
-                                # Print the error and make sure we still get its stack
-                                for (exc, bt) in Base.catch_stack()
-                                   showerror(stdout, exc, bt)
-                                   println()
-                                end
-                                throw(e)
+                            if write_failed_dir != ""
+                                # Write out this problem
+                                name = string(get_next_file_index(joinpath(write_failed_dir, "queries.txt")))
+                                write_problem(write_failed_dir, name, cur_problem)
                             end
+ß
+                            # Print the error and make sure we still get its stack
+                            for (exc, bt) in Base.catch_stack()
+                               showerror(stdout, exc, bt)
+                               println()
+                            end
+                            throw(e)
                         end
                     end
 
                     # Just sees if each pair agrees
                     # if one or both return unknown then we can't make a comparison
                     tested_line = false
+                    error_in_line = true
 
                     for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
                         if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
                             @testset "Comparing $(typeof(solvers[i])) with $(typeof(solvers[j]))" begin
+                                error_in_set = true
                                 println("Comparing: ", typeof(solvers[i]), " with ", typeof(solvers[j]))
                                 solver_one_complete = is_complete(solvers[i])
                                 solver_two_complete = is_complete(solvers[j])
-                                println("Completeness: ", (solver_one_complete, solver_two_complete))
                                 # Both complete
                                 if solver_one_complete && solver_two_complete
                                     tested_line = true
@@ -647,7 +665,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                                 elseif solver_one_complete && !solver_two_complete
                                     tested_line = true
                                     # Results match or solver two unknown or solver one holds solver two violated (bc incomplete)
-                                    @test ((results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated))
+                                    @test (results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated)
                                 # Solver one incomplete, solver two complete
                                 elseif !solver_one_complete && solver_two_complete
                                     tested_line = true
@@ -661,11 +679,18 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                                     # Results match or solver one unknown or solver two unknown or
                                     # no test since any mix of outcomes could be justified with two incomplete ones
                                 end
+                                error_in_set = false # if we've reached the end, we didn't hit an error
+                                error_in_line |= error_in_set # if any set errors then we have an error
                             end
                         end
                     end
                     if !tested_line
                         @warn "Didn't test line $(index): $(line)"
+                    end
+                    if error_in_line && write_failed_dir != ""
+                        # Write out this problem
+                        name = string(get_next_file_index(joinpath(write_failed_dir, "queries.txt")))
+                        write_problem(write_failed_dir, name, problem)
                     end
                 end
             end
@@ -678,7 +703,7 @@ end
 test_solvers(; solver_types=[], test_set="small", solvers=[])
 
     A wrapper around test_query_file that makes it easier to specify the test set.
-    test_set can be: "tiny", "small", "medium", or "previous_issues". Typical usage looks like:
+    test_set can be: "tiny", "small", "medium". Typical usage looks like:
 
     test_solvers(solver_types_to_report=[ExactReach, ReluVal], test_set="small")
     or
@@ -694,10 +719,10 @@ test_solvers(; solver_types=[], test_set="small", solvers=[])
         Helpful if you are trying to run queries where a certain solver would be slow, or give frequent errors and you want to ignore those.
     solver_types_to_report: A list of solver types to report test results on. This can be helpful to have a smaller list of results to look through.
 """
-function test_correctness(;test_set="small", all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
+function test_correctness(;test_set="small", all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[], write_failed_dir="")
         test_set_dir = tempname()
         println("test set dir: ", test_set_dir)
         query_file = make_random_test_sets(sets=[test_set], base_dir=test_set_dir)[1] # it returns the list of query files, take the first (and only) one
-        results = test_query_file(query_file; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report)
+        results = test_query_file(query_file; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report, write_failed_dir=write_failed_dir)
         rm(test_set_dir, recursive=true)
 end
