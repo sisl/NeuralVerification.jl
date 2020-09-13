@@ -83,11 +83,14 @@ function make_random_query_file(num_networks_for_size::Array{Int, 1},
     network_dir = joinpath(test_set_dir, "networks")
     input_set_dir = joinpath(test_set_dir, "input_sets")
     output_set_dir = joinpath(test_set_dir, "output_sets")
+    mkpath(network_dir)
+    mkpath(input_set_dir)
+    mkpath(output_set_dir)
 
     for (shape_index, (num_networks, layer_sizes)) in enumerate(zip(num_networks_for_size, layer_sizes))
         for i = 1:num_networks
             # Create a random network
-            if (length(network_files)) == 0
+            if length(network_files) == 0
                 network = make_random_network(layer_sizes, min_weight, max_weight, min_bias, max_bias, rng)
             else
                 network = read_nnet(network_files[i])
@@ -185,7 +188,7 @@ function make_random_test_sets(; sets::Vector{String}=["tiny", "small", "medium"
 
     query_files = []
     # Tiny test set for Ai2h
-    if ("tiny" in sets)
+    if "tiny" in sets
         query_file = joinpath(base_dir, "tiny/queries.txt")
         make_random_query_file([3, 3],
                                [[1, 2, 1], [1, 3, 2, 1]],
@@ -195,7 +198,7 @@ function make_random_test_sets(; sets::Vector{String}=["tiny", "small", "medium"
     end
 
     # Small, medium, and large should be tractable for all solvers except Ai2h
-    if ("small" in sets)
+    if "small" in sets
         query_file = joinpath(base_dir, "small/queries.txt")
         make_random_query_file([3, 3],
                               [[1, 3, 1], [2, 5, 2]],
@@ -204,7 +207,7 @@ function make_random_test_sets(; sets::Vector{String}=["tiny", "small", "medium"
         push!(query_files, query_file)
     end
 
-    if ("medium" in sets)
+    if "medium" in sets
         query_file = joinpath(base_dir, "medium/queries.txt")
         make_random_query_file([5, 5, 5],
                               [[1, 8, 1], [4, 8, 4], [1, 10, 4, 1]],
@@ -213,7 +216,7 @@ function make_random_test_sets(; sets::Vector{String}=["tiny", "small", "medium"
         push!(query_files, query_file)
     end
 
-    if ("large" in sets)
+    if "large" in sets
         query_file = joinpath(base_dir, "large/queries.txt")
         make_random_query_file([6, 6, 6, 6, 6],
                               [[1, 10, 12, 10, 1], [3, 8, 12, 10, 5], [4, 3, 2], [3, 4, 3], [5, 8, 1]],
@@ -379,7 +382,7 @@ solver_types_allowed and solver_types_to_remove filters the list of solvers furt
 """
 function get_valid_solvers(problem::Problem; solvers = [], solver_types_allowed=[], solver_types_to_remove=[])
     # Fill the list of solvers if it isn't given, then filter based on solver_types_allowed and solver_types_to_remove
-    if (length(solvers) == 0)
+    if length(solvers) == 0
         solvers = get_all_solvers_to_test()
     end
     solvers = allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to_remove)
@@ -399,8 +402,8 @@ Return false otherwise.
 function solver_works_with_input_set(solver, input_set)
     # Define which solvers work with which input sets
     half_space_solver_types = Union{}
-    hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex, ExactReach, Ai2, MaxSens}
-    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
+    hyperrectangle_solver_types = Union{NSVerify, MIPVerify, ILP, Duality, ConvDual, Certify, FastLin, FastLip, ReluVal, DLV, Sherlock, BaB, Planet, Reluplex, ExactReach, Ai2, MaxSens, Neurify}
+    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens, Neurify}
     polytope_complement_solver_types = Union{}
     zonotope_solver_types = Union{}
 
@@ -409,7 +412,7 @@ function solver_works_with_input_set(solver, input_set)
         return solver isa half_space_solver_types
     elseif input_set isa Hyperrectangle
         # Duality and ConvDual require uniform HR (hypercube) input set
-        if (solver isa Union{Duality, ConvDual})
+        if solver isa Union{Duality, ConvDual}
             return all(iszero.(input_set.radius .- input_set.radius[1]))
         else
             return solver isa hyperrectangle_solver_types
@@ -433,8 +436,8 @@ Return false otherwise.
 """
 function solver_works_with_output_set(solver, output_set)
     half_space_solver_types = Union{Duality, ConvDual, Certify, FastLin, FastLip, NSVerify, MIPVerify, ILP, Planet, Reluplex}
-    hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB, ExactReach, Ai2, MaxSens}
-    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens}
+    hyperrectangle_solver_types = Union{ReluVal, DLV, Sherlock, BaB, ExactReach, Ai2, MaxSens, Neurify}
+    hyperpolytope_solver_types = Union{ExactReach, Ai2, MaxSens, Neurify}
     polytope_complement_solver_types = Union{NSVerify, MIPVerify, ILP, Planet, Reluplex}
     zonotope_solver_types = Union{}
 
@@ -442,7 +445,7 @@ function solver_works_with_output_set(solver, output_set)
         return solver isa half_space_solver_types
     elseif output_set isa Hyperrectangle
         # For DLV, Sherlock, and BaB it must be 1-D
-        if (solver isa Union{DLV, Sherlock, BaB})
+        if solver isa Union{DLV, Sherlock, BaB}
             return length(output_set.center) == 1
         else
             return solver isa hyperrectangle_solver_types
@@ -487,7 +490,7 @@ Return true if the solver can handle the network given by network.
 Return false otherwise.
 """
 function solver_works_with_network(solver, network)
-    if (solver isa Certify)
+    if solver isa Certify
         return length(network.layers) == 2 # certify only works with 1 hidden layer
     else
         return true
@@ -501,7 +504,7 @@ end
 Return whether a solver is complete or not.
 """
 function is_complete(solver)
-    complete_solvers = Union{ExactReach, NSVerify, MIPVerify, ReluVal, Planet, Reluplex}
+    complete_solvers = Union{ExactReach, NSVerify, MIPVerify, ReluVal, Neurify, Planet, Reluplex}
     return solver isa complete_solvers
 end
 
@@ -526,6 +529,7 @@ function get_all_solvers_to_test()
             FastLin(),
             FastLip(),
             ReluVal(max_iter = 500),
+            Neurify(max_iter = 500, optimizer=Cbc.Optimizer),
             DLV(optimizer=Cbc.Optimizer),
             Sherlock(ϵ = 0.5, optimizer=Cbc.Optimizer),
             Sherlock(ϵ = 0.1, optimizer=Cbc.Optimizer),
@@ -545,10 +549,10 @@ types in solver_types_to_remove.
 function allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to_remove)
     filtered_list = deepcopy(solvers)
     # Filter the solvers if types allowed or removed are given (versus default)
-    if (length(solver_types_allowed) >= 1)
+    if length(solver_types_allowed) >= 1
         filtered_list = filter(solver->solver isa Union{solver_types_allowed...}, filtered_list)
     end
-    if (length(solver_types_to_remove) >= 1)
+    if length(solver_types_to_remove) >= 1
         filtered_list = filter(solver->!(solver isa Union{solver_types_to_remove...}), filtered_list)
     end
     return filtered_list
@@ -584,7 +588,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                 solvers = get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
                 # Skip the line if you won't report it - assume no solvers to report
                 # corresponds to reporting all solvers
-                if (!(length(solver_types_to_report) == 0)) && (!any([solver isa Union{solver_types_to_report...} for solver in solvers]))
+                if !(length(solver_types_to_report) == 0)) && (!any([solver isa Union{solver_types_to_report...} for solver in solvers])
                     @warn "Skipping line because no solver in solvers_to_report will be used"
                 else
                     # Solve the problem with each solver that applies for the problem, then compare the results
@@ -593,15 +597,15 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                         cur_problem = deepcopy(problem)
                         println("Solving with: ", typeof(solver))
                         # Workaround to have ConvDual and FastLip take in halfspace output sets as expected
-                        if ((solver isa ConvDual || solver isa FastLip)) && cur_problem.output isa HalfSpace
+                        if (solver isa ConvDual || solver isa FastLip) && cur_problem.output isa HalfSpace
                             cur_problem = Problem(cur_problem.network, cur_problem.input, HPolytope([cur_problem.output])) # convert to a HPolytope b/c ConvDual takes in a HalfSpace as a HPolytope for now
                         end
 
                         # Workaround to have ExactReach, Ai2, and MaxSens take in HR inputs and outputs
-                        if (needs_polytope_input(solver) && cur_problem.input isa Hyperrectangle)
+                        if needs_polytope_input(solver) && cur_problem.input isa Hyperrectangl
                             cur_problem = Problem(cur_problem.network, LazySets.convert(HPolytope, cur_problem.input), cur_problem.output)
                         end
-                        if (needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle)
+                        if needs_polytope_output(solver) && cur_problem.output isa Hyperrectangle
                             cur_problem = Problem(cur_problem.network, cur_problem.input, LazySets.convert(HPolytope, cur_problem.output))
                         end
 
@@ -635,23 +639,23 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                                 solver_two_complete = is_complete(solvers[j])
                                 println("Completeness: ", (solver_one_complete, solver_two_complete))
                                 # Both complete
-                                if (solver_one_complete && solver_two_complete)
+                                if solver_one_complete && solver_two_complete
                                     tested_line = true
                                     # Results match
                                     @test results[i].status == results[j].status
                                 # Solver one complete, solver two incomplete
-                                elseif (solver_one_complete && !solver_two_complete)
+                                elseif solver_one_complete && !solver_two_complete
                                     tested_line = true
                                     # Results match or solver two unknown or solver one holds solver two violated (bc incomplete)
                                     @test ((results[i].status == results[j].status) || (results[j].status == :unknown) || (results[i].status == :holds && results[j].status == :violated))
                                 # Solver one incomplete, solver two complete
-                                elseif (!solver_one_complete && solver_two_complete)
+                                elseif !solver_one_complete && solver_two_complete
                                     tested_line = true
                                     # Results match or solver one unknown or solver two holds solver one violated (bc incomplete)
                                     @test ((results[i].status == results[j].status) || (results[i].status == :unknown) || ((results[i].status == :violated) && (results[j].status == :holds)))
                                 # Neither are complete
                                 else
-                                    if (results[i].status != results[j].status)
+                                    if results[i].status != results[j].status
                                         @warn "Neither solver complete but results disagree: $(typeof(solvers[i])) vs. $(typeof(solvers[j])) is $(results[i].status) vs. $(results[j].status)"
                                     end
                                     # Results match or solver one unknown or solver two unknown or
@@ -660,7 +664,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                             end
                         end
                     end
-                    if (!tested_line)
+                    if !tested_line
                         @warn "Didn't test line $(index): $(line)"
                     end
                 end
@@ -692,6 +696,7 @@ test_solvers(; solver_types=[], test_set="small", solvers=[])
 """
 function test_correctness(;test_set="small", all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[])
         test_set_dir = tempname()
+        println("test set dir: ", test_set_dir)
         query_file = make_random_test_sets(sets=[test_set], base_dir=test_set_dir)[1] # it returns the list of query files, take the first (and only) one
         results = test_query_file(query_file; all_solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove, solver_types_to_report=solver_types_to_report)
         rm(test_set_dir, recursive=true)
