@@ -564,7 +564,6 @@ function allow_and_remove_solvers(solvers, solver_types_allowed, solver_types_to
 end
 
 
-
 #=
     Utils for running the tests themselves
 =#
@@ -573,14 +572,14 @@ end
 function get_next_file_index(query_file)
     if (isfile(query_file))
         lines = readlines(query_file)
-        return parse(Int, split(basename(lines[end]), "_")[1])
+        return parse(Int, split(basename(lines[end]), "_")[1]) + 1
     else
         return 1
     end
 end
 
 """
-test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], [solver_types_to_remove =[]], [solver_types_to_report=[]])
+test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], [solver_types_to_remove =[]], [solver_types_to_report=[]], [base_dir="$(@__DIR__)/../../"], [write_failed_dir=""])
 
     Run a set of benchmarks on a query file given by file_name.
     Compares results for consistency, but has no ground truth to compare against.
@@ -588,18 +587,19 @@ test_query_file(file_name::String; [solvers = []], [solver_types_allowed = []], 
     Will filter the set of available solvers by type using solver_types_allowed ans solver_types_to_remove.
     Will use a default list unless a solvers list is given
     Solver types to report tells which tests to report back for easier interpretation of the results if you're
-    just debugginig a certain solver
+    just debugginig a certain solver.
+
+    base_dir is used to read the query_file. It will append this base_dir to each file read from the query file.
 
 """
-
-function test_query_file(file_name::String; all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[], write_failed_dir="")
+function test_query_file(file_name::String; all_solvers = [], solver_types_allowed=[], solver_types_to_remove=[], solver_types_to_report=[], base_dir="$(@__DIR__)/../../", write_failed_dir="")
     path, file = splitdir(file_name)
     @testset "Correctness Tests on $(file)" begin
         queries = readlines(file_name)
         for (index, line) in enumerate(queries)
             println("Testing on line $(index): ", line)
             @testset "Test on line: $index" begin
-                problem = query_line_to_problem(line; base_dir="$(@__DIR__)/../../")
+                problem = query_line_to_problem(line; base_dir=base_dir)
                 solvers = get_valid_solvers(problem; solvers=all_solvers, solver_types_allowed=solver_types_allowed, solver_types_to_remove=solver_types_to_remove=solver_types_to_remove)
                 # Skip the line if you won't report it - assume no solvers to report
                 # corresponds to reporting all solvers
@@ -647,7 +647,7 @@ function test_query_file(file_name::String; all_solvers = [], solver_types_allow
                     # Just sees if each pair agrees
                     # if one or both return unknown then we can't make a comparison
                     tested_line = false
-                    error_in_line = true
+                    error_in_line = false
 
                     for (i, j) in [(i, j) for i = 1:length(solvers) for j = (i+1):length(solvers)]
                         if (length(solver_types_to_report) == 0) || (solvers[i] isa Union{solver_types_to_report...}) || (solvers[j] isa Union{solver_types_to_report...})
