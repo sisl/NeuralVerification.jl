@@ -23,6 +23,20 @@ Identity operator
 struct Id <: ActivationFunction end
 
 """
+    Sigmoid <: ActivationFunction
+
+    (Sigmoid())(x) -> 1 ./ (1 .+ exp.(-x))
+"""
+struct Sigmoid <: ActivationFunction end
+
+"""
+    Tanh <: ActivationFunction
+
+    (Tanh())(x) -> tanh.(x)
+"""
+struct Tanh <: ActivationFunction end
+
+"""
     GeneralAct <: ActivationFunction
 Wrapper type for a general activation function.
 
@@ -103,5 +117,7 @@ end
 (f::ReLU)(x) = max.(x, zero(eltype(x)))
 (f::Max)(x) = max(maximum(x), zero(eltype(x)))
 (f::Id)(x) = x
+(f::Sigmoid)(x) = @. 1 / (1 + exp(-x))
+(f::Tanh)(x) = tanh.(x)
 (G::GeneralAct)(x) = G.f(x)
 (PL::PiecewiseLinear)(x) = PL.f(x)

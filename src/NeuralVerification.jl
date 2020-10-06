@@ -46,6 +46,8 @@ export
     # ReLU,
     # Max,
     # Id,
+    # Sigmoid,
+    # Tanh,
     GeneralAct,
     PiecewiseLinear,
     Problem,
