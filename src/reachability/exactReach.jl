@@ -29,18 +29,19 @@ function solve(solver::ExactReach, problem::Problem)
     return check_inclusion(reach, problem.output)
 end
 
-forward_layer(solver::ExactReach, layer::Layer, input) = forward_layer(solver, layer, convert(HPolytope, input))
+# Forward_linear that coverts the input to HPolytope
+forward_linear(solver::ExactReach, L::Layer, input) = forward_linear(solver, L, convert(HPolytope, input))
 
-function forward_layer(solver::ExactReach, layer::Layer, input::Vector{<:HPolytope})
+# Forward linear for a single polytope and a list of polytopes
+forward_linear(solver::ExactReach, L::Layer, input::HPolytope) = affine_map(L, input)
+forward_linear(solver::ExactReach, L::Layer, input::Vector{<:HPolytope}) = [affine_map(L, set) for set in input]
+
+# Forward act for a single polytope and a list of polytopes
+forward_act(solver::ExactReach, L::Layer, input::HPolytope) = forward_partition(L.activation, input)
+function forward_act(solver::ExactReach, L::Layer, input::Vector{<:HPolytope})
     output = Vector{HPolytope}(undef, 0)
     for i in 1:length(input)
-        input[i] = affine_map(layer, input[i])
-        append!(output, forward_partition(layer.activation, input[i]))
+        append!(output, forward_partition(L.activation, input[i]))
     end
     return output
-end
-
-function forward_layer(solver::ExactReach, layer::Layer, input::HPolytope)
-    input = affine_map(layer, input)
-    return forward_partition(layer.activation, input)
 end

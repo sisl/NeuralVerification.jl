@@ -55,34 +55,22 @@ function solve(solver::Ai2, problem::Problem)
     return check_inclusion(reach, problem.output)
 end
 
-forward_layer(solver::Ai2, L::Layer, inputs::Vector) = forward_layer.(solver, L, inputs)
+# Ai2h and Ai2z use affine_map
+# Box uses approximate_affine_map for the linear region if it is propagating a zonotope
+forward_linear(solver::Ai2h, L::Layer{ReLU}, input::AbstractPolytope) = affine_map(L, input)
+forward_linear(solver::Ai2z, L::Layer{ReLU}, input::AbstractZonotope) = affine_map(L, input)
+forward_linear(solver::Box, L::Layer{ReLU}, input::AbstractZonotope) = approximate_affine_map(L, input)
+# method for Zonotope and Hyperrectangle, if the input set isn't a Zonotope overapproximate
+forward_linear(solver::Union{Ai2z, Box}, L::Layer{ReLU}, input::AbstractPolytope) = forward_linear(solver, L, overapproximate(input, Hyperrectangle))
 
-function forward_layer(solver::Ai2h, L::Layer{ReLU}, input::AbstractPolytope)
-    Ẑ = affine_map(L, input)
-    relued_subsets = forward_partition(L.activation, Ẑ) # defined in reachability.jl
-    return convex_hull(UnionSetArray(relued_subsets))
-end
+# Forward_act is different for Ai2h, Ai2z and Box
+forward_act(solver::Ai2h, L::Layer{ReLU}, Ẑ::AbstractPolytope) = convex_hull(UnionSetArray(forward_partition(L.activation, Ẑ)))
+forward_act(solver::Ai2z, L::Layer{ReLU}, Ẑ::AbstractZonotope) = overapproximate(Rectification(Ẑ), Zonotope)
+forward_act(slver::Box, L::Layer{ReLU}, Ẑ::AbstractPolytope) = rectify(Ẑ)
 
-# method for Zonotope and Hyperrectangle, if the input set isn't a Zonotope
-function forward_layer(solver::Union{Ai2z, Box}, L::Layer{ReLU}, input::AbstractPolytope)
-    return forward_layer(solver, L, overapproximate(input, Hyperrectangle))
-end
-
-function forward_layer(solver::Ai2z, L::Layer{ReLU}, input::AbstractZonotope)
-    Ẑ = affine_map(L, input)
-    return overapproximate(Rectification(Ẑ), Zonotope)
-end
-
-
-function forward_layer(solver::Box, L::Layer{ReLU}, input::AbstractZonotope)
-    Ẑ = approximate_affine_map(L, input)
-    return rectify(Ẑ)
-end
-
-function forward_layer(solver::Ai2, L::Layer{Id}, input)
-    return affine_map(L, input)
-end
-
+# For ID activation do an affine map for all methods
+forward_linear(solver::Ai2, L::Layer{Id}, input::AbstractPolytope) = affine_map(L, input)
+forward_act(solver::Ai2, L::Layer{Id}, input::AbstractPolytope) = input
 
 function convex_hull(U::UnionSetArray{<:Any, <:HPolytope})
     tohrep(VPolytope(LazySets.convex_hull(U)))
