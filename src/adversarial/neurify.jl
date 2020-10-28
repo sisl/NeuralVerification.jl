@@ -53,7 +53,9 @@ function solve(solver::Neurify, problem::Problem)
             domain, splits = select!(reach_list, solver.tree_search)
         end
 
-        reach = forward_network(solver, nnet, domain)
+        reach = forward_network(solver, nnet, domain, collect=true)
+        # The first entry is the input set
+        popfirst!(reach)
         result, max_violation_con = check_inclusion(solver, nnet, last(reach).sym, output)
 
         if result.status === :violated
@@ -195,33 +197,22 @@ function get_max_nodewise_influence(nnet::Network,
     return (i_max, j_max, influence_max)
 end
 
-
-
-function forward_network(solver::Neurify, network::Network, input)
-    forward_network(solver, network, init_symbolic_grad(input))
-end
-function forward_network(solver::Neurify, network::Network, input::SymbolicIntervalGradient)
-    reachable = [input = forward_layer(solver, L, input) for L in network.layers]
-    return reachable
-end
-
-
-function forward_layer(solver::Neurify, layer::Layer, input)
-    return forward_act(solver, forward_linear(solver, input, layer), layer)
+function forward_network(solver::Neurify, network::Network, input::HPolytope)
+    return forward_network(solver, network, init_symbolic_grad(input))
 end
 
 # Symbolic forward_linear
-function forward_linear(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer)
-    output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
-    output_Up[:, end] += layer.bias
-    output_Low[:, end] += layer.bias
+function forward_linear(solver::Neurify, L::Layer, input::SymbolicIntervalGradient)
+    output_Low, output_Up = interval_map(L.weights, input.sym.Low, input.sym.Up)
+    output_Up[:, end] += L.bias
+    output_Low[:, end] += L.bias
     sym = SymbolicInterval(output_Low, output_Up, domain(input))
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
-function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{ReLU})
-    n_node = n_nodes(layer)
+function forward_act(solver::Neurify, L::Layer{ReLU}, input::SymbolicIntervalGradient)
+    n_node = n_nodes(L)
     output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
     LΛᵢ, UΛᵢ = zeros(n_node), ones(n_node)
     # Symbolic linear relaxation
@@ -246,8 +237,8 @@ function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::La
     return SymbolicIntervalGradient(sym, LΛ, UΛ)
 end
 
-function forward_act(solver::Neurify, input::SymbolicIntervalGradient, layer::Layer{Id})
-    n_node = n_nodes(layer)
+function forward_act(solver::Neurify, L::Layer{Id}, input::SymbolicIntervalGradient)
+    n_node = n_nodes(L)
     LΛ = push!(input.LΛ, ones(n_node))
     UΛ = push!(input.UΛ, ones(n_node))
     return SymbolicIntervalGradient(input.sym, LΛ, UΛ)

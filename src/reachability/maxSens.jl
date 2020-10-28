@@ -38,12 +38,12 @@ function solve(solver::MaxSens, problem::Problem)
     return check_inclusion(outputs, problem.output)
 end
 
-# This function is called by forward_network
-function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
-    output = approximate_affine_map(L,  input)
-    β    = L.activation.(output.center)
-    βmax = L.activation.(high(output))
-    βmin = L.activation.(low(output))
+# These functions are called by forward_network
+forward_linear(solver::MaxSens, L::Layer, input::Hyperrectangle) = approximate_affine_map(L,  input)
+function forward_act(solver::MaxSens, L::Layer, input::Hyperrectangle)
+    β    = L.activation.(input.center)
+    βmax = L.activation.(high(input))
+    βmin = L.activation.(low(input))
 
     if solver.tight
         center = (βmax + βmin)/2
@@ -54,7 +54,6 @@ function forward_layer(solver::MaxSens, L::Layer, input::Hyperrectangle)
     end
     return Hyperrectangle(center, rad)
 end
-
 
 function partition(input::Hyperrectangle, Δ)
     # treat radius = 0 as a flag not to partition the input set at all.
@@ -88,5 +87,5 @@ end
 
 function partition(input::HPolytope, delta::Float64)
     @info "MaxSens overapproximates HPolytope input sets as Hyperrectangles."
-    partition(overapproximate(input), delta)
+    partition(LazySets.overapproximate(input), delta)
 end

@@ -11,7 +11,7 @@ and max_weight and min_bias and max_bias respectively. The last layer will have 
 activation function and the rest will have ReLU() activation functions. Allow a random number
 generator(rng) to be passed in. This allows for seeded random network generation.
 """
-function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister(0))
+function make_random_network(layer_sizes::Vector{Int}; min_weight = -1.0, max_weight = 1.0, min_bias = -1.0, max_bias = 1.0, rng=MersenneTwister(0))
     # Create each layer based on the layer_size
     layers = []
     for index in 1:(length(layer_sizes)-1)
@@ -32,6 +32,6 @@ function make_random_network(layer_sizes::Vector{Int}, min_weight = -1.0, max_we
         cur_bias = min_bias .+ (max_bias - min_bias) * rand(rng, Float64, (next_size))
         push!(layers, NeuralVerification.Layer(cur_weights, cur_bias, cur_activation))
     end
-    
+
     return Network(layers)
 end

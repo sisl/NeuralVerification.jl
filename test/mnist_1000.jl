@@ -5,7 +5,7 @@ let
     violation_idx = [25, 142, 179, 183, 283, 285, 387, 392, 612, 647, 737]
     # index of selected holding cases in the first 1000 images.
     satisfied_idx = [10, 100, 200, 300, 400, 500 ,600, 700, 800, 900, 999, 213, 391, 660, 911]
-    @load "MNIST_1000.jld2" train_x train_y mnist_net
+    @load "$(@__DIR__)/MNIST_1000.jld2" train_x train_y mnist_net
 
     function test_solver(solver, test_idx)
         for i in test_idx

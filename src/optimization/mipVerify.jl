@@ -35,7 +35,7 @@ function solve(solver::MIPVerify, problem::Problem)
     z = init_vars(model, problem.network, :z, with_input=true)
     δ = init_vars(model, problem.network, :δ, binary=true)
     # get the pre-activation bounds:
-    model[:bounds] = get_bounds(problem, false)
+    model[:bounds] = get_bounds(problem, before_act=true)
     model[:before_act] = true
 
     add_set_constraint!(model, problem.input, first(z))

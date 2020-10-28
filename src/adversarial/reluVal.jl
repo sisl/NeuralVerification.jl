@@ -85,24 +85,23 @@ function check_inclusion(reach::SymbolicInterval{<:Hyperrectangle}, output, nnet
     return CounterExampleResult(:unknown)
 end
 
-function forward_layer(solver::ReluVal, layer::Layer, input)
-    return forward_act(solver, forward_linear(solver, input, layer), layer)
+function forward_network(solver::ReluVal, network::Network, input::Hyperrectangle)
+    return forward_network(solver, network, init_symbolic_mask(input))
 end
 
 # Symbolic forward_linear
-function forward_linear(solver::ReluVal, input::SymbolicIntervalMask, layer::Layer)
-    output_Low, output_Up = interval_map(layer.weights, input.sym.Low, input.sym.Up)
-    output_Up[:, end] += layer.bias
-    output_Low[:, end] += layer.bias
+function forward_linear(solver::ReluVal, L::Layer, input::SymbolicIntervalMask)
+    output_Low, output_Up = interval_map(L.weights, input.sym.Low, input.sym.Up)
+    output_Up[:, end] += L.bias
+    output_Low[:, end] += L.bias
     sym = SymbolicInterval(output_Low, output_Up, domain(input))
     return SymbolicIntervalGradient(sym, input.LΛ, input.UΛ)
 end
 
 # Symbolic forward_act
-function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
-
+function forward_act(::ReluVal, L::Layer{ReLU},  input::SymbolicIntervalMask)
     output_Low, output_Up = copy(input.sym.Low), copy(input.sym.Up)
-    n_node = n_nodes(layer)
+    n_node = n_nodes(L)
     LΛᵢ, UΛᵢ = falses(n_node), trues(n_node)
 
     for j in 1:n_node
@@ -139,7 +138,7 @@ function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{ReLU})
 end
 
 # Symbolic forward_act
-function forward_act(::ReluVal, input::SymbolicIntervalMask, layer::Layer{Id})
+function forward_act(::ReluVal, L::Layer{Id}, input::SymbolicIntervalMask)
     n_node = size(input.sym.Up, 1)
     LΛ = push!(input.LΛ, trues(n_node))
     UΛ = push!(input.UΛ, trues(n_node))
