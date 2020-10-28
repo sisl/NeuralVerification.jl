@@ -72,6 +72,19 @@ function backprop!(v::Vector{Float64}, u::Vector{Float64}, l::Vector{Float64})
     return o
 end
 
+function get_bounds(solver::ConvDual, nnet::Network, input::Hyperrectangle; before_act::Bool=true)
+    # only supports pre-activation bounds for now
+    @assert before_act == true "ConvDual get_bounds only currently supports pre-activation bounds"
+    # only supports hypercubes in this implementation
+    @assert all(input.radius[1] .== input.radius)
+    L, U = get_bounds(nnet, input.center, input.radius[1])
+    # add the bounds from the input set
+    pushfirst!(L, low(input))
+    pushfirst!(U, high(input))
+    # convert convdual's bounds into hyperrectangles
+    return [Hyperrectangle(low=L[i], high=U[i]) for i = 1:length(L)]
+end
+
 # Forward_network and forward_layer:
 # This step is similar to reachability method
 function get_bounds(nnet::Network, input::Vector{Float64}, ϵ::Float64)

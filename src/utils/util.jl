@@ -166,7 +166,7 @@ return Vector{Vector{Int64}}.
 - -1: not activated
 """
 function get_activation(nnet::Network, input::Hyperrectangle)
-    bounds = get_bounds(nnet, input)
+    bounds = get_bounds(nnet, input, false)
     return get_activation(nnet, bounds)
 end
 
@@ -174,7 +174,8 @@ end
     get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
 
 Given a network, find the activation pattern of all neurons given the node-wise bounds.
-Assume ReLU.
+Assume ReLU. Assume pre-activation bounds where the bounds on the input are given by the first
+hyperrectangle, the first hidden layer by the second hyperrectangle, and so on.
 return Vector{Vector{Int64}}.
 - 1: activated
 - 0: undetermined
@@ -183,15 +184,24 @@ return Vector{Vector{Int64}}.
 function get_activation(nnet::Network, bounds::Vector{Hyperrectangle})
     act_pattern = Vector{Vector{Int}}(undef, length(nnet.layers))
     for (i, layer) in enumerate(nnet.layers)
-        act_pattern[i] = get_activation(layer, bounds[i])
+        act_pattern[i] = get_activation(layer, bounds[i+1])
     end
     return act_pattern
 end
 
+"""
+    get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
+
+Given a layer, find the activation pattern of all neurons in the layer given the node-wise bounds.
+Assume ReLU. Assume bounds is the pre-activation bounds for each ReLU in the layer.
+return Vector{Vector{Int64}}.
+- 1: activated
+- 0: undetermined
+- -1: not activated
+"""
 function get_activation(L::Layer{ReLU}, bounds::Hyperrectangle)
-    before_act_bound = approximate_affine_map(L, bounds)
-    lower = low(before_act_bound)
-    upper = high(before_act_bound)
+    lower = low(bounds)
+    upper = high(bounds)
     act_pattern = zeros(n_nodes(L))
     for j in 1:n_nodes(L) # For evey node
         if lower[j] > 0.0
@@ -253,7 +263,7 @@ Return:
 """
 function act_gradient_bounds(nnet::Network, input::AbstractPolytope)
     # get the pre-activation bounds, and get rid of the input set
-    bounds = get_bounds(nnet, input, false)
+    bounds = get_bounds(nnet, input, before_act=true)
     popfirst!(bounds)
 
     LΛ = Vector{BitVector}(undef, 0)
@@ -316,23 +326,23 @@ argument determines whether the bounds are pre- or post-activation.
 Return:
 - `Vector{Hyperrectangle}`: bounds for all nodes. `bounds[1]` is the input set.
 """
-function get_bounds(nnet::Network, input, act::Bool = true) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
-    input = overapproximate(input)
+function get_bounds(nnet::Network, input; before_act::Bool = false) # NOTE there is another function by the same name in convDual. Should reconsider dispatch
+    input = overapproximate(input, Hyperrectangle)
     bounds = Vector{Hyperrectangle}(undef, length(nnet.layers) + 1)
     bounds[1] = input
     b = input
     for (i, layer) in enumerate(nnet.layers)
-        if act
-            b = approximate_affine_map(layer, bounds[i])
-            bounds[i+1] = approximate_act_map(layer, b)
-        else
+        if before_act
             bounds[i+1] = approximate_affine_map(layer, b)
             b = approximate_act_map(layer, bounds[i+1])
+        else
+            b = approximate_affine_map(layer, bounds[i])
+            bounds[i+1] = approximate_act_map(layer, b)
         end
     end
     return bounds
 end
-get_bounds(problem::Problem, args...) = get_bounds(problem.network, problem.input, args...)
+get_bounds(problem::Problem; kwargs...) = get_bounds(problem.network, problem.input; kwargs...)
 
 """
     affine_map(layer, x)

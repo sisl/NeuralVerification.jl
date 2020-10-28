@@ -63,6 +63,6 @@ function set_automatic_M(problem)
     # Compute the largest pre-activation bound absolute value.
     # M must be larger than any value a variable in the problem
     # can take.
-    bounds = get_bounds(problem, false)
+    bounds = get_bounds(problem; before_act = true)
     M = maximum(abs, Iterators.flatten(abs.(hr.center) + hr.radius for hr in bounds))
 end
