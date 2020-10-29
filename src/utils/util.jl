@@ -420,3 +420,7 @@ function isbounded(input)
         return LazySets.isbounded(input)
     end
 end
+
+
+is_hypercube(set::Hyperrectangle) = all(iszero.(set.radius .- set.radius[1]))
+is_halfspace_equivalent(set) = length(constraints_list(set)) == 1
