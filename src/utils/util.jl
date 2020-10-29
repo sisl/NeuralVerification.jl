@@ -166,7 +166,7 @@ return Vector{Vector{Int64}}.
 - -1: not activated
 """
 function get_activation(nnet::Network, input::Hyperrectangle)
-    bounds = get_bounds(nnet, input, false)
+    bounds = get_bounds(nnet, input, before_act = true)
     return get_activation(nnet, bounds)
 end
 
