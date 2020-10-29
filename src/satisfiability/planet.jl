@@ -53,14 +53,13 @@ function init_ψ(nnet::Network, bounds::Vector{Hyperrectangle})
     ψ = Vector{Vector{Int64}}()
     index = 0
     for i in 1:length(bounds)-1
-        index = set_activation_pattern!(ψ, nnet.layers[i], bounds[i], index)
+        index = set_activation_pattern!(ψ, nnet.layers[i], bounds[i+1], index)
     end
     return ψ
 end
 function set_activation_pattern!(ψ::Vector{Vector{Int64}}, L::Layer{ReLU}, bound::Hyperrectangle, index::Int64)
-    before_act_bound = approximate_affine_map(L, bound)
-    lower = low(before_act_bound)
-    upper = high(before_act_bound)
+    lower = low(bound)
+    upper = high(bound)
     for j in 1:length(lower)
         index += 1
         lower[j] > 0 && push!(ψ, [index])
@@ -132,33 +131,39 @@ function max_slack(x::Vector{<:Vector}, act)
     return (m, index)
 end
 
-# Only use tighten_bounds for feasibility check
-function tighten_bounds(problem::Problem, optimizer)
+function tighten_bounds(problem::Problem, optimizer;
+                        bounds::Vector{<:Hyperrectangle} = get_bounds(problem, before_act=true),
+                        encoding = TriangularRelaxedLP())
+    bounds = copy(bounds)
     model = Model(optimizer)
-    model[:bounds] = bounds = get_bounds(problem)
-    z = init_vars(model, problem.network, :z, with_input=true)
+    init_model_vars(model, problem, encoding, bounds=bounds, before_act=true)
+    z = model[:z]
     add_set_constraint!(model, problem.input, first(z))
-    add_complementary_set_constraint!(model, problem.output, last(z))
-    encode_network!(model, problem.network, TriangularRelaxedLP())
-
-    new_bounds = Vector{Hyperrectangle}(undef, length(z))
-    for i in 1:length(z)
-        lower = low(bounds[i])
-        upper = high(bounds[i])
-        for j in 1:length(z[i])
-            zᵢⱼ = z[i][j]
-            @objective(model, Min, zᵢⱼ)
-            optimize!(model)
-            termination_status(model) == OPTIMAL || return (INFEASIBLE, bounds)
-            lower[j] = value(zᵢⱼ)
-
-            @objective(model, Max, zᵢⱼ)
-            optimize!(model)
-            upper[j] = value(zᵢⱼ)
-        end
-        new_bounds[i] = Hyperrectangle(low = lower, high = upper)
+    if (problem.output != nothing)
+        add_complementary_set_constraint!(model, problem.output, last(z))
     end
-    return (OPTIMAL, new_bounds)
+    encode_network!(model, problem.network, encoding)
+    for i in 2:length(z)
+        layer = problem.network.layers[i-1]
+        ẑᵢ₊₁ = affine_map(layer, z[i-1])
+        l̂, û = low(bounds[i]), high(bounds[i])
+        for j in 1:length(ẑᵢ₊₁)
+            # Find the lower bound
+            @objective(model, Min, ẑᵢ₊₁[j])
+            optimize!(model)
+            # If it is unsatisfiable, return
+            termination_status(model) == OPTIMAL || return (INFEASIBLE, model[:bounds])
+            l̂[j] = value(ẑᵢ₊₁[j])
+            # Find the upper bound
+            @objective(model, Max, ẑᵢ₊₁[j])
+            optimize!(model)
+            û[j] = value(ẑᵢ₊₁[j])
+        end
+        # Re-encode the model
+        model[:bounds][i] = Hyperrectangle(low=l̂, high=û)
+        encode_layer!(encoding, model, i-1)
+    end
+    return (OPTIMAL, model[:bounds])
 end
 
 

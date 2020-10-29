@@ -1,14 +1,63 @@
-# General structure for reachability methods
+##### General structure for reachability methods #####
 
 # Performs layer-by-layer propagation
 # It is called by all solvers under reachability
 # TODO: also called by ReluVal and FastLin, so move to general utils (or to network.jl)
-function forward_network(solver, nnet::Network, input)
-    reach = input
-    for layer in nnet.layers
-        reach = forward_layer(solver, layer, reach)
+# collect_f is a fcn mapping from a tuple of the pre-activation and
+# post-activation reachable sets for a layer to the desired object to be collected.
+# It defaults to last which collects the post-activation reachable sets.
+# Overapproximation can be incorporated into this collection function
+function forward_network(solver, nnet, input;
+                         collect=false, before_act=false, transformation=identity)
+
+    if collect
+        f = before_act ? first : last
+        return _forward_network_collect(solver, nnet, input, transformation∘f)
+    else
+        @assert !before_act && transformation == identity "before_act and transformation are only supported for `collect=true`"
+        return _forward_network(solver, nnet, input)
     end
-    return reach
+end
+
+# these two functions can instead just be exposed without the leading "_",
+function _forward_network(solver, nnet, input)
+    Z = input
+    for layer in nnet.layers
+        Ẑ, Z = forward_layer(solver, layer, Z)
+    end
+    return Z
+end
+
+function _forward_network_collect(solver,
+                                  nnet,
+                                  input,
+                                  collect_f=last)
+    zs = (input, input)
+    elem = collect_f(zs)
+    collected = [(zs = forward_layer(solver, l, zs[2]); collect_f(zs))
+                 for l in nnet.layers]
+    return [elem; collected]
+end
+
+# Get bounds from the reachable set propagated by a solver
+function get_bounds(solver, nnet, input; before_act=false)
+    f = before_act ? first : last
+    # Collect the bounds for any solver.
+    # If we have a list of objects then we wrap
+    # them in a ConvexHullArray to perform the overapproximation
+    function overapprox(set)
+        if set isa AbstractVector
+            return overapproximate(ConvexHullArray(set), Hyperrectangle)
+        end
+        return overapproximate(set, Hyperrectangle)
+    end
+    return _forward_network_collect(solver, nnet, input, overapprox∘f)
+end
+
+function forward_layer(solver, layer, reach)
+    Ẑ = forward_linear(solver, layer, reach)
+    Z = forward_act(solver, layer, Ẑ)
+    return Ẑ, Z
 end
 
 # Checks whether the reachable set belongs to the output constraint
@@ -45,10 +94,7 @@ function forward_partition(act::ReLU, input)
     return output
 end
 
-
-
 ###################### For ReluVal and Neurify ######################
-
 struct SymbolicInterval{F<:AbstractPolytope}
     Low::Matrix{Float64}
     Up::Matrix{Float64}
@@ -82,8 +128,6 @@ function init_symbolic_mask(interval)
     _init_symbolic_grad_general(interval, Bool)
 end
 
-
-
 domain(sym::SymbolicInterval) = sym.domain
 domain(grad::SymbolicIntervalGradient) = domain(grad.sym)
 _sym(sym::SymbolicInterval) = sym
@@ -114,3 +158,6 @@ LazySets.low(sym::_SymIntOrGrad) = [lower_bound(lower(sym), j) for j in 1:dim(sy
 function radius(sym::_SymIntOrGrad, j::Integer)
     upper_bound(upper(sym), j) - lower_bound(lower(sym), j)
 end
+
+# Define overapproximate for SymbolicIntervalMasks and SymbolicIntervalGradients
+LazySets.overapproximate(set::_SymIntOrGrad, ::Type{Hyperrectangle}) = Hyperrectangle(low=low(set), high=high(set))
