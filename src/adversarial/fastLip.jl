@@ -35,9 +35,14 @@ end
 FastLin(S::FastLip) = FastLin(S.maxIter, S.ϵ0, S.accuracy)
 
 function solve(solver::FastLip, problem::Problem)
-    c, d = tosimplehrep(convert(HPolytope, problem.output))
+    @assert is_hypercube(problem.input) "FastLip only accepts hypercube input constraints."
+    @assert is_halfspace_equivalent(problem.output) "FastLip only accepts HalfSpace output constraints."
+
+    output = first(constraints_list(problem.output))
+    c, d = output.a, output.b
+
     y = compute_output(problem.network, problem.input.center)
-    o = (c * y - d)[1]
+    o = c' * y - d
     if o > 0
         return AdversarialResult(:violated, -o)
     end
@@ -54,7 +59,7 @@ function solve(solver::FastLip, problem::Problem)
     # end
     # v = max.(abs.(C+L), abs.(C+U))
 
-    a, b = interval_map(c, LG, UG)
+    a, b = interval_map(c', LG, UG)
     v = max.(abs.(a), abs.(b))
     ϵ = min(-o/sum(v), ϵ_fastLin)
 
