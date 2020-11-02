@@ -34,6 +34,8 @@ Sound but not complete.
 end
 
 function solve(solver::FastLin, problem::Problem)
+    @assert is_hypercube(problem.input)
+
     ϵ_upper = 2 * max(solver.ϵ0, maximum(problem.input.radius))
     ϵ = fill(maximum(problem.input.radius), solver.maxIter+1)
     ϵ_lower = 0.0
