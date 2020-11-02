@@ -35,9 +35,10 @@ function solve(solver::ConvDual, problem::Problem)
 end
 
 # compute lower bound of the dual problem.
-function dual_value(solver::ConvDual, network::Network, input::Hyperrectangle{N}, output::HPolytope{N}) where N
+function dual_value(solver::ConvDual, network::Network, input::Hyperrectangle, output)
 
-    @assert all(iszero.(input.radius .- input.radius[1])) "input.radius must be uniform. Got $(input.radius)"
+    @assert is_hypercube(input) "ConvDual only accepts hypercube input constraints."
+    @assert is_halfspace_equivalent(output) "ConvDual only accepts HalfSpace output contraints"
 
     layers = network.layers
     L, U  = get_bounds(network, input.center, input.radius[1])

@@ -28,10 +28,11 @@ Sound but not complete.
 end
 
 function solve(solver::Duality, problem::Problem)
+
+    @assert is_halfspace_equivalent(problem.output) "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
+
     model = Model(solver)
     c, d = tosimplehrep(problem.output)
-
-    @assert length(d) == 1 "Duality only accepts HalfSpace output sets. Got a $(length(d))-d polytope."
     d = d[1]
 
     λ = init_vars(model, problem.network, :λ)
