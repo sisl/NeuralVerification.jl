@@ -74,3 +74,8 @@ julia> result.status
 ```
 
 For a full list of `Solvers` and their properties, requirements, and `Result` types, please refer to the documentation.
+
+## Example Use Cases
+### CARS Workshop
+
+Head to https://github.com/sisl/NeuralVerification-CARS-Workshop for the material used at the NeuralVerification workshop held at the Stanford Center for Automotive research. Where NeuralVerification.jl was used to verify image classification networks and air collision avoidance systems among some other examples.
