@@ -13,13 +13,16 @@ macro no_error(ex)
     end
 end
 
-small_nnet_file = "$(@__DIR__)/../examples/networks/small_nnet.nnet"
-small_nnet_id_file = "$(@__DIR__)/../examples/networks/small_nnet_id.nnet"
 
-mnist1_file = "$(@__DIR__)/../examples/networks/mnist1.nnet"
-mnist2_file = "$(@__DIR__)/../examples/networks/mnist2.nnet"
-mnist3_file = "$(@__DIR__)/../examples/networks/mnist3.nnet"
-mnist4_file = "$(@__DIR__)/../examples/networks/mnist4.nnet"
+net_path = joinpath(@__DIR__, "../../examples/networks/")
+
+small_nnet_file = net_path * "small_nnet.nnet"
+small_nnet_id_file = net_path * "small_nnet_id.nnet"
+
+mnist1_file = net_path * "mnist1.nnet"
+mnist2_file = net_path * "mnist2.nnet"
+mnist3_file = net_path * "mnist3.nnet"
+mnist4_file = net_path * "mnist4.nnet"
 
 small_nnet  = read_nnet(small_nnet_file, last_layer_activation = ReLU())
 small_nnet_id  = read_nnet(small_nnet_id_file, last_layer_activation = Id())
@@ -98,7 +101,7 @@ print("\n\n\n")
 #print(" - Output: ")
 #print(timed_result[1])
 
-# TIMES OUT 
+# TIMES OUT
 #solver = Ai2()
 #print("Ai2 - mnist1")
 #timed_result =@timed solve(solver, problem_mnist)
@@ -128,7 +131,7 @@ print("\n\n\n")
 #print(" - Output: ")
 #print(timed_result[1])
 
-# TIMES OUT 
+# TIMES OUT
 #solver = Ai2()
 #print("Ai2 - mnist1")
 #timed_result =@timed solve(solver, problem_mnist2)
@@ -157,7 +160,7 @@ print("\n\n\n")
 #print(" - Output: ")
 #print(timed_result[1])
 
-# TIMES OUT 
+# TIMES OUT
 #solver = Ai2()
 #print("Ai2 - mnist1")
 #timed_result =@timed solve(solver, problem_mnist3)
@@ -188,7 +191,7 @@ print("\n\n\n")
 #print(" - Output: ")
 #print(timed_result[1])
 
-# TIMES OUT 
+# TIMES OUT
 
 #solver = Ai2()
 #print("Ai2 - mnist1")
@@ -212,13 +215,13 @@ println("###### Network: acas                                    ######")
 print("\n\n\n")
 
 #acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_1_1_tiny_4.nnet"
-acas_file = "$(@__DIR__)/../examples/networks/ACASXU_run2a_4_5_batch_2000.nnet"
+acas_file = net_path * "ACASXU_run2a_4_5_batch_2000.nnet"
 #ACASXU_run2a_4_5_batch_2000.nnet
 
 acas_nnet = read_nnet(acas_file, last_layer_activation = Id())
 
 # ACAS PROPERTY 10 - modified
-# Original input range: 
+# Original input range:
 # LOWER BOUND: array([[ 0.21466922,  0.11140846, -0.4999999 ,  0.3920202 ,  0.15      ]])
 # UPPER BOUND: array([[ 0.58819589,  0.4999999 , -0.49840835,  0.66474747,  0.65      ]])
 A0 = Matrix{Float64}(I, 5, 5)
