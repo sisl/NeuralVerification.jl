@@ -1,7 +1,7 @@
 
 @testset "Id Last Layer" begin
 
-    small_nnet_file = "$(@__DIR__)/../examples/networks/small_nnet_id.nnet"
+    small_nnet_file = net_path * "small_nnet_id.nnet"
 
     small_nnet = read_nnet(small_nnet_file, last_layer_activation = Id())
 
@@ -68,7 +68,7 @@
 
     @testset "Certify" begin
         ### Certify - only works for single hidden layer
-        tiny_nnet = read_nnet("$(@__DIR__)/../examples/networks/tiny_nnet.nnet")
+        tiny_nnet = read_nnet(net_path * "tiny_nnet.nnet")
         solver_certify = Certify()
         in_set  = Hyperrectangle([2.0], [.5])
         out_set = HPolytope(ones(1,1), [2.5])
