@@ -75,28 +75,24 @@ include("optimization/duality.jl")
 include("optimization/certify.jl")
 include("optimization/iLP.jl")
 include("optimization/mipVerify.jl")
-export NSVerify, ConvDual, Duality, Certify, ILP, MIPVerify
+include("optimization/bab.jl")
+include("optimization/sherlock.jl")
+include("optimization/reluplex.jl")
+include("optimization/planet.jl")
+export NSVerify, ConvDual, Duality, Certify, ILP, MIPVerify,
+       BaB, Sherlock, Reluplex, Planet
 
 include("reachability/utils/reachability.jl")
 include("reachability/exactReach.jl")
 include("reachability/maxSens.jl")
 include("reachability/ai2.jl")
-export ExactReach, MaxSens, Ai2, Ai2h, Ai2z, Box
-
-include("satisfiability/bab.jl")
-include("satisfiability/sherlock.jl")
-include("satisfiability/reluplex.jl")
-export BaB, Sherlock, Reluplex
-
-include("satisfiability/planet.jl")
-export Planet
-
-include("adversarial/reluVal.jl")
-include("adversarial/neurify.jl")
-include("adversarial/fastLin.jl")
-include("adversarial/fastLip.jl")
-include("adversarial/dlv.jl")
-export ReluVal, Neurify, FastLin, FastLip, DLV
+include("reachability/reluVal.jl")
+include("reachability/neurify.jl")
+include("reachability/fastLin.jl")
+include("reachability/fastLip.jl")
+include("reachability/dlv.jl")
+export ExactReach, MaxSens, Ai2, Ai2h, Ai2z, Box,
+       ReluVal, Neurify, FastLin, FastLip, DLV
 
 const TOL = Ref(sqrt(eps()))
 set_tolerance(x::Real) = (TOL[] = x)
