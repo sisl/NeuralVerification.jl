@@ -14,7 +14,7 @@ macro no_error(ex)
     end
 end
 
-net_path = joinpath(@__DIR__, "../examples/networks/")
+net_path = joinpath(@__DIR__, "networks/")
 
 include("identity_network.jl")
 include("relu_network.jl")

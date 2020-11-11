@@ -12,7 +12,7 @@ macro no_error(ex)
     end
 end
 
-net_path = joinpath(@__DIR__, "../../examples/networks/")
+net_path = joinpath(@__DIR__, "../networks/")
 
 # Problem type - input:Hyperrectangle, output:Hyperrectangle
 print("###### Problem type - input:Hyperrectangle, output:Hyperrectangle ######\n")

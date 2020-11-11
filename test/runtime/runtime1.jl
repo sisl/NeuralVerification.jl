@@ -14,7 +14,7 @@ macro no_error(ex)
 end
 
 
-net_path = joinpath(@__DIR__, "../../examples/networks/")
+net_path = joinpath(@__DIR__, "../networks/")
 
 small_nnet_file = net_path * "small_nnet.nnet"
 small_nnet_id_file = net_path * "small_nnet_id.nnet"
