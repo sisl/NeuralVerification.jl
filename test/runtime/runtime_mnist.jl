@@ -1,10 +1,7 @@
 using NeuralVerification, LazySets, Test, LinearAlgebra
 import NeuralVerification: ReLU, Id
-using PyPlot
-using CSV
+
 using Cbc
-
-
 
 function read_input(fname::String)
     f = open(fname)
@@ -33,5 +30,77 @@ nws = Dict(2 => network2,
            6 => network6);
 
 
-eps1 = .02
-eps2 = .05
+function test_mnist_problem1(solver, network_no, image_no , problem,epsi)
+    solvername = string(typeof(solver))
+    timed_result = @timed solve(solver, problem)
+    res = solvername*","*string(network_no)*","*string(image_no)*","*string(epsi)*","*string(timed_result[2])*","*string(timed_result[1].status)
+    print("\n"*res)
+    return solvername, timed_result[2], timed_result[1].status, res
+end
+
+function test_mnist_group1(solver)
+    solvername = string(typeof(solver))
+    open(solvername*".csv", "w") do f
+        for network_no in [2,4,6]
+            print("Network: "*string(network_no))
+            for in_epsilon in [.02, .05]
+                print("Epsilon: "*string(in_epsilon))
+                for image_no in 1:25
+
+                    input_center = read_input(vnn_mnist_inputs*"/image"*string(image_no));
+                    inputSet = Hyperrectangle(low=input_center .- in_epsilon, high=input_center .+ in_epsilon)
+
+                    aux = Matrix(1.0I, 10,10);
+                    aux[:,input_labels[image_no]+1] .= -1.0;
+                    A = aux[1:size(aux,1) .!= input_labels[image_no]+1,: ];
+                    b=zeros(9);
+
+                    outputSet = HPolytope(A, b);
+
+                    mnistproblem = Problem(nws[network_no], inputSet, outputSet);
+                    solvername, t, status, res = test_mnist_problem1(solver, network_no, image_no , mnistproblem,in_epsilon)
+                    write(f, res)
+                    write(f, "\n")
+                end
+            end
+        end
+    end
+end
+
+function test_mnist_group2(solver)
+    solvername = string(typeof(solver))
+    open(solvername*".csv", "w") do f
+        for network_no in [2,4,6]
+            print("\n Network: "*string(network_no)*"\n")
+            for in_epsilon in [.02, .05]
+                print("\n Epsilon: "*string(in_epsilon)*"\n")
+                for image_no in 1:25
+
+
+                    input_center = read_input(vnn_mnist_inputs*"/image"*string(image_no));
+                    
+                    inputSet = Hyperrectangle(input_center, ones(length(input_center))*in_epsilon)
+                    #inputSet = Hyperrectangle(low=input_center .- in_epsilon, high=input_center .+ in_epsilon)
+
+                    compare_to = (input_labels[image_no]+1) % 10
+                    aux = Matrix(1.0I, 10,10);
+                    aux[:,input_labels[image_no]+1] .= -1.0;
+                    A = aux[1:size(aux,1) .== compare_to+1,: ];
+                    b=zeros(1);
+
+                    outputSet = HPolytope(A, b);
+
+                    mnistproblem = Problem(nws[network_no], inputSet, outputSet);
+                    solvername, t, status, res = test_mnist_problem1(solver, network_no, image_no , mnistproblem,in_epsilon)
+                    write(f, res)
+                    write(f, "\n")
+                end
+            end
+        end
+    end
+end
+
+# select group and solver
+
+#test_mnist_group1(MaxSens())
+test_mnist_group2(ConvDual())
