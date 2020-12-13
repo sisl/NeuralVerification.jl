@@ -24,6 +24,7 @@ The verification methods are divided into five categories:
 
 * *Search and reachability methods:*
 [ReluVal](https://arxiv.org/abs/1804.10829),
+[Neurify](https://arxiv.org/abs/1809.08098),
 [DLV](https://arxiv.org/abs/1610.06940),
 [FastLin](https://arxiv.org/abs/1804.09699),
 [FastLip](https://arxiv.org/abs/1804.09699)
@@ -34,7 +35,7 @@ The verification methods are divided into five categories:
 [Planet](https://arxiv.org/abs/1705.01320),
 [Reluplex](https://arxiv.org/abs/1702.01135)
 
-Reference: C. Liu, T. Arnon, C. Lazarus, C. Barrett, and M. Kochenderfer, "Algorithms for Verifying Neural Networks," [arXiv:1903.06758](https://arxiv.org/abs/1903.06758).
+Reference: C. Liu, T. Arnon, C. Lazarus, C. Strong, C. Barrett, and M. Kochenderfer, "Algorithms for Verifying Deep Neural Networks," to appear in Foundations and Trend in Optimization. [arXiv:1903.06758](https://arxiv.org/abs/1903.06758).
 
 ## Installation
 To download this library, clone it from the julia package manager like so:
