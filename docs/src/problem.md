@@ -37,6 +37,7 @@ The table below lists all of the solvers with their required input/output sets.
 | [`FastLin`](@ref)    | HR          | HS               |
 | [`FastLip`](@ref)    | HR          | HS               |
 | [`ReluVal`](@ref)    | HR          | HR               |
+| [`Neurify`](@ref)    | HP          | HP               |
 | [`DLV`](@ref)        | HR          | HR[^3]           |
 | [`Sherlock`](@ref)   | HR          | HR[^3]           |
 | [`BaB`](@ref)        | HR          | HR[^3]           |

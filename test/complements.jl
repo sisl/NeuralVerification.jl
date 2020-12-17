@@ -37,7 +37,7 @@
 
     @testset "Solvers with PCs" begin
 
-        small_nnet = read_nnet("$(@__DIR__)/../examples/networks/small_nnet_id.nnet")
+        small_nnet = read_nnet(net_path * "small_nnet_id.nnet")
         in_hyper  = Hyperrectangle(low = [-0.9], high = [0.9])
 
         # Output sets that are the PolytopeComplements of the complements of the output sets used in the regular tests.

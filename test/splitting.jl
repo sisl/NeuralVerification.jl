@@ -1,6 +1,6 @@
 @testset "Splitting Test" begin
 
-    net_file = "$(@__DIR__)/../examples/networks/R2_R2.nnet"
+    net_file = net_path * "R2_R2.nnet"
 
     net = read_nnet(net_file, last_layer_activation = Id())
     A = [1. 0.; 0. 1.; -1. 0.; 0. -1.;]

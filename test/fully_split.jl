@@ -4,7 +4,7 @@
 # To get a precise rechable set, the verification algorithm needs to fully split
 # the input set to reduce all over-approximation.
 
-w_nnet = read_nnet("$(@__DIR__)/../examples/networks/spiky_nnet.nnet", last_layer_activation = NeuralVerification.Id())
+w_nnet = read_nnet(net_path * "spiky_nnet.nnet", last_layer_activation = NeuralVerification.Id())
 
 ϵ = 1e-1
 

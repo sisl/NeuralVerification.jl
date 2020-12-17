@@ -10,7 +10,7 @@ Note that all of the optimization methods use the [JuMP.jl](https://github.com/J
 	Depth = 3
 ```
 
-## Reachability Methods
+## Reachability-Based Methods
 These methods perform exact or approximate reachability analysis to determine the output set corresponding to a given input set.
 In addition, `MaxSens`, which computes lower and upper bounds for each layer, is called within other solver types in the form of [`get_bounds`](@ref).
 ### ExactReach
@@ -28,7 +28,32 @@ Ai2
 MaxSens
 ```
 
-## Primal Optimization Methods
+### ReluVal
+```@docs
+ReluVal
+```
+
+### Neurify
+```@docs
+Neurify
+```
+
+### FastLin
+```@docs
+FastLin
+```
+
+### FastLip
+```@docs
+FastLip
+```
+
+### DLV
+```@docs
+DLV
+```
+
+## Optimization-Based Methods
 
 #### Example
 ```@example optim
@@ -59,8 +84,6 @@ MIPVerify
 ILP
 ```
 
-## Dual Optimization Methods
-
 ### Duality
 ```@docs
 Duality
@@ -75,30 +98,6 @@ ConvDual
 ```@docs
 Certify
 ```
-
-## Search and Reachability Methods
-
-### ReluVal
-```@docs
-ReluVal
-```
-
-### FastLin
-```@docs
-FastLin
-```
-
-### FastLip
-```@docs
-FastLip
-```
-
-### DLV
-```@docs
-DLV
-```
-
-## Search and Optimization Methods
 
 ### Sherlock
 ```@docs
