@@ -251,3 +251,20 @@ function LazySets.issubset(star::Star, polytope::AbstractPolytope; optimizer=GLP
     return true
 end
 
+function ρ(ℓ, star::Star; optimizer=GLPK.Optimizer)
+    model = Model(optimizer)
+    @variable(model, x[1:dim(star.P)])
+    add_set_constraint!(model, star.P, x)
+    @objective(model, Max, ℓ' * (star.V * x + star.c))
+    optimize!(model)
+    return objective_value(model)
+end
+
+function σ(ℓ, star::Star; optimizer=GLPK.Optimizer)
+    model = Model(optimizer)
+    @variable(model, x[1:dim(star.P)])
+    add_set_constraint!(model, star.P, x)
+    @objective(model, Max, ℓ' * (star.V * x + star.c))
+    optimize!(model)
+    return star.V * value(x) + star.c
+end
