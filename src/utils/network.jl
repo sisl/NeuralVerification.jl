@@ -1,3 +1,5 @@
+abstract type AbstractNetwork end
+
 """
     Layer{F, N}
 
@@ -22,7 +24,7 @@ A Vector of layers.
 
 See also: [`Layer`](@ref)
 """
-struct Network
+struct Network <: AbstractNetwork
     layers::Vector{Layer} # layers includes output layer
 end
 
