@@ -1,5 +1,6 @@
 name = "NeuralVerification"
 uuid = "146f25fa-00e7-11e9-3ae5-fdbac6e12fa7"
+version = "0.1.0"
 
 [deps]
 CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"
