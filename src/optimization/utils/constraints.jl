@@ -208,8 +208,8 @@ function add_complementary_set_constraint!(m::Model, H::HalfSpace, z::Vector{Var
     @constraint(m, a * z .>= b)
     return nothing
 end
-function add_complementary_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{VariableRef})
-    add_set_constraint!(m, PC.P, z)
+function add_complementary_set_constraint!(m::Model, PC::Complement, z::Vector{VariableRef})
+    add_set_constraint!(m, PC.X, z)
     return nothing
 end
 
@@ -225,7 +225,7 @@ function add_set_constraint!(m::Model, set::Hyperrectangle, z::Vector{VariableRe
     return nothing
 end
 
-function add_set_constraint!(m::Model, PC::PolytopeComplement, z::Vector{VariableRef})
-    add_complementary_set_constraint!(m, PC.P, z)
+function add_set_constraint!(m::Model, PC::Complement, z::Vector{VariableRef})
+    add_complementary_set_constraint!(m, PC.X, z)
     return nothing
 end
