@@ -71,7 +71,7 @@ _ẑᵢ₊₁(m, i) = affine_map(m[:network].layers[i], m[:z][i])
 
 # Any encoding passes through here first:
 function encode_network!(model::Model, network::Network, encoding::AbstractLinearProgram)
-    get!(object_dictionary(model), :network, network)
+    object_dictionary(model)[:network] =  network # stores model[:network]
     for (i, layer) in enumerate(network.layers)
         encode_layer!(encoding, model, layer, model_params(encoding, model, i)...)
     end

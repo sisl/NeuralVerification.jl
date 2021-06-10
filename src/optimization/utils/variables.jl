@@ -19,11 +19,6 @@ function init_vars(model::Model, layers::Vector{Layer}, name=nothing; binary=fal
         for i in 1:length(vars), j in 1:length(vars[i])
             set_name(vars[i][j], string(name, i-with_input, '[', j, ']'))
         end
-        # should never happen:
-        if haskey(object_dictionary(model), name)
-            @warn("overwriting key $name in model")
-            delete.(model, model[name])
-        end
         model[name] = vars
     end
     return vars
