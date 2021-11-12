@@ -86,6 +86,7 @@ end
 # For an Id Layer, any encoding type defaults to this:
 function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
     @constraint(model, zᵢ .== ẑᵢ)
+    # how do we access δᵢⱼ variable so that it can be properly constrained to 1?
     nothing
 end
 
@@ -105,6 +106,7 @@ end
 
 
 function encode_ij(LP, model, i, j)
+    # where is this function used? Needs documentation.
     L = model[:network].layers[i]
     params = model_params(LP, model, i)
     if L.activation isa Id
@@ -124,6 +126,7 @@ function encode_relu(::SlackLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, sᵢⱼ)
     if δᵢⱼ
         @constraint(model, zᵢⱼ == ẑᵢⱼ + sᵢⱼ)
         @constraint(model, ẑᵢⱼ + sᵢⱼ >= 0.0)
+        # how to encode necessary constraint on δᵢⱼ here?
     else
         @constraint(model, zᵢⱼ == sᵢⱼ)
         @constraint(model, ẑᵢⱼ <= sᵢⱼ)
@@ -133,8 +136,10 @@ end
 function encode_relu(::BoundedMixedIntegerLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, l̂ᵢⱼ, ûᵢⱼ)
     if l̂ᵢⱼ >= 0.0
         @constraint(model, zᵢⱼ == ẑᵢⱼ)
+        @constraint(model, δᵢⱼ == 1)
     elseif ûᵢⱼ <= 0.0
         @constraint(model, zᵢⱼ == 0.0)
+        @constraint(model, δᵢⱼ == 0)
     else
         @constraints(model, begin
                                 zᵢⱼ >= 0.0
@@ -152,8 +157,10 @@ end
 function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ, ûᵢⱼ)
     if l̂ᵢⱼ > 0.0
         @constraint(model, zᵢⱼ == ẑᵢⱼ)
+        @constraint(model, δᵢⱼ == 1)
     elseif ûᵢⱼ < 0.0
         @constraint(model, zᵢⱼ == 0.0)
+        @constraint(model, δᵢⱼ == 0)
     else
         @constraints(model, begin
                                 zᵢⱼ >= 0.0
@@ -164,16 +171,18 @@ function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ
 end
 
 function encode_relu(::LinearRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
-    @constraint(model, zᵢⱼ == (δᵢⱼ ? ẑᵢⱼ : 0.0))
+    @constraint(model, zᵢⱼ == (δᵢⱼ ? ẑᵢⱼ : 0.0)) # what does this mean? how can you use ? in a constraint?
 end
 
 function encode_relu(::StandardLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
     if δᵢⱼ
         @constraint(model, ẑᵢⱼ >= 0.0)
         @constraint(model, zᵢⱼ == ẑᵢⱼ)
+        @constraint(model, δᵢⱼ == 1)
     else
         @constraint(model, ẑᵢⱼ <= 0.0)
         @constraint(model, zᵢⱼ == 0.0)
+        @constraint(model, δᵢⱼ == 0)
     end
 end
 
