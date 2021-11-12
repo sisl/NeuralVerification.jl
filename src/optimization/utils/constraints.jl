@@ -89,6 +89,7 @@ function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, 
     nothing
 end
 
+# All ReLU layers pass through this
 function encode_layer!(LP::AbstractLinearProgram, model::Model, layer::Layer{ReLU}, args...)
     encode_relu.(LP, model, args...)
     nothing
@@ -104,10 +105,10 @@ function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, z�
 end
 
 # need to fix δᵢⱼ for BoundedMixedIntegerLP and possibly other types 
-function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, args...)
-    println("Using new case!")
+function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢ, args...)
+    println("Using new case! δᵢⱼ = $(δᵢⱼ)")
     @constraint(model, zᵢ .== ẑᵢ)
-    @constraint(model, δᵢⱼ == 1)
+    @constraint(model, δᵢ .== 1)
     return nothing
 end
 
