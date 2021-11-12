@@ -106,7 +106,7 @@ end
 
 # need to fix δᵢⱼ for BoundedMixedIntegerLP and possibly other types 
 function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢ, args...)
-    println("Using new case! δᵢⱼ = $(δᵢⱼ)")
+    println("Using new case! δᵢ = $(δᵢ)")
     @constraint(model, zᵢ .== ẑᵢ)
     @constraint(model, δᵢ .== 1)
     return nothing
