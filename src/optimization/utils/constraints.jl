@@ -86,7 +86,6 @@ end
 # For an Id Layer, any encoding type defaults to this:
 function encode_layer!(::AbstractLinearProgram, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, args...)
     @constraint(model, zᵢ .== ẑᵢ)
-    # how do we access δᵢⱼ variable so that it can be properly constrained to 1?
     nothing
 end
 
@@ -104,6 +103,13 @@ function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, z�
     return nothing
 end
 
+# need to fix δᵢⱼ for BoundedMixedIntegerLP and possibly other types 
+function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢⱼ, args...)
+    println("Using new case!")
+    @constraint(model, zᵢ .== ẑᵢ)
+    @constraint(model, δᵢⱼ == 1)
+    return nothing
+end
 
 function encode_ij(LP, model, i, j)
     # where is this function used? Needs documentation.
