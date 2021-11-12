@@ -132,7 +132,6 @@ function encode_relu(::SlackLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ, sᵢⱼ)
     if δᵢⱼ
         @constraint(model, zᵢⱼ == ẑᵢⱼ + sᵢⱼ)
         @constraint(model, ẑᵢⱼ + sᵢⱼ >= 0.0)
-        # how to encode necessary constraint on δᵢⱼ here?
     else
         @constraint(model, zᵢⱼ == sᵢⱼ)
         @constraint(model, ẑᵢⱼ <= sᵢⱼ)
@@ -163,10 +162,8 @@ end
 function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ, ûᵢⱼ)
     if l̂ᵢⱼ > 0.0
         @constraint(model, zᵢⱼ == ẑᵢⱼ)
-        @constraint(model, δᵢⱼ == 1)
     elseif ûᵢⱼ < 0.0
         @constraint(model, zᵢⱼ == 0.0)
-        @constraint(model, δᵢⱼ == 0)
     else
         @constraints(model, begin
                                 zᵢⱼ >= 0.0
@@ -177,18 +174,16 @@ function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ
 end
 
 function encode_relu(::LinearRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
-    @constraint(model, zᵢⱼ == (δᵢⱼ ? ẑᵢⱼ : 0.0)) # what does this mean? how can you use ? in a constraint?
+    @constraint(model, zᵢⱼ == (δᵢⱼ ? ẑᵢⱼ : 0.0)) # in LinearRelaxedLP δᵢⱼ is a constant not a variable
 end
 
 function encode_relu(::StandardLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
-    if δᵢⱼ
+    if δᵢⱼ # in StandardLP δᵢⱼ is a constant, not a variable
         @constraint(model, ẑᵢⱼ >= 0.0)
         @constraint(model, zᵢⱼ == ẑᵢⱼ)
-        @constraint(model, δᵢⱼ == 1)
     else
         @constraint(model, ẑᵢⱼ <= 0.0)
         @constraint(model, zᵢⱼ == 0.0)
-        @constraint(model, δᵢⱼ == 0)
     end
 end
 
