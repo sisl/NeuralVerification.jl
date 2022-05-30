@@ -1,6 +1,6 @@
 | Testing | Coverage | Documentation |
 | :-----: | :------: | :-----------: |
-| [![Build Status](https://travis-ci.org/sisl/NeuralVerification.jl.svg?branch=master)](https://travis-ci.org/sisl/NeuralVerification.jl) | [![Coverage Status](https://coveralls.io/repos/github/sisl/NeuralVerification.jl/badge.svg?branch=master)](https://coveralls.io/github/sisl/NeuralVerification.jl?branch=master) | [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://sisl.github.io/NeuralVerification.jl/latest) |
+| [![Build Status](https://github.com/sisl/NeuralVerification.jl/workflows/CI/badge.svg)](https://github.com/sisl/NeuralVerification.jl/actions) | [![codecov](https://codecov.io/gh/sisl/NeuralVerification.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/sisl/NeuralVerification.jl) | [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://sisl.github.io/NeuralVerification.jl/latest) |
 
 # NeuralVerification.jl
 
