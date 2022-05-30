@@ -4,8 +4,10 @@ version = "0.1.0"
 
 [deps]
 CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
 GLPKMathProgInterface = "3c7084bd-78ad-589a-b5bb-dbd673274bea"
+Homebrew = "d9be37ee-ecc9-5288-90f1-b9ca67657a75"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
@@ -19,14 +21,14 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
 
+[compat]
+LazySets = "< 1.57.0"
+julia = ">= 1.5"
+
 [extras]
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[compat]
-julia = ">= 1.5"
-
 
 [targets]
 test = ["Test", "Flux", "JLD2"]
