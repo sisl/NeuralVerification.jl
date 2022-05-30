@@ -24,15 +24,13 @@ SCS = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
 [compat]
 LazySets = "< 1.57.0"
 julia = ">= 1.5"
+Documenter = "0.26, 0.27"
+
 
 [extras]
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[compat]
-julia = ">= 1.5"
-Documenter = "0.26, 0.27"
 
 [targets]
 test = ["Test", "Flux", "JLD2"]
