@@ -1,4 +1,5 @@
 using JLD2
+using FixedPointNumbers
 
 let
     # index of all violated cases in the first 1000 images.
