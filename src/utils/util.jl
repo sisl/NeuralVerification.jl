@@ -74,7 +74,7 @@ The NNet format has a particular header containing information about the network
 function print_header(file::IOStream, network; header_text="")
    println(file, to_comment(header_text))
    layer_sizes = [size(layer.weights, 1) for layer in network.layers] # doesn't include the input layer
-   pushfirst!(layer_sizes, size(network.layers[1].weights, 1)) # add the input layer
+   pushfirst!(layer_sizes, size(network.layers[1].weights, 2)) # add the input layer
 
    # num layers, num inputs, num outputs, max layer size
    num_layers = length(network.layers)
