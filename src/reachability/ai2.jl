@@ -73,5 +73,5 @@ forward_linear(solver::Ai2, L::Layer{Id}, input::AbstractPolytope) = affine_map(
 forward_act(solver::Ai2, L::Layer{Id}, input::AbstractPolytope) = input
 
 function convex_hull(U::UnionSetArray{<:Any, <:HPolytope})
-    tohrep(VPolytope(LazySets.convex_hull(U)))
+    convert(HPolytope, LazySets.convex_hull(U))
 end
