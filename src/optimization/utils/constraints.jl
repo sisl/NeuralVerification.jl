@@ -105,9 +105,20 @@ function encode_layer!(SLP::SlackLP, model::Model, layer::Layer{Id}, ẑᵢ, z�
 end
 
 # need to fix δᵢⱼ for BoundedMixedIntegerLP and possibly other types 
-function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢ, args...)
+function encode_layer!(::BoundedMixedIntegerLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, δᵢ, l̂ᵢ, ûᵢ)
     @constraint(model, zᵢ .== ẑᵢ)
     @constraint(model, δᵢ .== 1)
+
+    set_lower_bound.(zᵢ, l̂ᵢ)
+    set_upper_bound.(zᵢ, ûᵢ)
+    return nothing
+end
+
+function encode_layer!(::TriangularRelaxedLP, model::Model, layer::Layer{Id}, ẑᵢ, zᵢ, l̂ᵢ, ûᵢ)
+    @constraint(model, zᵢ .== ẑᵢ)
+    
+    set_lower_bound.(zᵢ, l̂ᵢ)
+    set_upper_bound.(zᵢ, ûᵢ)
     return nothing
 end
 
@@ -153,6 +164,8 @@ function encode_relu(::BoundedMixedIntegerLP, model, ẑᵢⱼ, zᵢⱼ, δᵢ�
                                 zᵢⱼ <= ẑᵢⱼ - l̂ᵢⱼ * (1 - δᵢⱼ)
                             end)
     end
+    set_lower_bound(zᵢⱼ, max(l̂ᵢⱼ, 0.0))
+    set_upper_bound(zᵢⱼ, max(ûᵢⱼ, 0.0))
 end
 
 function encode_relu(::MixedIntegerLP, args...)
@@ -171,6 +184,8 @@ function encode_relu(::TriangularRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, l̂ᵢⱼ
                                 zᵢⱼ <= (ẑᵢⱼ - l̂ᵢⱼ) * ûᵢⱼ / (ûᵢⱼ - l̂ᵢⱼ)
                             end)
     end
+    set_lower_bound(zᵢⱼ, max(l̂ᵢⱼ, 0.0))
+    set_upper_bound(zᵢⱼ, max(ûᵢⱼ, 0.0))
 end
 
 function encode_relu(::LinearRelaxedLP, model, ẑᵢⱼ, zᵢⱼ, δᵢⱼ)
